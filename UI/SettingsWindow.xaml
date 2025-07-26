@@ -1,0 +1,227 @@
+<Window x:Class="SharpShot.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SharpShot Settings"
+        Height="600" Width="500"
+        Style="{StaticResource DarkWindowStyle}"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" 
+                   Text="Settings" 
+                   FontSize="24" 
+                   FontWeight="Bold" 
+                   Foreground="{StaticResource AccentBrush}"
+                   Margin="0,0,0,20"/>
+
+        <!-- Settings Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Save Path -->
+                <TextBlock Text="Save Path:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="SavePathTextBox" 
+                             Grid.Column="0"
+                             Style="{StaticResource DarkTextBoxStyle}"/>
+                    <Button Grid.Column="1" 
+                            Content="Browse" 
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Margin="5,0,0,0"
+                            Click="BrowseButton_Click"/>
+                </Grid>
+
+                <!-- Screenshot Format -->
+                <TextBlock Text="Screenshot Format:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="FormatComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15">
+                    <ComboBoxItem Content="PNG"/>
+                    <ComboBoxItem Content="JPG"/>
+                    <ComboBoxItem Content="BMP"/>
+                </ComboBox>
+
+                <!-- Video Quality -->
+                <TextBlock Text="Video Quality:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="QualityComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15">
+                    <ComboBoxItem Content="High"/>
+                    <ComboBoxItem Content="Medium"/>
+                    <ComboBoxItem Content="Low"/>
+                </ComboBox>
+
+                <!-- Checkboxes -->
+                <CheckBox x:Name="AudioRecordingCheckBox" 
+                          Content="Enable Audio Recording" 
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
+                <CheckBox x:Name="GlobalHotkeysCheckBox" 
+                          Content="Enable Global Hotkeys" 
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
+                <CheckBox x:Name="StartMinimizedCheckBox" 
+                          Content="Start Minimized" 
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,20"/>
+
+                <!-- Hotkeys Section -->
+                <TextBlock Text="Hotkeys:" 
+                           Foreground="{StaticResource AccentBrush}" 
+                           FontWeight="SemiBold" 
+                           FontSize="16"
+                           Margin="0,0,0,10"/>
+                
+                <!-- Region Capture Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Region Capture:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="RegionHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="120"
+                             Text="Double Ctrl"
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                </Grid>
+                
+                <!-- Full Screen Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Full Screen:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="FullScreenHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="120"
+                             Text="Ctrl+Shift+S"
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                </Grid>
+                
+                <!-- Recording Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Toggle Recording:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="RecordingHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="120"
+                             Text="Ctrl+Shift+R"
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                </Grid>
+                
+                <!-- Cancel Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Cancel:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="CancelHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="120"
+                             Text="Escape"
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                </Grid>
+                
+                <!-- Save Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Save:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="SaveHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="120"
+                             Text="Space"
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                </Grid>
+                
+                <!-- Copy Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Copy:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="CopyHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="120"
+                             Text="Enter"
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Margin="0,20,0,0">
+            <Button x:Name="CancelButton" 
+                    Content="Cancel" 
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="CancelButton_Click"
+                    Margin="0,0,10,0"/>
+            <Button x:Name="SaveButton" 
+                    Content="Save" 
+                    Style="{StaticResource ToolbarButtonStyle}"
+                    Click="SaveButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window> 
