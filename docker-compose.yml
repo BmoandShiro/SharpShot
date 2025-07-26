@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  sharpshot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sharpshot-app
+    # For Windows containers, we need to enable GUI
+    isolation: process
+    # Mount volumes for persistent data
+    volumes:
+      - ${USERPROFILE}/Pictures:/app/Pictures
+      - ${APPDATA}/SharpShot:/app/Settings
+    # Environment variables
+    environment:
+      - DISPLAY=${DISPLAY}
+    # Run in interactive mode for GUI
+    stdin_open: true
+    tty: true 

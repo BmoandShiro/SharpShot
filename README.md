@@ -39,11 +39,36 @@ A modern, dark-themed screenshot and screen recording tool built with C# and WPF
 
 ## Installation & Usage
 
-### Prerequisites
+### Option 1: Docker (Recommended for Cross-Platform)
+**Prerequisites:**
+- Windows 10/11 with Docker Desktop installed
+- Windows containers enabled in Docker Desktop
+
+**Quick Start with Docker:**
+```powershell
+# Clone the repository
+git clone <repository-url>
+cd SharpShot
+
+# Run the build script
+.\build-and-run.ps1
+```
+
+**Manual Docker Commands:**
+```powershell
+# Build the Docker image
+docker build -t sharpshot:latest .
+
+# Run the container
+docker run -it --rm --name sharpshot-app sharpshot:latest
+```
+
+### Option 2: Native .NET
+**Prerequisites:**
 - Windows 10/11
 - .NET 8.0 Runtime
 
-### Building from Source
+**Building from Source:**
 ```bash
 # Clone the repository
 git clone <repository-url>
