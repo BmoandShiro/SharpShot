@@ -1,0 +1,22 @@
+# SharpShot Development Environment
+# This ensures consistent .NET version across different Windows PCs
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+# Set working directory
+WORKDIR /app
+
+# Copy project file first for better caching
+COPY SharpShot.csproj ./
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy all source code
+COPY . ./
+
+# Build the application
+RUN dotnet build --configuration Release
+
+# Keep container running for development
+CMD ["tail", "-f", "/dev/null"] 

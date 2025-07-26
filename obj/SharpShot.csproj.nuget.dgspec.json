@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\BMO\\Documents\\GitHub\\SharpShot\\SharpShot.csproj": {}
+    "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj": {}
   },
   "projects": {
-    "C:\\Users\\BMO\\Documents\\GitHub\\SharpShot\\SharpShot.csproj": {
+    "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\BMO\\Documents\\GitHub\\SharpShot\\SharpShot.csproj",
+        "projectUniqueName": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj",
         "projectName": "SharpShot",
-        "projectPath": "C:\\Users\\BMO\\Documents\\GitHub\\SharpShot\\SharpShot.csproj",
+        "projectPath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj",
         "packagesPath": "C:\\Users\\BMO\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\BMO\\Documents\\GitHub\\SharpShot\\obj\\",
+        "outputPath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -53,7 +53,7 @@
             "Microsoft.NET.ILLink.Tasks": {
               "suppressParent": "All",
               "target": "Package",
-              "version": "[8.0.0, )",
+              "version": "[8.0.7, )",
               "autoReferenced": true
             },
             "Microsoft.Windows.SDK.BuildTools": {
@@ -83,15 +83,15 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
-              "version": "[8.0.0, 8.0.0]"
+              "version": "[8.0.7, 8.0.7]"
             },
             {
               "name": "Microsoft.NETCore.App.Runtime.win-x64",
-              "version": "[8.0.0, 8.0.0]"
+              "version": "[8.0.7, 8.0.7]"
             },
             {
               "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
-              "version": "[8.0.0, 8.0.0]"
+              "version": "[8.0.7, 8.0.7]"
             }
           ],
           "frameworkReferences": {
@@ -102,7 +102,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.200-preview.23624.5/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.303/PortableRuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {

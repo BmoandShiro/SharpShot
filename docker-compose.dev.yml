@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  sharpshot-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: sharpshot-development
+    volumes:
+      # Mount source code for live development
+      - .:/app
+      # Mount .NET cache for faster builds
+      - dotnet-cache:/root/.nuget
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+    # Keep container running for development
+    tty: true
+    stdin_open: true
+    # Command to just keep container running for building
+    command: ["tail", "-f", "/dev/null"]
+
+volumes:
+  dotnet-cache: 

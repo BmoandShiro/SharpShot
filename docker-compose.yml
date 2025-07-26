@@ -8,13 +8,16 @@ services:
     container_name: sharpshot-app
     # For Windows containers, we need to enable GUI
     isolation: process
-    # Mount volumes for persistent data
+    # Mount volumes for persistent data - use relative paths for cross-platform compatibility
     volumes:
-      - ${USERPROFILE}/Pictures:/app/Pictures
-      - ${APPDATA}/SharpShot:/app/Settings
-    # Environment variables
+      - ./output:/app/output
+      - ./settings:/app/settings
+    # Environment variables - use defaults that work across Windows systems
     environment:
-      - DISPLAY=${DISPLAY}
-    # Run in interactive mode for GUI
+      - DOTNET_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Development
+    # Run in interactive mode for development
     stdin_open: true
-    tty: true 
+    tty: true
+    # Command to build the application
+    command: ["cmd", "/c", "dotnet build --configuration Release && dotnet publish --configuration Release --output /app/output --runtime win-x64 --self-contained false"] 

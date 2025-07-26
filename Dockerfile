@@ -1,33 +1,32 @@
 # Multi-stage build for WPF application
-FROM mcr.microsoft.com/dotnet/sdk:8.0-windowsservercore-ltsc2022 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 # Set working directory
 WORKDIR /src
 
-# Copy project files
+# Copy project file
 COPY SharpShot.csproj ./
-COPY *.csproj ./
 
 # Restore dependencies
-RUN dotnet restore
+RUN dotnet restore SharpShot.csproj
 
 # Copy source code
-COPY . .
+COPY . ./
 
-# Build the application
-RUN dotnet build --no-restore --configuration Release
+# Build the application for Windows
+RUN dotnet build SharpShot.csproj --no-restore --configuration Release
 
-# Publish the application
-RUN dotnet publish --no-restore --configuration Release --output /app/publish
+# Publish the application for Windows
+RUN dotnet publish SharpShot.csproj --no-restore --configuration Release --output /app/publish --runtime win-x64 --self-contained false
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/runtime:8.0-windowsservercore-ltsc2022 AS runtime
+# Create a simple runtime image to copy the published files
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
 
 # Set working directory
 WORKDIR /app
 
 # Copy published application
-COPY --from=build /app/publish ./
+COPY --from=build /app/publish ./publish
 
-# Set entry point
-ENTRYPOINT ["SharpShot.exe"] 
+# The application will be copied to the host system
+CMD ["echo", "Build complete. Application is ready to run on Windows host."] 
