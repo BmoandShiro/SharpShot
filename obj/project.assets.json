@@ -502,11 +502,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot.csproj",
+      "projectUniqueName": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj",
       "projectName": "SharpShot",
-      "projectPath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot.csproj",
+      "projectPath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj",
       "packagesPath": "C:\\Users\\BMO\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\obj\\",
+      "outputPath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

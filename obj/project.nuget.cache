@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "h1yAUOype6I=",
+  "dgSpecHash": "xccqmhZdgVc=",
   "success": true,
-  "projectFilePath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot.csproj",
+  "projectFilePath": "C:\\Users\\BMO\\source\\repos\\Screenshot Tool\\SharpShot\\SharpShot.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\BMO\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.7\\microsoft.net.illink.tasks.8.0.7.nupkg.sha512",
     "C:\\Users\\BMO\\.nuget\\packages\\microsoft.win32.systemevents\\8.0.0\\microsoft.win32.systemevents.8.0.0.nupkg.sha512",
