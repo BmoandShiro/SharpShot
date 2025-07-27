@@ -7,13 +7,16 @@ namespace SharpShot.Models
 {
     public class Settings : INotifyPropertyChanged
     {
-        private string _savePath;
-        private string _screenshotFormat;
-        private string _videoQuality;
+        private string _savePath = string.Empty;
+        private string _screenshotFormat = string.Empty;
+        private string _videoQuality = string.Empty;
         private bool _enableAudioRecording;
         private bool _enableGlobalHotkeys;
         private bool _startMinimized;
-        private Dictionary<string, string> _hotkeys;
+        private Dictionary<string, string> _hotkeys = new();
+        private string _iconColor = string.Empty;
+        private double _hoverOpacity;
+        private double _dropShadowOpacity;
 
         public Settings()
         {
@@ -24,6 +27,9 @@ namespace SharpShot.Models
             EnableAudioRecording = true;
             EnableGlobalHotkeys = true;
             StartMinimized = false;
+            IconColor = "#FFFF8C00";
+            HoverOpacity = 0.125;
+            DropShadowOpacity = 0.15;
             
             // Default hotkeys
             Hotkeys = new Dictionary<string, string>
@@ -78,6 +84,24 @@ namespace SharpShot.Models
         {
             get => _hotkeys;
             set => SetProperty(ref _hotkeys, value);
+        }
+
+        public string IconColor
+        {
+            get => _iconColor;
+            set => SetProperty(ref _iconColor, value);
+        }
+
+        public double HoverOpacity
+        {
+            get => _hoverOpacity;
+            set => SetProperty(ref _hoverOpacity, value);
+        }
+
+        public double DropShadowOpacity
+        {
+            get => _dropShadowOpacity;
+            set => SetProperty(ref _dropShadowOpacity, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

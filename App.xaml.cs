@@ -8,8 +8,8 @@ namespace SharpShot
 {
     public partial class App : Application
     {
-        private SettingsService _settingsService;
-        private HotkeyManager _hotkeyManager;
+        private SettingsService _settingsService = null!;
+        private HotkeyManager _hotkeyManager = null!;
 
         protected override void OnStartup(StartupEventArgs e)
         {

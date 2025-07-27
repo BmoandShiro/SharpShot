@@ -3,6 +3,9 @@ using System.Drawing;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Windows.Media;
+using System.Windows.Controls;
+using System.Windows.Media.Effects;
 using SharpShot.Services;
 using SharpShot.Utils;
 using System.Threading.Tasks;
@@ -43,6 +46,9 @@ namespace SharpShot
             {
                 WindowState = WindowState.Minimized;
             }
+            
+            // Apply theme settings
+            ApplyThemeSettings();
         }
 
         private void SetupEventHandlers()
@@ -116,9 +122,9 @@ namespace SharpShot
             await CaptureFullScreen();
         }
 
-        private async void RecordingButton_Click(object sender, RoutedEventArgs e)
+        private void RecordingButton_Click(object sender, RoutedEventArgs e)
         {
-            await ShowRecordingOptions();
+            ShowRecordingOptions();
         }
 
         private async void RegionRecordButton_Click(object sender, RoutedEventArgs e)
@@ -151,7 +157,7 @@ namespace SharpShot
             }
         }
 
-        private async void PauseRecordButton_Click(object sender, RoutedEventArgs e)
+        private void PauseRecordButton_Click(object sender, RoutedEventArgs e)
         {
             if (_recordingService != null)
             {
@@ -170,7 +176,7 @@ namespace SharpShot
             }
         }
 
-        private async Task ShowRecordingOptions()
+        private void ShowRecordingOptions()
         {
             try
             {
@@ -481,7 +487,7 @@ namespace SharpShot
                 else
                 {
                     // If not recording, show recording options instead of starting directly
-                    await ShowRecordingOptions();
+                    ShowRecordingOptions();
                 }
             }
             catch (Exception ex)
@@ -622,6 +628,240 @@ namespace SharpShot
             // For now, just show a message box
             var icon = isError ? MessageBoxImage.Error : MessageBoxImage.Information;
             MessageBox.Show(message, "SharpShot", MessageBoxButton.OK, icon);
+        }
+
+        public void ApplyThemeSettings()
+        {
+            try
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    // Apply icon color
+                    var iconColor = _settingsService.CurrentSettings.IconColor;
+                    if (!string.IsNullOrEmpty(iconColor))
+                    {
+                        UpdateIconColors(iconColor);
+                    }
+                    
+                    // Apply hover opacity
+                    var hoverOpacity = _settingsService.CurrentSettings.HoverOpacity;
+                    UpdateHoverOpacity(hoverOpacity);
+                    
+                    // Apply drop shadow opacity
+                    var dropShadowOpacity = _settingsService.CurrentSettings.DropShadowOpacity;
+                    UpdateDropShadowOpacity(dropShadowOpacity);
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply theme settings: {ex.Message}");
+            }
+        }
+
+        private void UpdateIconColors(string color)
+        {
+            try
+            {
+                // Update all icon paths to use the new color
+                if (RegionButton.Content is System.Windows.Shapes.Path regionPath)
+                    regionPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (ScreenshotButton.Content is System.Windows.Shapes.Path screenshotPath)
+                    screenshotPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (RecordingButton.Content is System.Windows.Shapes.Path recordingPath)
+                    recordingPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (SettingsButton.Content is System.Windows.Shapes.Path settingsPath)
+                    settingsPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (CloseButton.Content is System.Windows.Shapes.Path closePath)
+                    closePath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                // Update separator colors
+                UpdateSeparatorColors(color);
+                
+                System.Diagnostics.Debug.WriteLine($"Applied icon color: {color}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update icon colors: {ex.Message}");
+            }
+        }
+
+        private void UpdateSeparatorColors(string color)
+        {
+            try
+            {
+                // Find all Rectangle elements in the main StackPanel that are separators
+                var mainStackPanel = this.FindName("MainToolbarStackPanel") as StackPanel;
+                if (mainStackPanel != null)
+                {
+                    foreach (var child in mainStackPanel.Children)
+                    {
+                        if (child is System.Windows.Shapes.Rectangle rectangle && rectangle.Width == 1)
+                        {
+                            rectangle.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                        }
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"Updated separator colors: {color}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update separator colors: {ex.Message}");
+            }
+        }
+
+        private void UpdateHoverOpacity(double opacity)
+        {
+            try
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    // Convert opacity to hex color with alpha channel
+                    var alpha = (byte)(opacity * 255);
+                    var hoverColor = $"#{alpha:X2}FF8C00";
+                    
+                    // Create a new style with updated hover opacity
+                    var newStyle = CreateUpdatedButtonStyle(hoverColor, _settingsService.CurrentSettings.DropShadowOpacity);
+                    
+                    // Replace the existing style
+                    Application.Current.Resources["ToolbarButtonStyle"] = newStyle;
+                    
+                    // Force refresh of all buttons
+                    RefreshButtonStyles();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Updated hover opacity: {opacity} -> {hoverColor}");
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update hover opacity: {ex.Message}");
+            }
+        }
+
+        private void UpdateDropShadowOpacity(double opacity)
+        {
+            try
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    // Get current hover opacity
+                    var hoverOpacity = _settingsService.CurrentSettings.HoverOpacity;
+                    var alpha = (byte)(hoverOpacity * 255);
+                    var hoverColor = $"#{alpha:X2}FF8C00";
+                    
+                    // Create a new style with updated drop shadow opacity
+                    var newStyle = CreateUpdatedButtonStyle(hoverColor, opacity);
+                    
+                    // Replace the existing style
+                    Application.Current.Resources["ToolbarButtonStyle"] = newStyle;
+                    
+                    // Force refresh of all buttons
+                    RefreshButtonStyles();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Updated drop shadow opacity: {opacity}");
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update drop shadow opacity: {ex.Message}");
+            }
+        }
+
+        private Style CreateUpdatedButtonStyle(string hoverColor, double dropShadowOpacity)
+        {
+            var style = new Style(typeof(Button));
+            
+            // Base properties - preserve original button styling
+            style.Setters.Add(new Setter(Button.BackgroundProperty, System.Windows.Media.Brushes.Transparent));
+            style.Setters.Add(new Setter(Button.ForegroundProperty, Application.Current.Resources["TextBrush"]));
+            style.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(0)));
+            style.Setters.Add(new Setter(Button.PaddingProperty, new Thickness(8)));
+            style.Setters.Add(new Setter(Button.MarginProperty, new Thickness(4)));
+            style.Setters.Add(new Setter(Button.FontSizeProperty, 28.0));
+            style.Setters.Add(new Setter(Button.FontWeightProperty, FontWeights.Normal));
+            style.Setters.Add(new Setter(Button.CursorProperty, Cursors.Hand));
+            // Note: RegionButton has Width="70" in XAML, others are 60
+            style.Setters.Add(new Setter(Button.HeightProperty, 50.0));
+            
+            // Template
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+            border.SetValue(Border.BorderThicknessProperty, new Thickness(0));
+            
+            var contentPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentPresenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentPresenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            
+            border.AppendChild(contentPresenter);
+            template.VisualTree = border;
+            
+            // Triggers
+            var trigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
+            trigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hoverColor))));
+            
+            var dropShadow = new DropShadowEffect();
+            dropShadow.Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFF8C00");
+            dropShadow.BlurRadius = 10;
+            dropShadow.ShadowDepth = 0;
+            dropShadow.Opacity = dropShadowOpacity;
+            trigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
+            
+            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, Application.Current.Resources["SecondaryBrush"]));
+            
+            template.Triggers.Add(trigger);
+            template.Triggers.Add(pressedTrigger);
+            
+            style.Setters.Add(new Setter(Button.TemplateProperty, template));
+            
+            return style;
+        }
+
+        private void RefreshButtonStyles()
+        {
+            // Force all buttons to refresh their styles
+            if (RegionButton != null) RegionButton.Style = null;
+            if (ScreenshotButton != null) ScreenshotButton.Style = null;
+            if (RecordingButton != null) RecordingButton.Style = null;
+            if (SettingsButton != null) SettingsButton.Style = null;
+            if (CloseButton != null) CloseButton.Style = null;
+            
+            // Re-apply the style
+            var buttonStyle = Application.Current.Resources["ToolbarButtonStyle"] as Style;
+            if (buttonStyle != null)
+            {
+                if (RegionButton != null) 
+                {
+                    RegionButton.Style = buttonStyle;
+                    RegionButton.Width = 70; // Preserve special width for region button
+                }
+                if (ScreenshotButton != null) 
+                {
+                    ScreenshotButton.Style = buttonStyle;
+                    ScreenshotButton.Width = 60;
+                }
+                if (RecordingButton != null) 
+                {
+                    RecordingButton.Style = buttonStyle;
+                    RecordingButton.Width = 60;
+                }
+                if (SettingsButton != null) 
+                {
+                    SettingsButton.Style = buttonStyle;
+                    SettingsButton.Width = 60;
+                }
+                if (CloseButton != null) 
+                {
+                    CloseButton.Style = buttonStyle;
+                    CloseButton.Width = 60;
+                }
+            }
         }
         #endregion
     }

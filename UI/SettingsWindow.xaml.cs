@@ -24,6 +24,10 @@ namespace SharpShot.UI
             CopySettings(_settingsService.CurrentSettings, _originalSettings);
             
             LoadSettings();
+            
+            // Add event handlers for sliders
+            HoverOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
+            DropShadowOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
         }
 
         private void LoadSettings()
@@ -55,6 +59,12 @@ namespace SharpShot.UI
             AudioRecordingCheckBox.IsChecked = _originalSettings.EnableAudioRecording;
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
+            
+            // Load theme customization settings
+            IconColorTextBox.Text = _originalSettings.IconColor;
+            HoverOpacitySlider.Value = _originalSettings.HoverOpacity;
+            DropShadowOpacitySlider.Value = _originalSettings.DropShadowOpacity;
+            UpdateOpacityLabels();
             
             // Load hotkeys
             RegionHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("RegionCapture", "Double Ctrl");
@@ -124,6 +134,11 @@ namespace SharpShot.UI
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 
+                // Save theme customization settings
+                _originalSettings.IconColor = IconColorTextBox.Text;
+                _originalSettings.HoverOpacity = HoverOpacitySlider.Value;
+                _originalSettings.DropShadowOpacity = DropShadowOpacitySlider.Value;
+                
                 // Update hotkeys
                 _originalSettings.Hotkeys["RegionCapture"] = RegionHotkeyTextBox.Text;
                 _originalSettings.Hotkeys["FullScreenCapture"] = FullScreenHotkeyTextBox.Text;
@@ -137,6 +152,9 @@ namespace SharpShot.UI
                 
                 // Save settings
                 _settingsService.SaveSettings();
+                
+                // Apply theme changes immediately
+                ApplyThemeChanges();
                 
                 DialogResult = true;
                 Close();
@@ -162,12 +180,39 @@ namespace SharpShot.UI
             target.EnableAudioRecording = source.EnableAudioRecording;
             target.EnableGlobalHotkeys = source.EnableGlobalHotkeys;
             target.StartMinimized = source.StartMinimized;
+            target.IconColor = source.IconColor;
+            target.HoverOpacity = source.HoverOpacity;
+            target.DropShadowOpacity = source.DropShadowOpacity;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
             foreach (var kvp in source.Hotkeys)
             {
                 target.Hotkeys[kvp.Key] = kvp.Value;
+            }
+        }
+
+        private void UpdateOpacityLabels()
+        {
+            HoverOpacityValue.Text = $"{(HoverOpacitySlider.Value * 100):F1}%";
+            DropShadowOpacityValue.Text = $"{(DropShadowOpacitySlider.Value * 100):F1}%";
+        }
+
+        private void ApplyThemeChanges()
+        {
+            try
+            {
+                // Get the main window to apply theme changes
+                var mainWindow = Application.Current.MainWindow as MainWindow;
+                if (mainWindow != null)
+                {
+                    // Apply the new theme settings
+                    mainWindow.ApplyThemeSettings();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply theme changes: {ex.Message}");
             }
         }
     }

@@ -19,7 +19,7 @@
                    Text="Settings" 
                    FontSize="24" 
                    FontWeight="Bold" 
-                   Foreground="{StaticResource AccentBrush}"
+                   Foreground="#FFFF8C00"
                    Margin="0,0,0,20"/>
 
         <!-- Settings Content -->
@@ -85,9 +85,80 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,20"/>
 
+                <!-- Theme Customization Section -->
+                <TextBlock Text="Theme Customization:" 
+                           Foreground="#FFFF8C00" 
+                           FontWeight="SemiBold" 
+                           FontSize="16"
+                           Margin="0,0,0,10"/>
+                
+                <!-- Icon Color -->
+                <TextBlock Text="Icon Color (Hex):" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <TextBox x:Name="IconColorTextBox" 
+                         Style="{StaticResource DarkTextBoxStyle}"
+                         Text="#FFFF8C00"
+                         Margin="0,0,0,15"/>
+                
+                <!-- Hover Opacity -->
+                <TextBlock Text="Hover Highlight Opacity:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Slider x:Name="HoverOpacitySlider" 
+                            Grid.Column="0"
+                            Minimum="0" 
+                            Maximum="1" 
+                            Value="0.125"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" 
+                               x:Name="HoverOpacityValue"
+                               Text="12.5%"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               MinWidth="40"/>
+                </Grid>
+                
+                <!-- Drop Shadow Opacity -->
+                <TextBlock Text="Drop Shadow Opacity:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Slider x:Name="DropShadowOpacitySlider" 
+                            Grid.Column="0"
+                            Minimum="0" 
+                            Maximum="1" 
+                            Value="0.15"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" 
+                               x:Name="DropShadowOpacityValue"
+                               Text="15%"
+                               Foreground="{StaticResource TextBrush}"
+                               Margin="10,0,0,0"
+                               VerticalAlignment="Center"
+                               MinWidth="40"/>
+                </Grid>
+
                 <!-- Hotkeys Section -->
                 <TextBlock Text="Hotkeys:" 
-                           Foreground="{StaticResource AccentBrush}" 
+                           Foreground="#FFFF8C00" 
                            FontWeight="SemiBold" 
                            FontSize="16"
                            Margin="0,0,0,10"/>

@@ -117,7 +117,7 @@ namespace SharpShot.Services
                 Console.WriteLine($"Recording stopped. File: {_currentRecordingPath}");
                 
                 // Enhanced file validation
-                await ValidateCreatedFile();
+                ValidateCreatedFile();
             }
             catch (Exception ex)
             {
@@ -201,7 +201,7 @@ namespace SharpShot.Services
                 Console.WriteLine($"FFmpeg path: {ffmpegPath}");
                 
                 // Test FFmpeg capabilities first
-                await TestFFmpegCapabilities(ffmpegPath);
+                TestFFmpegCapabilities(ffmpegPath);
                 
                 // Build enhanced FFmpeg command with proper video size and encoding
                 var ffmpegArgs = BuildEnhancedFFmpegCommand(bounds);
@@ -277,7 +277,7 @@ namespace SharpShot.Services
             }
         }
         
-        private async Task TestFFmpegCapabilities(string ffmpegPath)
+        private void TestFFmpegCapabilities(string ffmpegPath)
         {
             try
             {
@@ -380,7 +380,7 @@ namespace SharpShot.Services
             return false; // Always use gdigrab for simplicity
         }
         
-        private async Task TestFFmpegVersion(string ffmpegPath)
+        private void TestFFmpegVersion(string ffmpegPath)
         {
             // Simple test - just check if FFmpeg runs
             try
@@ -407,7 +407,7 @@ namespace SharpShot.Services
             }
         }
         
-        private async Task TestFFmpegCommand(string ffmpegPath, Rectangle bounds)
+        private void TestFFmpegCommand(string ffmpegPath, Rectangle bounds)
         {
             // Simple test - just check if gdigrab is available
             try
@@ -592,7 +592,7 @@ namespace SharpShot.Services
             return null;
         }
         
-        private async Task AnalyzeCreatedFile()
+        private void AnalyzeCreatedFile()
         {
             try
             {
@@ -633,7 +633,7 @@ namespace SharpShot.Services
                     }
                     
                     // Try to analyze with FFmpeg
-                    await AnalyzeFileWithFFmpeg(_currentRecordingPath);
+                    _ = Task.Run(() => AnalyzeFileWithFFmpeg(_currentRecordingPath));
                 }
                 else
                 {
@@ -663,7 +663,7 @@ namespace SharpShot.Services
             }
         }
         
-        private async Task AnalyzeFileWithFFmpeg(string filePath)
+        private void AnalyzeFileWithFFmpeg(string filePath)
         {
             try
             {
@@ -767,7 +767,7 @@ namespace SharpShot.Services
             _ffmpegProcess?.Dispose();
         }
         
-        private async Task ValidateCreatedFile()
+        private void ValidateCreatedFile()
         {
             try
             {
@@ -797,7 +797,7 @@ namespace SharpShot.Services
                     }
                     
                     // Try to validate with FFmpeg
-                    await ValidateFileWithFFmpeg(_currentRecordingPath);
+                    _ = Task.Run(() => ValidateFileWithFFmpeg(_currentRecordingPath));
                 }
                 else
                 {
@@ -823,7 +823,7 @@ namespace SharpShot.Services
             }
         }
         
-        private async Task ValidateFileWithFFmpeg(string filePath)
+        private void ValidateFileWithFFmpeg(string filePath)
         {
             try
             {

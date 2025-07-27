@@ -59,7 +59,8 @@
             </Grid.RowDefinitions>
 
             <!-- Main Toolbar -->
-            <StackPanel Grid.Row="0" 
+            <StackPanel x:Name="MainToolbarStackPanel"
+                        Grid.Row="0" 
                         Orientation="Horizontal" 
                         HorizontalAlignment="Center" 
                         VerticalAlignment="Center"
