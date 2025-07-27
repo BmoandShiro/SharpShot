@@ -211,8 +211,21 @@ namespace SharpShot
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
 
-                // Show completion options (copy, save, cancel)
-                ShowCaptureOptions();
+                // Hide normal buttons
+                RegionButton.Visibility = Visibility.Collapsed;
+                ScreenshotButton.Visibility = Visibility.Collapsed;
+                RecordingButton.Visibility = Visibility.Collapsed;
+                SettingsButton.Visibility = Visibility.Collapsed;
+                CloseButton.Visibility = Visibility.Collapsed;
+
+                // Show completion options for video
+                CancelButton.Visibility = Visibility.Visible;
+                CopyButton.Visibility = Visibility.Visible;
+                SaveButton.Visibility = Visibility.Visible;
+
+                // Set video-specific tooltips
+                CopyButton.ToolTip = "Copy Video (Not supported)";
+                SaveButton.ToolTip = "Save Video";
             });
         }
 
@@ -533,6 +546,7 @@ namespace SharpShot
             {
                 if (isRecording)
                 {
+                    // Batch all UI changes together to reduce flickering
                     RecordingTimer.Visibility = Visibility.Visible;
                     RecordingButton.Content = "⏹️";
                     
@@ -540,7 +554,7 @@ namespace SharpShot
                     StopRecordButton.Visibility = Visibility.Visible;
                     PauseRecordButton.Visibility = Visibility.Visible;
                     
-                    // Hide normal buttons
+                    // Hide normal buttons in one batch
                     RegionButton.Visibility = Visibility.Collapsed;
                     ScreenshotButton.Visibility = Visibility.Collapsed;
                     RecordingButton.Visibility = Visibility.Collapsed;
@@ -549,6 +563,7 @@ namespace SharpShot
                 }
                 else
                 {
+                    // Batch all UI changes together to reduce flickering
                     RecordingTimer.Visibility = Visibility.Collapsed;
                     RecordingButton.Content = "🎥";
                     
@@ -570,9 +585,15 @@ namespace SharpShot
 
         private void OnRecordingTimeUpdated(TimeSpan duration)
         {
+            // Reduce update frequency to minimize flickering
             Dispatcher.Invoke(() =>
             {
-                RecordingTimer.Text = $"{duration:mm\\:ss}";
+                // Only update if the text actually changed to reduce unnecessary redraws
+                var newText = $"{duration:mm\\:ss}";
+                if (RecordingTimer.Text != newText)
+                {
+                    RecordingTimer.Text = newText;
+                }
             });
         }
         #endregion

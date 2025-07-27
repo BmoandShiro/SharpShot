@@ -79,11 +79,11 @@ namespace SharpShot.Services
                     _ffmpegProcess.StandardInput.WriteLine("q");
                     _ffmpegProcess.StandardInput.Flush();
                     
-                    // Wait for FFmpeg to finish with timeout
+                    // Wait for FFmpeg to finish with shorter timeout for better responsiveness
                     LogToFile("Waiting for FFmpeg to finish...");
                     Console.WriteLine("Waiting for FFmpeg to finish...");
                     var exitTask = _ffmpegProcess.WaitForExitAsync();
-                    var timeoutTask = Task.Delay(10000); // 10 second timeout
+                    var timeoutTask = Task.Delay(3000); // Reduced to 3 seconds for faster response
                     
                     var completedTask = await Task.WhenAny(exitTask, timeoutTask);
                     
@@ -242,6 +242,11 @@ namespace SharpShot.Services
                 // Begin reading error output asynchronously
                 _ffmpegProcess.BeginErrorReadLine();
                 
+                // Add a small delay to let UI settle before checking FFmpeg
+                LogToFile("Waiting for UI to settle...");
+                Console.WriteLine("Waiting for UI to settle...");
+                await Task.Delay(1000); // 1 second delay for UI to settle
+                
                 // Wait longer before checking if it exited (5 seconds)
                 LogToFile("Waiting 5 seconds to check if FFmpeg started properly...");
                 Console.WriteLine("Waiting 5 seconds to check if FFmpeg started properly...");
@@ -342,21 +347,32 @@ namespace SharpShot.Services
         
         private string BuildEnhancedFFmpegCommand(Rectangle bounds)
         {
-            // Enhanced command with proper video size, encoding, and pixel format
-            var input = $"-f gdigrab -framerate 30 -video_size {bounds.Width}x{bounds.Height}";
-            
-            // Add offset if not recording full screen
-            if (bounds.X != 0 || bounds.Y != 0)
+            var isFullScreen = bounds.X == 0 && bounds.Y == 0 && 
+                              bounds.Width == Screen.PrimaryScreen.Bounds.Width && 
+                              bounds.Height == Screen.PrimaryScreen.Bounds.Height;
+
+            var command = $"-f gdigrab -framerate 30";
+
+            if (!isFullScreen)
             {
-                input += $" -offset_x {bounds.X} -offset_y {bounds.Y}";
+                command += $" -offset_x {bounds.X} -offset_y {bounds.Y}";
             }
-            
-            input += " -i desktop";
-            
-            // Enhanced output with proper encoding settings
-            var output = $"-c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -y \"{_currentRecordingPath}\"";
-            
-            return $"{input} {output}";
+
+            // Ensure dimensions are divisible by 2 for H.264 encoding
+            var width = bounds.Width % 2 == 0 ? bounds.Width : bounds.Width - 1;
+            var height = bounds.Height % 2 == 0 ? bounds.Height : bounds.Height - 1;
+
+            // Log if dimensions were adjusted
+            if (width != bounds.Width || height != bounds.Height)
+            {
+                var logMsg = $"Adjusted dimensions from {bounds.Width}x{bounds.Height} to {width}x{height} for H.264 compatibility";
+                LogToFile(logMsg);
+                Console.WriteLine(logMsg);
+            }
+
+            command += $" -video_size {width}x{height} -i desktop -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -y \"{_currentRecordingPath}\"";
+
+            return command;
         }
         
         private bool IsDirectShowAvailable()
@@ -723,7 +739,7 @@ namespace SharpShot.Services
 
         private void StartRecordingTimer()
         {
-            var timer = new System.Windows.Forms.Timer { Interval = 1000 }; // Update every second
+            var timer = new System.Windows.Forms.Timer { Interval = 2000 }; // Update every 2 seconds to reduce flickering
             timer.Tick += (sender, e) =>
             {
                 if (_isRecording && !_isPaused)
