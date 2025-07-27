@@ -9,34 +9,45 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize"
         AllowsTransparency="True"
-        Background="Transparent">
+        Background="Transparent"
+        WindowStyle="None">
     
     <Window.Resources>
         <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarButtonStyle}">
-            <Setter Property="Width" Value="50"/>
-            <Setter Property="Height" Value="50"/>
-            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Width" Value="60"/>
+            <Setter Property="Height" Value="60"/>
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="Foreground" Value="#FFFF8C00"/>
+            <Setter Property="FontWeight" Value="Normal"/>
         </Style>
         
         <Style x:Key="RecordingButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsRecording}" Value="True">
-                    <Setter Property="Background" Value="{StaticResource ErrorBrush}"/>
+                    <Setter Property="Background" Value="#FFFF8C00"/>
+                    <Setter Property="Foreground" Value="#FF000000"/>
                     <Setter Property="Effect">
                         <Setter.Value>
-                            <DropShadowEffect Color="#FFFF6B6B" BlurRadius="15" ShadowDepth="0" Opacity="0.7"/>
+                            <DropShadowEffect Color="#FFFF8C00" BlurRadius="15" ShadowDepth="0" Opacity="0.7"/>
                         </Setter.Value>
                     </Setter>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+        
+        <!-- Custom Icon Paths -->
+        <Geometry x:Key="RegionIcon">M0.25 0.25L27.75 0.25L27.75 22.75L0.25 22.75Z</Geometry>
+        <Geometry x:Key="CameraIcon">M30.6667 22.9582C30.6667 23.5991 30.3857 24.2138 29.8856 24.667C29.3855 25.1202 28.7072 25.3748 28 25.3748H4C3.29275 25.3748 2.61448 25.1202 2.11438 24.667C1.61428 24.2138 1.33333 23.5991 1.33333 22.9582V9.66648C1.33333 9.02554 1.61428 8.41086 2.11438 7.95764C2.61448 7.50443 3.29275 7.24982 4 7.24982H9.33333L12 3.62482H20L22.6667 7.24982H28C28.7072 7.24982 29.3855 7.50443 29.8856 7.95764C30.3857 8.41086 30.6667 9.02554 30.6667 9.66648V22.9582ZM16 20.5415C18.9455 20.5415 21.3333 18.3775 21.3333 15.7082C21.3333 13.0388 18.9455 10.8748 16 10.8748C13.0545 10.8748 10.6667 13.0388 10.6667 15.7082C10.6667 18.3775 13.0545 20.5415 16 20.5415Z</Geometry>
+        <Geometry x:Key="VideoIcon">M32.9811 10.4998L22.9434 17.9998L32.9811 25.4998V10.4998ZM20.0755 7.49982H4.30189C2.71798 7.49982 1.43396 8.84296 1.43396 10.4998V25.4998C1.43396 27.1567 2.71798 28.4998 4.30189 28.4998H20.0755C21.6594 28.4998 22.9434 27.1567 22.9434 25.4998V10.4998C22.9434 8.84296 21.6594 7.49982 20.0755 7.49982Z</Geometry>
+        <Geometry x:Key="SettingsIcon">M12.9057 13.846C14.6876 13.846 16.1321 12.6062 16.1321 11.0768C16.1321 9.54735 14.6876 8.30753 12.9057 8.30753C11.1238 8.30753 9.67924 9.54735 9.67924 11.0768C9.67924 12.6062 11.1238 13.846 12.9057 13.846ZM20.8641 13.846C20.721 14.1244 20.6783 14.4332 20.7415 14.7327C20.8048 15.0321 20.9711 15.3084 21.2191 15.526L21.2836 15.5814C21.4836 15.7528 21.6422 15.9564 21.7505 16.1806C21.8587 16.4047 21.9144 16.6449 21.9144 16.8875C21.9144 17.1301 21.8587 17.3704 21.7505 17.5945C21.6422 17.8186 21.4836 18.0222 21.2836 18.1937C21.0838 18.3653 20.8466 18.5015 20.5855 18.5944C20.3244 18.6873 20.0445 18.7351 19.7618 18.7351C19.4791 18.7351 19.1992 18.6873 18.9381 18.5944C18.677 18.5015 18.4398 18.3653 18.24 18.1937L18.1755 18.1383C17.922 17.9255 17.6001 17.7827 17.2512 17.7284C16.9023 17.6741 16.5425 17.7108 16.2181 17.8337C15.9 17.9507 15.6287 18.145 15.4377 18.3926C15.2466 18.6403 15.144 18.9305 15.1426 19.2275V19.3844C15.1426 19.8741 14.916 20.3437 14.5126 20.6899C14.1093 21.0361 13.5622 21.2306 12.9917 21.2306C12.4212 21.2306 11.8741 21.0361 11.4708 20.6899C11.0674 20.3437 10.8408 19.8741 10.8408 19.3844V19.3014C10.8324 18.9958 10.7172 18.6995 10.5101 18.4509C10.3029 18.2024 10.0134 18.013 9.67924 17.9075C9.35486 17.7846 8.99504 17.748 8.64616 17.8023C8.29728 17.8566 7.97535 17.9993 7.72189 18.2121L7.65736 18.2675C7.45759 18.4392 7.22037 18.5753 6.95925 18.6682C6.69813 18.7612 6.41823 18.809 6.13556 18.809C5.8529 18.809 5.573 18.7612 5.31188 18.6682C5.05076 18.5753 4.81354 18.4392 4.61377 18.2675C4.41378 18.0961 4.25513 17.8925 4.14689 17.6683C4.03864 17.4442 3.98293 17.204 3.98293 16.9614C3.98293 16.7188 4.03864 16.4785 4.14689 16.2544C4.25513 16.0303 4.41378 15.8267 4.61377 15.6552L4.6783 15.5998C4.92624 15.3823 5.09256 15.106 5.15581 14.8065C5.21907 14.5071 5.17637 14.1982 5.03321 13.9198C4.89688 13.6468 4.67051 13.414 4.38197 13.25C4.09343 13.086 3.75532 12.9979 3.40924 12.9968H3.22641C2.65595 12.9968 2.10885 12.8022 1.70547 12.456C1.30209 12.1098 1.07547 11.6402 1.07547 11.1506C1.07547 10.661 1.30209 10.1914 1.70547 9.84517C2.10885 9.49895 2.65595 9.30445 3.22641 9.30445H3.32321C3.67918 9.2973 4.02442 9.1984 4.31404 9.02061C4.60366 8.84282 4.82426 8.59436 4.94717 8.30753C5.09033 8.02911 5.13304 7.72027 5.06978 7.42083C5.00652 7.12139 4.8402 6.84508 4.59226 6.62753L4.52773 6.57214C4.32775 6.40068 4.1691 6.19707 4.06085 5.97295C3.95261 5.74884 3.89689 5.5086 3.89689 5.26599C3.89689 5.02337 3.95261 4.78314 4.06085 4.55902C4.1691 4.3349 4.32775 4.13129 4.52773 3.95983C4.7275 3.78819 4.96472 3.65202 5.22584 3.55911C5.48696 3.4662 5.76686 3.41838 6.04953 3.41838C6.33219 3.41838 6.61209 3.4662 6.87321 3.55911C7.13433 3.65202 7.37155 3.78819 7.57132 3.95983L7.63585 4.01522C7.88931 4.22802 8.21124 4.37078 8.56012 4.42507C8.909 4.47936 9.26883 4.44271 9.59321 4.31983H9.67924C9.99734 4.20282 10.2686 4.00853 10.4597 3.76088C10.6508 3.51323 10.7533 3.22302 10.7547 2.92599V2.76907C10.7547 2.27944 10.9813 1.80986 11.3847 1.46364C11.7881 1.11742 12.3352 0.922913 12.9057 0.922913C13.4761 0.922913 14.0232 1.11742 14.4266 1.46364C14.83 1.80986 15.0566 2.27944 15.0566 2.76907V2.85214C15.058 3.14918 15.1605 3.43938 15.3516 3.68703C15.5427 3.93469 15.814 4.12898 16.1321 4.24599C16.4565 4.36886 16.8163 4.40552 17.1652 4.35122C17.514 4.29693 17.836 4.15418 18.0894 3.94137L18.154 3.88599C18.3537 3.71434 18.591 3.57817 18.8521 3.48526C19.1132 3.39236 19.3931 3.34454 19.6758 3.34454C19.9584 3.34454 20.2383 3.39236 20.4994 3.48526C20.7606 3.57817 20.9978 3.71434 21.1975 3.88599C21.3975 4.05745 21.5562 4.26106 21.6644 4.48518C21.7727 4.70929 21.8284 4.94953 21.8284 5.19214C21.8284 5.43476 21.7727 5.67499 21.6644 5.89911C21.5562 6.12323 21.3975 6.32684 21.1975 6.4983L21.133 6.55368C20.8851 6.77123 20.7188 7.04754 20.6555 7.34698C20.5922 7.64642 20.635 7.95526 20.7781 8.23368V8.30753C20.9144 8.58054 21.1408 8.81339 21.4293 8.9774C21.7179 9.1414 22.056 9.22942 22.4021 9.2306H22.5849C23.1554 9.2306 23.7025 9.42511 24.1059 9.77133C24.5092 10.1175 24.7358 10.5871 24.7358 11.0768C24.7358 11.5664 24.5092 12.036 24.1059 12.3822C23.7025 12.7284 23.1554 12.9229 22.5849 12.9229H22.4881C22.142 12.9241 21.8039 13.0121 21.5154 13.1761C21.2268 13.3401 21.0005 13.573 20.8641 13.846Z</Geometry>
     </Window.Resources>
 
-    <Border Background="{StaticResource SurfaceBrush}" 
-            CornerRadius="12" 
-            BorderBrush="{StaticResource SecondaryBrush}" 
-            BorderThickness="1"
-            Effect="{StaticResource DropShadowEffect}">
+    <Border Background="#802A2A2A" 
+            CornerRadius="20" 
+            BorderBrush="Transparent" 
+            BorderThickness="0"
+            ClipToBounds="True"
+            Margin="0">
         
         <Grid>
             <Grid.RowDefinitions>
@@ -49,52 +60,91 @@
                         Orientation="Horizontal" 
                         HorizontalAlignment="Center" 
                         VerticalAlignment="Center"
-                        Margin="10">
+                        Margin="15">
                 
                 <!-- Region Selection Button -->
                 <Button x:Name="RegionButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="RegionButton_Click"
-                        ToolTip="Select Region (Double Ctrl)">
-                    🔲
+                        ToolTip="Select Region (Double Ctrl)"
+                        Width="70" Height="70"
+                        VerticalAlignment="Center">
+                    <Path Data="{StaticResource RegionIcon}" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="32" Height="32"/>
                 </Button>
 
                 <!-- Full Screen Screenshot Button -->
                 <Button x:Name="ScreenshotButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="ScreenshotButton_Click"
-                        ToolTip="Full Screen Screenshot (Ctrl+Shift+S)">
-                    📸
+                        ToolTip="Full Screen Screenshot (Ctrl+Shift+S)"
+                        VerticalAlignment="Center">
+                    <Path Data="{StaticResource CameraIcon}" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="28" Height="28"/>
                 </Button>
 
                 <!-- Separator -->
                 <Rectangle Width="1" 
                            Height="30" 
-                           Fill="{StaticResource SecondaryBrush}" 
-                           Margin="8,0"/>
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"/>
 
                 <!-- Recording Button -->
                 <Button x:Name="RecordingButton" 
                         Style="{StaticResource RecordingButtonStyle}"
                         Click="RecordingButton_Click"
-                        ToolTip="Toggle Recording (Ctrl+Shift+R)">
-                    🎥
+                        ToolTip="Toggle Recording (Ctrl+Shift+R)"
+                        VerticalAlignment="Center">
+                    <Path Data="{StaticResource VideoIcon}" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="28" Height="28"/>
                 </Button>
+
+                <!-- Separator -->
+                <Rectangle Width="1" 
+                           Height="30" 
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"/>
 
                 <!-- Settings Button -->
                 <Button x:Name="SettingsButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="SettingsButton_Click"
-                        ToolTip="Settings">
-                    ⋯
+                        ToolTip="Settings"
+                        VerticalAlignment="Center">
+                    <Path Data="{StaticResource SettingsIcon}" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="28" Height="28"/>
                 </Button>
 
                 <!-- Close Button -->
                 <Button x:Name="CloseButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="CloseButton_Click"
-                        ToolTip="Close SharpShot">
-                    ❌
+                        ToolTip="Close SharpShot"
+                        VerticalAlignment="Center">
+                    <Path Data="M1 1L11 11M11 1L1 11" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="20" Height="20"/>
                 </Button>
 
                 <!-- Cancel Button (Hidden by default) -->
