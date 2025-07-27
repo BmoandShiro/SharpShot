@@ -10,15 +10,17 @@
         ResizeMode="NoResize"
         AllowsTransparency="True"
         Background="Transparent"
-        WindowStyle="None">
+        WindowStyle="None"
+        BorderThickness="0">
     
     <Window.Resources>
         <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource ToolbarButtonStyle}">
             <Setter Property="Width" Value="60"/>
-            <Setter Property="Height" Value="60"/>
+            <Setter Property="Height" Value="50"/>
             <Setter Property="FontSize" Value="28"/>
             <Setter Property="Foreground" Value="#FFFF8C00"/>
             <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Padding" Value="8"/>
         </Style>
         
         <Style x:Key="RecordingButtonStyle" TargetType="Button" BasedOn="{StaticResource IconButtonStyle}">
@@ -47,7 +49,8 @@
             BorderBrush="Transparent" 
             BorderThickness="0"
             ClipToBounds="True"
-            Margin="0">
+            Margin="0"
+            Effect="{x:Null}">
         
         <Grid>
             <Grid.RowDefinitions>
@@ -60,14 +63,14 @@
                         Orientation="Horizontal" 
                         HorizontalAlignment="Center" 
                         VerticalAlignment="Center"
-                        Margin="15">
+                        Margin="10">
                 
                 <!-- Region Selection Button -->
                 <Button x:Name="RegionButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="RegionButton_Click"
                         ToolTip="Select Region (Double Ctrl)"
-                        Width="70" Height="70"
+                        Width="70" Height="50"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource RegionIcon}" 
                           Stroke="#FFFF8C00" 
@@ -93,7 +96,7 @@
 
                 <!-- Separator -->
                 <Rectangle Width="1" 
-                           Height="30" 
+                           Height="25" 
                            Fill="#FFFF8C00" 
                            Margin="8,0"
                            VerticalAlignment="Center"/>
@@ -114,7 +117,7 @@
 
                 <!-- Separator -->
                 <Rectangle Width="1" 
-                           Height="30" 
+                           Height="25" 
                            Fill="#FFFF8C00" 
                            Margin="8,0"
                            VerticalAlignment="Center"/>
