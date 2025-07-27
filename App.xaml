@@ -43,14 +43,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#FFFF8C00"/>
-                                <Setter Property="Foreground" Value="#FF000000"/>
+                                <Setter Property="Background" Value="#20FF8C00"/>
                                 <Setter Property="Effect">
                                     <Setter.Value>
                                         <DropShadowEffect Color="#FFFF8C00" 
                                                         BlurRadius="10" 
                                                         ShadowDepth="0" 
-                                                        Opacity="0.5"/>
+                                                        Opacity="0.15"/>
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
