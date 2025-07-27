@@ -1,48 +1,54 @@
-# SharpShot Build and Package Script
-# This script builds SharpShot locally and optionally packages it
+# Build and Package SharpShot
+# This script builds the application and creates a distribution package
 
-Write-Host "=== SharpShot Build and Package ===" -ForegroundColor Cyan
+Write-Host "Building SharpShot..." -ForegroundColor Green
 
-# Navigate to the project directory
-Set-Location $PSScriptRoot
-
-# Check if the project file exists
-if (Test-Path "SharpShot.csproj") {
-    Write-Host "Project found. Building SharpShot..." -ForegroundColor Yellow
+# Check if FFmpeg is set up
+$ffmpegPath = "ffmpeg\bin\ffmpeg.exe"
+if (!(Test-Path $ffmpegPath)) {
+    Write-Host "FFmpeg not found. Setting up FFmpeg..." -ForegroundColor Yellow
+    & "$PSScriptRoot\setup-ffmpeg.ps1"
     
-    # Clean previous builds
-    Write-Host "Cleaning previous builds..." -ForegroundColor Gray
-    dotnet clean
-    
-    # Build the application
-    Write-Host "Building SharpShot..." -ForegroundColor Yellow
-    dotnet build --configuration Release
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Build successful!" -ForegroundColor Green
-        
-        # Publish the application
-        Write-Host "Publishing SharpShot..." -ForegroundColor Yellow
-        dotnet publish --configuration Release --output ./bin/Release/Publish --runtime win-x64 --self-contained false
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "Publish successful!" -ForegroundColor Green
-            Write-Host "Application is ready at: ./bin/Release/Publish/SharpShot.exe" -ForegroundColor Cyan
-            
-            # Ask if user wants to run the application
-            $runApp = Read-Host "Do you want to run SharpShot now? (y/n)"
-            if ($runApp -eq "y" -or $runApp -eq "Y") {
-                Write-Host "Starting SharpShot..." -ForegroundColor Yellow
-                & "./bin/Release/Publish/SharpShot.exe"
-            }
-        } else {
-            Write-Host "Publish failed!" -ForegroundColor Red
-        }
-    } else {
-        Write-Host "Build failed!" -ForegroundColor Red
+    if (!(Test-Path $ffmpegPath)) {
+        Write-Host "Warning: FFmpeg setup failed. Video recording may not work." -ForegroundColor Yellow
+        Write-Host "Please run setup-ffmpeg.ps1 manually or download FFmpeg from https://ffmpeg.org/" -ForegroundColor Yellow
     }
-} else {
-    Write-Host "Error: SharpShot.csproj not found!" -ForegroundColor Red
 }
 
-Write-Host "=== Script Complete ===" -ForegroundColor Cyan 
+# Build the application
+Write-Host "Building application..." -ForegroundColor Yellow
+dotnet build --configuration Release
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Build failed!" -ForegroundColor Red
+    exit 1
+}
+
+# Publish the application
+Write-Host "Publishing application..." -ForegroundColor Yellow
+dotnet publish --configuration Release --output "publish" --runtime win-x64 --self-contained false
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Publish failed!" -ForegroundColor Red
+    exit 1
+}
+
+# Copy FFmpeg to publish directory
+if (Test-Path "ffmpeg") {
+    Write-Host "Copying FFmpeg to publish directory..." -ForegroundColor Yellow
+    Copy-Item -Path "ffmpeg" -Destination "publish\ffmpeg" -Recurse -Force
+}
+
+# Create distribution package
+Write-Host "Creating distribution package..." -ForegroundColor Yellow
+$version = "1.0.0"
+$packageName = "SharpShot-v$version.zip"
+
+if (Test-Path $packageName) {
+    Remove-Item $packageName -Force
+}
+
+Compress-Archive -Path "publish\*" -DestinationPath $packageName
+
+Write-Host "Build and package completed successfully!" -ForegroundColor Green
+Write-Host "Package created: $packageName" -ForegroundColor Green 

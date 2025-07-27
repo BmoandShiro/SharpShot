@@ -7,6 +7,7 @@ using SharpShot.Services;
 using SharpShot.Utils;
 using System.Threading.Tasks;
 using Point = System.Windows.Point;
+using System.IO;
 
 namespace SharpShot
 {
@@ -20,7 +21,6 @@ namespace SharpShot
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
         private Bitmap? _lastCapturedBitmap = null;
-        private bool _isInCaptureMode = false;
 
         public MainWindow()
         {
@@ -118,7 +118,102 @@ namespace SharpShot
 
         private async void RecordingButton_Click(object sender, RoutedEventArgs e)
         {
-            await ToggleRecording();
+            await ShowRecordingOptions();
+        }
+
+        private async void RegionRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            await StartRegionRecording();
+        }
+
+        private async void FullScreenRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            await StartFullScreenRecording();
+        }
+
+        private void CancelRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            ShowNormalButtons();
+        }
+
+        private async void StopRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                await _recordingService.StopRecording();
+                // Show completion options after stopping
+                ShowRecordingCompletionOptions();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Stop recording failed: {ex.Message}");
+                ShowNotification("Stop recording failed!", isError: true);
+            }
+        }
+
+        private async void PauseRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_recordingService != null)
+            {
+                if (_recordingService.IsPaused)
+                {
+                    _recordingService.ResumeRecording();
+                    PauseRecordButton.Content = "⏸";
+                    PauseRecordButton.ToolTip = "Pause Recording";
+                }
+                else
+                {
+                    _recordingService.PauseRecording();
+                    PauseRecordButton.Content = "▶";
+                    PauseRecordButton.ToolTip = "Resume Recording";
+                }
+            }
+        }
+
+        private async Task ShowRecordingOptions()
+        {
+            try
+            {
+                // Show recording options (region or full screen) without hiding the window
+                ShowRecordingSelectionButtons();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Recording options failed: {ex.Message}");
+                ShowNotification("Recording options failed!", isError: true);
+            }
+        }
+
+        private void ShowRecordingSelectionButtons()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Hide normal buttons
+                RegionButton.Visibility = Visibility.Collapsed;
+                ScreenshotButton.Visibility = Visibility.Collapsed;
+                RecordingButton.Visibility = Visibility.Collapsed;
+                SettingsButton.Visibility = Visibility.Collapsed;
+                CloseButton.Visibility = Visibility.Collapsed;
+
+                // Show recording selection buttons
+                RegionRecordButton.Visibility = Visibility.Visible;
+                FullScreenRecordButton.Visibility = Visibility.Visible;
+                CancelRecordButton.Visibility = Visibility.Visible;
+            });
+        }
+
+        private void ShowRecordingCompletionOptions()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Hide recording selection buttons
+                RegionRecordButton.Visibility = Visibility.Collapsed;
+                FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                CancelRecordButton.Visibility = Visibility.Collapsed;
+
+                // Show completion options (copy, save, cancel)
+                ShowCaptureOptions();
+            });
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -216,19 +311,32 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
-                _isInCaptureMode = true;
-                
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
-                
-                // Show capture option buttons
+
+                // Show completion options
                 CancelButton.Visibility = Visibility.Visible;
                 CopyButton.Visibility = Visibility.Visible;
                 SaveButton.Visibility = Visibility.Visible;
+
+                // Set appropriate tooltips based on file type
+                bool isVideo = !string.IsNullOrEmpty(_lastCapturedFilePath) && 
+                              _lastCapturedFilePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase);
+                
+                if (isVideo)
+                {
+                    CopyButton.ToolTip = "Copy Video (Not supported)";
+                    SaveButton.ToolTip = "Save Video";
+                }
+                else
+                {
+                    CopyButton.ToolTip = "Copy Screenshot to Clipboard";
+                    SaveButton.ToolTip = "Save Screenshot";
+                }
             });
         }
 
@@ -236,7 +344,6 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
-                _isInCaptureMode = false;
                 
                 // Show normal buttons
                 RegionButton.Visibility = Visibility.Visible;
@@ -249,6 +356,11 @@ namespace SharpShot
                 CancelButton.Visibility = Visibility.Collapsed;
                 CopyButton.Visibility = Visibility.Collapsed;
                 SaveButton.Visibility = Visibility.Collapsed;
+                
+                // Hide recording selection buttons
+                RegionRecordButton.Visibility = Visibility.Collapsed;
+                FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                CancelRecordButton.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -267,25 +379,29 @@ namespace SharpShot
             {
                 if (_lastCapturedBitmap != null)
                 {
-                    _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                    // Copy screenshot to clipboard
+                    System.Windows.Forms.Clipboard.SetImage(_lastCapturedBitmap);
                 }
                 else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
                 {
-                    _screenshotService.CopyToClipboard(_lastCapturedFilePath);
+                    // Check if it's a video file (recording)
+                    if (_lastCapturedFilePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // For videos, we can't copy to clipboard, so just show a message
+                        ShowNotification("Videos cannot be copied to clipboard. Use the Save button to save the video file.", isError: false);
+                    }
+                    else
+                    {
+                        // For screenshots, copy the file to clipboard
+                        var bitmap = new System.Drawing.Bitmap(_lastCapturedFilePath);
+                        System.Windows.Forms.Clipboard.SetImage(bitmap);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to copy to clipboard: {ex.Message}", "Error", 
-                              MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                // Dispose of the bitmap and show normal buttons
-                _lastCapturedBitmap?.Dispose();
-                _lastCapturedBitmap = null;
-                _lastCapturedFilePath = string.Empty;
-                ShowNormalButtons();
+                System.Diagnostics.Debug.WriteLine($"Copy failed: {ex.Message}");
+                ShowNotification("Copy failed!", isError: true);
             }
         }
 
@@ -294,28 +410,30 @@ namespace SharpShot
             try
             {
                 string? filePath = null;
-                
+
                 if (_lastCapturedBitmap != null)
                 {
+                    // Save screenshot from bitmap
                     filePath = _screenshotService.SaveScreenshot(_lastCapturedBitmap);
                 }
                 else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
                 {
-                    // File is already saved, just show the path
+                    // File is already saved, just use the existing path
                     filePath = _lastCapturedFilePath;
                 }
-                
+
                 if (!string.IsNullOrEmpty(filePath))
                 {
+                    var fileType = filePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? "Recording" : "Screenshot";
                     var result = MessageBox.Show(
-                        $"Screenshot saved to:\n{filePath}\n\nWould you like to open the folder?",
-                        "SharpShot",
+                        $"{fileType} saved to:\n{filePath}\n\nWould you like to open the folder?",
+                        "File Saved",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Information);
-                    
+
                     if (result == MessageBoxResult.Yes)
                     {
-                        var folderPath = System.IO.Path.GetDirectoryName(filePath);
+                        var folderPath = Path.GetDirectoryName(filePath);
                         if (!string.IsNullOrEmpty(folderPath))
                         {
                             System.Diagnostics.Process.Start("explorer.exe", folderPath);
@@ -325,16 +443,8 @@ namespace SharpShot
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to save screenshot: {ex.Message}", "Error", 
-                              MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            finally
-            {
-                // Dispose of the bitmap and show normal buttons
-                _lastCapturedBitmap?.Dispose();
-                _lastCapturedBitmap = null;
-                _lastCapturedFilePath = string.Empty;
-                ShowNormalButtons();
+                System.Diagnostics.Debug.WriteLine($"Save failed: {ex.Message}");
+                ShowNotification("Save failed!", isError: true);
             }
         }
         #endregion
@@ -352,18 +462,68 @@ namespace SharpShot
                 if (_recordingService.IsRecording)
                 {
                     await _recordingService.StopRecording();
-                    ShowNotification("Recording stopped!");
+                    // Show recording completion options
+                    ShowRecordingCompletionOptions();
                 }
                 else
                 {
-                    await _recordingService.StartRecording();
-                    ShowNotification("Recording started!");
+                    // If not recording, show recording options instead of starting directly
+                    await ShowRecordingOptions();
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Recording toggle failed: {ex.Message}");
                 ShowNotification("Recording failed!", isError: true);
+            }
+        }
+
+        private async Task StartRegionRecording()
+        {
+            try
+            {
+                // Show region selection window for recording (without hiding main window)
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
+                regionWindow.ShowDialog();
+                
+                // Check if a region was selected
+                if (regionWindow.SelectedRegion.HasValue)
+                {
+                    // Start recording the selected region
+                    await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
+                    // Show completion options after starting recording
+                    ShowRecordingCompletionOptions();
+                }
+                else
+                {
+                    // If no region selected, go back to normal buttons
+                    ShowNormalButtons();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Region recording failed: {ex.Message}");
+                ShowNotification("Region recording failed!", isError: true);
+                ShowNormalButtons();
+            }
+        }
+
+        private async Task StartFullScreenRecording()
+        {
+            try
+            {
+                // Start full screen recording (without hiding window)
+                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                await _recordingService.StartRecording(new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+                
+                // Show completion options after starting recording
+                ShowRecordingCompletionOptions();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Full screen recording failed: {ex.Message}");
+                ShowNotification("Full screen recording failed!", isError: true);
+                ShowNormalButtons();
             }
         }
 
@@ -375,11 +535,35 @@ namespace SharpShot
                 {
                     RecordingTimer.Visibility = Visibility.Visible;
                     RecordingButton.Content = "⏹️";
+                    
+                    // Show recording control buttons
+                    StopRecordButton.Visibility = Visibility.Visible;
+                    PauseRecordButton.Visibility = Visibility.Visible;
+                    
+                    // Hide normal buttons
+                    RegionButton.Visibility = Visibility.Collapsed;
+                    ScreenshotButton.Visibility = Visibility.Collapsed;
+                    RecordingButton.Visibility = Visibility.Collapsed;
+                    SettingsButton.Visibility = Visibility.Collapsed;
+                    CloseButton.Visibility = Visibility.Collapsed;
                 }
                 else
                 {
                     RecordingTimer.Visibility = Visibility.Collapsed;
                     RecordingButton.Content = "🎥";
+                    
+                    // Hide recording control buttons
+                    StopRecordButton.Visibility = Visibility.Collapsed;
+                    PauseRecordButton.Visibility = Visibility.Collapsed;
+                    
+                    // Store the recording file path for save/copy options
+                    if (_recordingService != null)
+                    {
+                        _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath();
+                    }
+                    
+                    // Show completion options when recording stops
+                    ShowRecordingCompletionOptions();
                 }
             });
         }

@@ -3,6 +3,11 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0
 
+# Install FFmpeg
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 

@@ -120,9 +120,54 @@
                 <Button x:Name="SaveButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="SaveButton_Click"
-                        ToolTip="Save Screenshot"
+                        ToolTip="Save File"
                         Visibility="Collapsed">
                     💾
+                </Button>
+
+                <!-- Region Recording Button (Hidden by default) -->
+                <Button x:Name="RegionRecordButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="RegionRecordButton_Click"
+                        ToolTip="Record Selected Region"
+                        Visibility="Collapsed">
+                    🎬
+                </Button>
+
+                <!-- Full Screen Recording Button (Hidden by default) -->
+                <Button x:Name="FullScreenRecordButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="FullScreenRecordButton_Click"
+                        ToolTip="Record Full Screen"
+                        Visibility="Collapsed">
+                    🎥
+                </Button>
+
+                <!-- Cancel Recording Button (Hidden by default) -->
+                <Button x:Name="CancelRecordButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="CancelRecordButton_Click"
+                        ToolTip="Cancel Recording"
+                        Visibility="Collapsed">
+                    ❌
+                </Button>
+
+                <!-- Stop Recording Button (Hidden by default) -->
+                <Button x:Name="StopRecordButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="StopRecordButton_Click"
+                        ToolTip="Stop Recording"
+                        Visibility="Collapsed">
+                    ⏹️
+                </Button>
+
+                <!-- Pause Recording Button (Hidden by default) -->
+                <Button x:Name="PauseRecordButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="PauseRecordButton_Click"
+                        ToolTip="Pause Recording"
+                        Visibility="Collapsed">
+                    ⏸
                 </Button>
             </StackPanel>
 
