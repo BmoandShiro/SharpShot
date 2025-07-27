@@ -111,8 +111,12 @@ namespace SharpShot.UI
                     SelectionRect.Visibility = Visibility.Collapsed;
                     InstructionsText.Visibility = Visibility.Collapsed;
                     
-                    // Force UI update
+                    // Hide the entire window to prevent it from appearing in the screenshot
+                    Visibility = Visibility.Hidden;
+                    
+                    // Force UI update and wait a moment
                     Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+                    System.Threading.Thread.Sleep(50); // Brief delay to ensure UI is hidden
                     
                     // Get the actual screen coordinates
                     var screenBounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
@@ -132,8 +136,6 @@ namespace SharpShot.UI
                     
                     // Store the bitmap for later use
                     CapturedBitmap = new Bitmap(bitmap);
-                    
-                    _screenshotService.ShowCaptureFeedback();
                 }
             }
             catch (Exception ex)

@@ -153,11 +153,21 @@ namespace SharpShot
                 Visibility = Visibility.Hidden;
                 await Task.Delay(100); // Brief delay to ensure window is hidden
                 
-                var filePath = _screenshotService.CaptureFullScreen();
+                // Capture full screen and get both file path and bitmap
+                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                using var bitmap = new Bitmap(bounds.Width, bounds.Height);
+                using var graphics = Graphics.FromImage(bitmap);
+                
+                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
+                
+                // Store the bitmap for copying
+                _lastCapturedBitmap = new Bitmap(bitmap);
+                
+                // Save to file
+                var filePath = _screenshotService.SaveScreenshot(bitmap);
                 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    _screenshotService.ShowCaptureFeedback();
                     _lastCapturedFilePath = filePath;
                     ShowCaptureOptions();
                 }
@@ -247,6 +257,7 @@ namespace SharpShot
             // Dispose of the bitmap and show normal buttons
             _lastCapturedBitmap?.Dispose();
             _lastCapturedBitmap = null;
+            _lastCapturedFilePath = string.Empty;
             ShowNormalButtons();
         }
 
@@ -257,6 +268,10 @@ namespace SharpShot
                 if (_lastCapturedBitmap != null)
                 {
                     _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                }
+                else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
+                {
+                    _screenshotService.CopyToClipboard(_lastCapturedFilePath);
                 }
             }
             catch (Exception ex)
@@ -269,6 +284,7 @@ namespace SharpShot
                 // Dispose of the bitmap and show normal buttons
                 _lastCapturedBitmap?.Dispose();
                 _lastCapturedBitmap = null;
+                _lastCapturedFilePath = string.Empty;
                 ShowNormalButtons();
             }
         }
@@ -277,25 +293,32 @@ namespace SharpShot
         {
             try
             {
+                string? filePath = null;
+                
                 if (_lastCapturedBitmap != null)
                 {
-                    var filePath = _screenshotService.SaveScreenshot(_lastCapturedBitmap);
+                    filePath = _screenshotService.SaveScreenshot(_lastCapturedBitmap);
+                }
+                else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
+                {
+                    // File is already saved, just show the path
+                    filePath = _lastCapturedFilePath;
+                }
+                
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    var result = MessageBox.Show(
+                        $"Screenshot saved to:\n{filePath}\n\nWould you like to open the folder?",
+                        "SharpShot",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
                     
-                    if (!string.IsNullOrEmpty(filePath))
+                    if (result == MessageBoxResult.Yes)
                     {
-                        var result = MessageBox.Show(
-                            $"Screenshot saved to:\n{filePath}\n\nWould you like to open the folder?",
-                            "SharpShot",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Information);
-                        
-                        if (result == MessageBoxResult.Yes)
+                        var folderPath = System.IO.Path.GetDirectoryName(filePath);
+                        if (!string.IsNullOrEmpty(folderPath))
                         {
-                            var folderPath = System.IO.Path.GetDirectoryName(filePath);
-                            if (!string.IsNullOrEmpty(folderPath))
-                            {
-                                System.Diagnostics.Process.Start("explorer.exe", folderPath);
-                            }
+                            System.Diagnostics.Process.Start("explorer.exe", folderPath);
                         }
                     }
                 }
@@ -310,6 +333,7 @@ namespace SharpShot
                 // Dispose of the bitmap and show normal buttons
                 _lastCapturedBitmap?.Dispose();
                 _lastCapturedBitmap = null;
+                _lastCapturedFilePath = string.Empty;
                 ShowNormalButtons();
             }
         }
