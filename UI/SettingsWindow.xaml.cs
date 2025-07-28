@@ -292,11 +292,28 @@ namespace SharpShot.UI
                 if (CopyHotkeyTextBox != null)
                     CopyHotkeyTextBox.BorderBrush = brush;
                 
-                // Update button borders
-                if (CancelButton != null)
-                    CancelButton.BorderBrush = brush;
-                if (SaveButton != null)
-                    SaveButton.BorderBrush = brush;
+                                        // Update button borders and text colors
+                        if (CancelButton != null)
+                        {
+                            CancelButton.BorderBrush = brush;
+                            if (CancelButton.Content is TextBlock cancelText)
+                                cancelText.Foreground = brush;
+                        }
+                        if (SaveButton != null)
+                        {
+                            SaveButton.BorderBrush = brush;
+                            if (SaveButton.Content is TextBlock saveText)
+                                saveText.Foreground = brush;
+                        }
+                        
+                        // Update Browse button (find it by name)
+                        var browseButton = this.FindName("BrowseButton") as Button;
+                        if (browseButton != null)
+                        {
+                            browseButton.BorderBrush = brush;
+                            if (browseButton.Content is TextBlock browseText)
+                                browseText.Foreground = brush;
+                        }
                 
                 System.Diagnostics.Debug.WriteLine($"Updated settings theme colors: {iconColor}");
             }

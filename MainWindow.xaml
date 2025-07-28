@@ -159,7 +159,12 @@
                         ToolTip="Cancel"
                         Visibility="Collapsed"
                         Margin="8,0,0,0">
-                    ❌
+                    <Path Data="M1 1L11 11M11 1L1 11" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="20" Height="20"/>
                 </Button>
 
                 <!-- Copy Button (Hidden by default) -->
@@ -168,7 +173,12 @@
                         Click="CopyButton_Click"
                         ToolTip="Copy to Clipboard"
                         Visibility="Collapsed">
-                    Copy
+                    <Path Data="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2z" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="20" Height="20"/>
                 </Button>
 
                 <!-- Save Button (Hidden by default) -->
@@ -177,7 +187,12 @@
                         Click="SaveButton_Click"
                         ToolTip="Save File"
                         Visibility="Collapsed">
-                    💾
+                    <Path Data="M3 17.25V21h18v-3.75M6 9v6m0 0l4-4m-4 4l-4-4m8 4V9" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="20" Height="20"/>
                 </Button>
 
                 <!-- Region Recording Button (Hidden by default) -->

@@ -39,11 +39,20 @@
                     <TextBox x:Name="SavePathTextBox" 
                              Grid.Column="0"
                              Style="{StaticResource DarkTextBoxStyle}"/>
-                    <Button Grid.Column="1" 
-                            Content="Browse" 
-                            Style="{StaticResource ToolbarButtonStyle}"
-                            Margin="5,0,0,0"
-                            Click="BrowseButton_Click"/>
+                    <Button x:Name="BrowseButton"
+                            Grid.Column="1" 
+                            Style="{StaticResource ModernButtonStyle}"
+                            Margin="8,0,0,0"
+                            Click="BrowseButton_Click"
+                            Width="80"
+                            Height="32">
+                        <TextBlock Text="Browse" 
+                                   Foreground="#FFFF8C00" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
                 </Grid>
 
                 <!-- Screenshot Format -->
@@ -343,14 +352,30 @@
                     HorizontalAlignment="Right" 
                     Margin="0,20,0,0">
             <Button x:Name="CancelButton" 
-                    Content="Cancel" 
-                    Style="{StaticResource SettingsButtonStyle}"
+                    Style="{StaticResource ModernButtonStyle}"
                     Click="CancelButton_Click"
-                    Margin="0,0,10,0"/>
+                    Margin="0,0,12,0"
+                    Width="100"
+                    Height="36">
+                <TextBlock Text="Cancel" 
+                           Foreground="#FFFF8C00" 
+                           FontSize="14" 
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Button>
             <Button x:Name="SaveButton" 
-                    Content="Save" 
-                    Style="{StaticResource SettingsButtonStyle}"
-                    Click="SaveButton_Click"/>
+                    Style="{StaticResource ModernButtonStyle}"
+                    Click="SaveButton_Click"
+                    Width="100"
+                    Height="36">
+                <TextBlock Text="Save" 
+                           Foreground="#FFFF8C00" 
+                           FontSize="14" 
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Button>
         </StackPanel>
     </Grid>
 </Window> 
