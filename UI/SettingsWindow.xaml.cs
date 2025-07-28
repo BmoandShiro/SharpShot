@@ -73,6 +73,9 @@ namespace SharpShot.UI
             CancelHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Cancel", "Escape");
             SaveHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Save", "Space");
             CopyHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Copy", "Enter");
+            
+            // Apply current theme colors
+            UpdateThemeColors();
         }
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
@@ -139,6 +142,9 @@ namespace SharpShot.UI
                 _originalSettings.HoverOpacity = HoverOpacitySlider.Value;
                 _originalSettings.DropShadowOpacity = DropShadowOpacitySlider.Value;
                 
+                // Update theme colors immediately
+                UpdateThemeColors();
+                
                 // Update hotkeys
                 _originalSettings.Hotkeys["RegionCapture"] = RegionHotkeyTextBox.Text;
                 _originalSettings.Hotkeys["FullScreenCapture"] = FullScreenHotkeyTextBox.Text;
@@ -196,6 +202,45 @@ namespace SharpShot.UI
         {
             HoverOpacityValue.Text = $"{(HoverOpacitySlider.Value * 100):F1}%";
             DropShadowOpacityValue.Text = $"{(DropShadowOpacitySlider.Value * 100):F1}%";
+        }
+        
+        private void UpdateThemeColors()
+        {
+            try
+            {
+                var iconColor = _originalSettings.IconColor;
+                if (string.IsNullOrEmpty(iconColor))
+                    iconColor = "#FFFF8C00"; // Default orange
+                
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
+                var brush = new System.Windows.Media.SolidColorBrush(color);
+                
+                // Update colored text elements
+                if (SettingsHeader != null)
+                    SettingsHeader.Foreground = brush;
+                if (ThemeCustomizationHeader != null)
+                    ThemeCustomizationHeader.Foreground = brush;
+                if (HotkeysHeader != null)
+                    HotkeysHeader.Foreground = brush;
+                
+                // Update textbox borders
+                if (SavePathTextBox != null)
+                    SavePathTextBox.BorderBrush = brush;
+                if (IconColorTextBox != null)
+                    IconColorTextBox.BorderBrush = brush;
+                
+                // Update button borders
+                if (CancelButton != null)
+                    CancelButton.BorderBrush = brush;
+                if (SaveButton != null)
+                    SaveButton.BorderBrush = brush;
+                
+                System.Diagnostics.Debug.WriteLine($"Updated settings theme colors: {iconColor}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update theme colors: {ex.Message}");
+            }
         }
 
         private void ApplyThemeChanges()

@@ -19,6 +19,7 @@
                    Text="Settings" 
                    FontSize="24" 
                    FontWeight="Bold" 
+                   x:Name="SettingsHeader"
                    Foreground="#FFFF8C00"
                    Margin="0,0,0,20"/>
 
@@ -87,6 +88,7 @@
 
                 <!-- Theme Customization Section -->
                 <TextBlock Text="Theme Customization:" 
+                           x:Name="ThemeCustomizationHeader"
                            Foreground="#FFFF8C00" 
                            FontWeight="SemiBold" 
                            FontSize="16"
@@ -158,6 +160,7 @@
 
                 <!-- Hotkeys Section -->
                 <TextBlock Text="Hotkeys:" 
+                           x:Name="HotkeysHeader"
                            Foreground="#FFFF8C00" 
                            FontWeight="SemiBold" 
                            FontSize="16"
@@ -286,12 +289,12 @@
                     Margin="0,20,0,0">
             <Button x:Name="CancelButton" 
                     Content="Cancel" 
-                    Style="{StaticResource ToolbarButtonStyle}"
+                    Style="{StaticResource SettingsButtonStyle}"
                     Click="CancelButton_Click"
                     Margin="0,0,10,0"/>
             <Button x:Name="SaveButton" 
                     Content="Save" 
-                    Style="{StaticResource ToolbarButtonStyle}"
+                    Style="{StaticResource SettingsButtonStyle}"
                     Click="SaveButton_Click"/>
         </StackPanel>
     </Grid>
