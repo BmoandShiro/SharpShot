@@ -720,9 +720,18 @@ namespace SharpShot
             {
                 Dispatcher.Invoke(() =>
                 {
-                    // Convert opacity to hex color with alpha channel
+                    // Get current icon color
+                    var iconColor = _settingsService.CurrentSettings.IconColor;
+                    if (string.IsNullOrEmpty(iconColor))
+                        iconColor = "#FFFF8C00"; // Default orange
+                    
+                    // Convert opacity to hex color with alpha channel using the icon color
                     var alpha = (byte)(opacity * 255);
-                    var hoverColor = $"#{alpha:X2}FF8C00";
+                    // Extract the RGB part of the hex color (remove the # and alpha)
+                    var iconColorWithoutAlpha = iconColor.Length == 9 ? iconColor.Substring(3) : iconColor.Substring(1);
+                    var hoverColor = $"#{alpha:X2}{iconColorWithoutAlpha}";
+                    
+                    System.Diagnostics.Debug.WriteLine($"Icon color: {iconColor}, Alpha: {alpha:X2}, Hover color: {hoverColor}");
                     
                     // Create a new style with updated hover opacity
                     var newStyle = CreateUpdatedButtonStyle(hoverColor, _settingsService.CurrentSettings.DropShadowOpacity);
@@ -748,10 +757,19 @@ namespace SharpShot
             {
                 Dispatcher.Invoke(() =>
                 {
+                    // Get current icon color
+                    var iconColor = _settingsService.CurrentSettings.IconColor;
+                    if (string.IsNullOrEmpty(iconColor))
+                        iconColor = "#FFFF8C00"; // Default orange
+                    
                     // Get current hover opacity
                     var hoverOpacity = _settingsService.CurrentSettings.HoverOpacity;
                     var alpha = (byte)(hoverOpacity * 255);
-                    var hoverColor = $"#{alpha:X2}FF8C00";
+                    // Extract the RGB part of the hex color (remove the # and alpha)
+                    var iconColorWithoutAlpha = iconColor.Length == 9 ? iconColor.Substring(3) : iconColor.Substring(1);
+                    var hoverColor = $"#{alpha:X2}{iconColorWithoutAlpha}";
+                    
+                    System.Diagnostics.Debug.WriteLine($"Icon color: {iconColor}, Alpha: {alpha:X2}, Hover color: {hoverColor}");
                     
                     // Create a new style with updated drop shadow opacity
                     var newStyle = CreateUpdatedButtonStyle(hoverColor, opacity);
@@ -806,7 +824,11 @@ namespace SharpShot
             trigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hoverColor))));
             
             var dropShadow = new DropShadowEffect();
-            dropShadow.Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FFFF8C00");
+            // Use the same color as the hover background (which is based on icon color)
+            var iconColor = _settingsService.CurrentSettings.IconColor;
+            if (string.IsNullOrEmpty(iconColor))
+                iconColor = "#FFFF8C00"; // Default orange
+            dropShadow.Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
             dropShadow.BlurRadius = 10;
             dropShadow.ShadowDepth = 0;
             dropShadow.Opacity = dropShadowOpacity;
