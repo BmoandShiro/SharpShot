@@ -171,6 +171,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
                                Text="Region Capture:" 
@@ -182,13 +183,23 @@
                              Width="120"
                              Text="Double Ctrl"
                              IsReadOnly="True"
-                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"
+                             IsEnabled="True"/>
+                    <CheckBox Grid.Column="2"
+                              x:Name="RegionTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
                 </Grid>
                 
                 <!-- Full Screen Hotkey -->
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
@@ -201,13 +212,22 @@
                              Width="120"
                              Text="Ctrl+Shift+S"
                              IsReadOnly="True"
-                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"/>
+                    <CheckBox Grid.Column="2"
+                              x:Name="FullScreenTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
                 </Grid>
                 
                 <!-- Recording Hotkey -->
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
@@ -220,13 +240,22 @@
                              Width="120"
                              Text="Ctrl+Shift+R"
                              IsReadOnly="True"
-                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"/>
+                    <CheckBox Grid.Column="2"
+                              x:Name="RecordingTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
                 </Grid>
                 
                 <!-- Cancel Hotkey -->
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
@@ -239,13 +268,22 @@
                              Width="120"
                              Text="Escape"
                              IsReadOnly="True"
-                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"/>
+                    <CheckBox Grid.Column="2"
+                              x:Name="CancelTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
                 </Grid>
                 
                 <!-- Save Hotkey -->
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
@@ -258,13 +296,22 @@
                              Width="120"
                              Text="Space"
                              IsReadOnly="True"
-                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"/>
+                    <CheckBox Grid.Column="2"
+                              x:Name="SaveTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
                 </Grid>
                 
                 <!-- Copy Hotkey -->
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
@@ -277,7 +324,15 @@
                              Width="120"
                              Text="Enter"
                              IsReadOnly="True"
-                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"/>
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"/>
+                    <CheckBox Grid.Column="2"
+                              x:Name="CopyTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
                 </Grid>
             </StackPanel>
         </ScrollViewer>

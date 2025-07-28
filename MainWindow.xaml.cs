@@ -11,6 +11,7 @@ using SharpShot.Utils;
 using System.Threading.Tasks;
 using Point = System.Windows.Point;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace SharpShot
 {
@@ -24,6 +25,9 @@ namespace SharpShot
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
         private Bitmap? _lastCapturedBitmap = null;
+
+        // Windows message constants
+        private const int WM_HOTKEY = 0x0312;
 
         public MainWindow()
         {
@@ -657,6 +661,18 @@ namespace SharpShot
                 System.Diagnostics.Debug.WriteLine($"Failed to apply theme settings: {ex.Message}");
             }
         }
+        
+        public void UpdateHotkeys()
+        {
+            try
+            {
+                _hotkeyManager?.UpdateHotkeys();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update hotkeys: {ex.Message}");
+            }
+        }
 
         private void UpdateIconColors(string color)
         {
@@ -885,6 +901,36 @@ namespace SharpShot
                 }
             }
         }
+
+        #region Windows Message Handling
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            
+            // Get the window handle
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var hwnd = helper.Handle;
+            
+            // Set the window handle in the hotkey manager
+            _hotkeyManager.SetWindowHandle(hwnd);
+            
+            // Add message hook
+            System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_HOTKEY)
+            {
+                var hotkeyId = wParam.ToInt32();
+                _hotkeyManager.HandleHotkeyMessage(hotkeyId);
+                handled = true;
+                return IntPtr.Zero;
+            }
+            
+            return IntPtr.Zero;
+        }
+        #endregion
         #endregion
     }
 } 

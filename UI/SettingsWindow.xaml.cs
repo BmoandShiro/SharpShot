@@ -13,6 +13,8 @@ namespace SharpShot.UI
     {
         private readonly SettingsService _settingsService;
         private readonly Settings _originalSettings;
+        private TextBox? _currentHotkeyTextBox;
+        private bool _isListeningForHotkey = false;
 
         public SettingsWindow(SettingsService settingsService)
         {
@@ -74,6 +76,14 @@ namespace SharpShot.UI
             SaveHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Save", "Space");
             CopyHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Copy", "Enter");
             
+            // Load triple-click settings
+            RegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("RegionCaptureTripleClick", "false") == "true";
+            FullScreenTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("FullScreenCaptureTripleClick", "false") == "true";
+            RecordingTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ToggleRecordingTripleClick", "false") == "true";
+            CancelTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("CancelTripleClick", "false") == "true";
+            SaveTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("SaveTripleClick", "false") == "true";
+            CopyTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("CopyTripleClick", "false") == "true";
+            
             // Apply current theme colors
             UpdateThemeColors();
         }
@@ -94,6 +104,8 @@ namespace SharpShot.UI
 
         private void HotkeyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (!_isListeningForHotkey) return;
+            
             e.Handled = true;
             
             var modifiers = new List<string>();
@@ -110,9 +122,38 @@ namespace SharpShot.UI
 
             var hotkey = modifiers.Count > 0 ? string.Join("+", modifiers) + "+" + key : key;
             
+            if (_currentHotkeyTextBox != null)
+            {
+                _currentHotkeyTextBox.Text = hotkey;
+                _currentHotkeyTextBox.IsReadOnly = true;
+            }
+            
+            _isListeningForHotkey = false;
+            _currentHotkeyTextBox = null;
+        }
+        
+        private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
             if (sender is TextBox textBox)
             {
-                textBox.Text = hotkey;
+                _currentHotkeyTextBox = textBox;
+                _isListeningForHotkey = true;
+                textBox.IsReadOnly = false;
+                textBox.Text = "Press a key...";
+                textBox.Focus();
+            }
+        }
+        
+        private void HotkeyTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (_isListeningForHotkey)
+            {
+                _isListeningForHotkey = false;
+                if (_currentHotkeyTextBox != null)
+                {
+                    _currentHotkeyTextBox.IsReadOnly = true;
+                }
+                _currentHotkeyTextBox = null;
             }
         }
 
@@ -152,6 +193,14 @@ namespace SharpShot.UI
                 _originalSettings.Hotkeys["Cancel"] = CancelHotkeyTextBox.Text;
                 _originalSettings.Hotkeys["Save"] = SaveHotkeyTextBox.Text;
                 _originalSettings.Hotkeys["Copy"] = CopyHotkeyTextBox.Text;
+                
+                // Update triple-click settings
+                _originalSettings.Hotkeys["RegionCaptureTripleClick"] = RegionTripleClickCheckBox.IsChecked == true ? "true" : "false";
+                _originalSettings.Hotkeys["FullScreenCaptureTripleClick"] = FullScreenTripleClickCheckBox.IsChecked == true ? "true" : "false";
+                _originalSettings.Hotkeys["ToggleRecordingTripleClick"] = RecordingTripleClickCheckBox.IsChecked == true ? "true" : "false";
+                _originalSettings.Hotkeys["CancelTripleClick"] = CancelTripleClickCheckBox.IsChecked == true ? "true" : "false";
+                _originalSettings.Hotkeys["SaveTripleClick"] = SaveTripleClickCheckBox.IsChecked == true ? "true" : "false";
+                _originalSettings.Hotkeys["CopyTripleClick"] = CopyTripleClickCheckBox.IsChecked == true ? "true" : "false";
                 
                 // Copy settings back to the service
                 CopySettings(_originalSettings, _settingsService.CurrentSettings);
@@ -229,6 +278,20 @@ namespace SharpShot.UI
                 if (IconColorTextBox != null)
                     IconColorTextBox.BorderBrush = brush;
                 
+                // Update hotkey textbox borders
+                if (RegionHotkeyTextBox != null)
+                    RegionHotkeyTextBox.BorderBrush = brush;
+                if (FullScreenHotkeyTextBox != null)
+                    FullScreenHotkeyTextBox.BorderBrush = brush;
+                if (RecordingHotkeyTextBox != null)
+                    RecordingHotkeyTextBox.BorderBrush = brush;
+                if (CancelHotkeyTextBox != null)
+                    CancelHotkeyTextBox.BorderBrush = brush;
+                if (SaveHotkeyTextBox != null)
+                    SaveHotkeyTextBox.BorderBrush = brush;
+                if (CopyHotkeyTextBox != null)
+                    CopyHotkeyTextBox.BorderBrush = brush;
+                
                 // Update button borders
                 if (CancelButton != null)
                     CancelButton.BorderBrush = brush;
@@ -253,6 +316,12 @@ namespace SharpShot.UI
                 {
                     // Apply the new theme settings
                     mainWindow.ApplyThemeSettings();
+                    
+                    // Update hotkeys if global hotkeys are enabled
+                    if (_originalSettings.EnableGlobalHotkeys)
+                    {
+                        mainWindow.UpdateHotkeys();
+                    }
                 }
             }
             catch (Exception ex)
