@@ -89,11 +89,12 @@
                                           Grid.Column="2"
                                           Focusable="false"
                                           IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press">
+                                          ClickMode="Press"
+                                          Background="{StaticResource SecondaryBrush}">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border x:Name="Border"
-                                                Background="{TemplateBinding Background}"
+                                                Background="{StaticResource SecondaryBrush}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
                                                 CornerRadius="4">
