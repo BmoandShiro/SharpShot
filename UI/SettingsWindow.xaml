@@ -16,7 +16,7 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ResizeGrip">
                             <Grid>
-                                <Path Data="M0,8 L2,6 L4,8 L6,6 L8,8 L8,10 L6,8 L4,10 L2,8 L0,10 Z" 
+                                <Path Data="M0,8 L2,8 L2,10 L0,10 Z M4,8 L6,8 L6,10 L4,10 Z M4,6 L6,6 L6,8 L4,8 Z M6,6 L8,6 L8,8 L6,8 Z" 
                                       Fill="#FFFF8C00" 
                                       Stretch="Uniform"
                                       Width="12" 
@@ -91,10 +91,10 @@
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
             <ScrollViewer.Resources>
                 <Style TargetType="ScrollBar">
-                    <Setter Property="Background" Value="#FF1A1A1A"/>
+                    <Setter Property="Background" Value="Transparent"/>
                     <Setter Property="Foreground" Value="#FFFF8C00"/>
-                    <Setter Property="BorderBrush" Value="#FF404040"/>
-                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="BorderBrush" Value="Transparent"/>
+                    <Setter Property="BorderThickness" Value="0"/>
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ScrollBar">
@@ -105,71 +105,147 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     
-                                    <!-- Top Button -->
+                                    <!-- Modern Top Button -->
                                     <RepeatButton Grid.Row="0" 
                                                  x:Name="PART_LineUpButton"
+                                                 Command="ScrollBar.LineUpCommand"
                                                  Background="#FF1A1A1A"
                                                  BorderBrush="#FF404040"
                                                  BorderThickness="1"
-                                                 Height="16">
-                                        <RepeatButton.Style>
-                                            <Style TargetType="RepeatButton">
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#FF2D2D2D"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </RepeatButton.Style>
-                                        <Path Data="M0,4 L8,4 L4,0 Z" 
-                                              Fill="#FFFF8C00" 
-                                              Stretch="Uniform"
-                                              Width="8" 
-                                              Height="4"/>
+                                                 Height="20"
+                                                 Margin="2,0,2,1">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="3"
+                                                        Margin="{TemplateBinding Margin}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FF2D2D2D"/>
+                                                                    <Setter Property="BorderBrush" Value="#FFFF8C00"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Path Data="M0,6 L6,6 L3,0 Z" 
+                                                          Fill="#FFFF8C00" 
+                                                          Stretch="Uniform"
+                                                          Width="6" 
+                                                          Height="6"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
                                     </RepeatButton>
                                     
-                                    <!-- Track -->
+                                    <!-- Modern Track -->
                                     <Track Grid.Row="1" 
                                            x:Name="PART_Track"
                                            IsDirectionReversed="True">
                                         <Track.DecreaseRepeatButton>
-                                            <RepeatButton Background="#FF1A1A1A" 
-                                                          BorderBrush="#FFFF8C00"
-                                                          BorderThickness="1"/>
+                                            <RepeatButton Background="Transparent" 
+                                                          BorderThickness="0"
+                                                          Margin="2,1,2,1"
+                                                          x:Name="PART_DecreaseRepeatButton"
+                                                          Command="ScrollBar.PageUpCommand">
+                                                <RepeatButton.Style>
+                                                    <Style TargetType="RepeatButton">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#20FF8C00"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </RepeatButton.Style>
+                                            </RepeatButton>
                                         </Track.DecreaseRepeatButton>
                                         <Track.IncreaseRepeatButton>
-                                            <RepeatButton Background="#FF1A1A1A" 
-                                                          BorderBrush="#FFFF8C00"
-                                                          BorderThickness="1"/>
+                                            <RepeatButton Background="Transparent" 
+                                                          BorderThickness="0"
+                                                          Margin="2,1,2,1"
+                                                          x:Name="PART_IncreaseRepeatButton"
+                                                          Command="ScrollBar.PageDownCommand">
+                                                <RepeatButton.Style>
+                                                    <Style TargetType="RepeatButton">
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#20FF8C00"/>
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </RepeatButton.Style>
+                                            </RepeatButton>
                                         </Track.IncreaseRepeatButton>
                                         <Track.Thumb>
                                             <Thumb Background="#FF404040" 
-                                                   BorderBrush="#FF606060"
-                                                   BorderThickness="1"/>
+                                                   BorderBrush="#FFFF8C00"
+                                                   BorderThickness="1"
+                                                   Margin="2,0,2,0">
+                                                <Thumb.Template>
+                                                    <ControlTemplate TargetType="Thumb">
+                                                        <Border Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                CornerRadius="4"
+                                                                Margin="{TemplateBinding Margin}">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Style.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter Property="Background" Value="#FF505050"/>
+                                                                            <Setter Property="BorderBrush" Value="#FFFF8C00"/>
+                                                                        </Trigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Thumb.Template>
+                                            </Thumb>
                                         </Track.Thumb>
                                     </Track>
                                     
-                                    <!-- Bottom Button -->
+                                    <!-- Modern Bottom Button -->
                                     <RepeatButton Grid.Row="2" 
                                                  x:Name="PART_LineDownButton"
+                                                 Command="ScrollBar.LineDownCommand"
                                                  Background="#FF1A1A1A"
                                                  BorderBrush="#FF404040"
                                                  BorderThickness="1"
-                                                 Height="16">
-                                        <RepeatButton.Style>
-                                            <Style TargetType="RepeatButton">
-                                                <Style.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter Property="Background" Value="#FF2D2D2D"/>
-                                                    </Trigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </RepeatButton.Style>
-                                        <Path Data="M0,0 L8,0 L4,4 Z" 
-                                              Fill="#FFFF8C00" 
-                                              Stretch="Uniform"
-                                              Width="8" 
-                                              Height="4"/>
+                                                 Height="20"
+                                                 Margin="2,1,2,0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="3"
+                                                        Margin="{TemplateBinding Margin}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Background" Value="#FF2D2D2D"/>
+                                                                    <Setter Property="BorderBrush" Value="#FFFF8C00"/>
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Path Data="M0,0 L6,0 L3,6 Z" 
+                                                          Fill="#FFFF8C00" 
+                                                          Stretch="Uniform"
+                                                          Width="6" 
+                                                          Height="6"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
                                     </RepeatButton>
                                 </Grid>
                             </ControlTemplate>
