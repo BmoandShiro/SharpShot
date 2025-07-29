@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Microsoft.Win32;
 using SharpShot.Models;
 using SharpShot.Services;
+using SharpShot.Utils;
 using System.Collections.Generic;
 using System.Windows.Controls;
 
@@ -13,13 +14,15 @@ namespace SharpShot.UI
     {
         private readonly SettingsService _settingsService;
         private readonly Settings _originalSettings;
+        private readonly HotkeyManager? _hotkeyManager;
         private TextBox? _currentHotkeyTextBox;
         private bool _isListeningForHotkey = false;
 
-        public SettingsWindow(SettingsService settingsService)
+        public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
             InitializeComponent();
             _settingsService = settingsService;
+            _hotkeyManager = hotkeyManager;
             _originalSettings = new Settings();
             
             // Copy current settings to avoid modifying the original
@@ -249,6 +252,9 @@ namespace SharpShot.UI
                 
                 // Apply theme changes immediately
                 ApplyThemeChanges();
+                
+                // Update hotkeys if hotkey manager is available
+                _hotkeyManager?.UpdateHotkeys();
                 
                 DialogResult = true;
                 Close();

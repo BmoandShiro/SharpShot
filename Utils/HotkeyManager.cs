@@ -233,7 +233,13 @@ namespace SharpShot.Utils
 
         public void UpdateHotkeys()
         {
-            if (_isInitialized && _settingsService.CurrentSettings.EnableGlobalHotkeys)
+            if (!_isInitialized) return;
+            
+            // Always unregister all hotkeys first
+            UnregisterAllHotkeys();
+            
+            // Only register hotkeys if global hotkeys are enabled
+            if (_settingsService.CurrentSettings.EnableGlobalHotkeys)
             {
                 RegisterHotkeys();
             }

@@ -25,7 +25,7 @@ namespace SharpShot.Models
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
             EnableAudioRecording = true;
-            EnableGlobalHotkeys = true;
+            EnableGlobalHotkeys = false;
             StartMinimized = false;
             IconColor = "#FFFF8C00";
             HoverOpacity = 0.125;

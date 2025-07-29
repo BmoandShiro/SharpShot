@@ -205,10 +205,17 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
                 CancelRecordButton.Visibility = Visibility.Visible;
+
+                // Show separator
+                RecordingSelectionSeparator2.Visibility = Visibility.Visible;
             });
         }
 
@@ -220,6 +227,9 @@ namespace SharpShot
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
+
+                // Hide separator
+                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
 
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
@@ -241,7 +251,7 @@ namespace SharpShot
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            var settingsWindow = new UI.SettingsWindow(_settingsService);
+            var settingsWindow = new UI.SettingsWindow(_settingsService, _hotkeyManager);
             settingsWindow.Owner = this;
             settingsWindow.ShowDialog();
         }
@@ -380,6 +390,10 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Visible;
                 CloseButton.Visibility = Visibility.Visible;
                 
+                // Show main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Visible;
+                MainToolbarSeparator2.Visibility = Visibility.Visible;
+                
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
                 CopyButton.Visibility = Visibility.Collapsed;
@@ -389,6 +403,9 @@ namespace SharpShot
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
+
+                // Hide separator
+                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -811,6 +828,26 @@ namespace SharpShot
                 if (CloseButton.Content is System.Windows.Shapes.Path closePath)
                     closePath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
                 
+                // Update recording selection icons
+                if (RegionRecordButton.Content is System.Windows.Shapes.Path regionRecordPath)
+                    regionRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (FullScreenRecordButton.Content is System.Windows.Shapes.Path fullScreenRecordPath)
+                    fullScreenRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
+                    cancelRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                // Update capture option icons
+                if (CancelButton.Content is System.Windows.Shapes.Path cancelPath)
+                    cancelPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (CopyButton.Content is System.Windows.Shapes.Path copyPath)
+                    copyPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (SaveButton.Content is System.Windows.Shapes.Path savePath)
+                    savePath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
                 // Update separator colors
                 UpdateSeparatorColors(color);
                 
@@ -826,7 +863,17 @@ namespace SharpShot
         {
             try
             {
-                // Find all Rectangle elements in the main StackPanel that are separators
+                // Update named separators directly
+                if (MainToolbarSeparator1 != null)
+                    MainToolbarSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (MainToolbarSeparator2 != null)
+                    MainToolbarSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (RecordingSelectionSeparator2 != null)
+                    RecordingSelectionSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                // Find all Rectangle elements in the main StackPanel that are separators (fallback)
                 var mainStackPanel = this.FindName("MainToolbarStackPanel") as StackPanel;
                 if (mainStackPanel != null)
                 {

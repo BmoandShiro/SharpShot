@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  sharpshot-live-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.live-dev
+    container_name: sharpshot-live-development
+    volumes:
+      # Mount source code for live development
+      - .:/app
+      # Mount .NET cache for faster builds
+      - dotnet-cache:/root/.nuget
+      # Mount build output for hot reloading
+      - build-output:/app/bin
+      - build-output:/app/obj
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - DOTNET_WATCH_RESTART_ON_RUDE_EDIT=true
+      - DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER=true
+      - DOTNET_WATCH_SUPPRESS_HOT_RELOAD=true
+    # Keep container running for development
+    tty: true
+    stdin_open: true
+    # Command to run custom file watcher for comprehensive live development
+    command: ["/app/watch-and-build.sh"]
+
+volumes:
+  dotnet-cache:
+  build-output: 
