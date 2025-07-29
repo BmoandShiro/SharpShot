@@ -32,6 +32,45 @@ namespace SharpShot.UI
             DropShadowOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
         }
 
+        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Allow dragging the window by clicking anywhere on it
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                DragMove();
+            }
+        }
+
+        private void TopResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Let the window handle resize automatically
+            e.Handled = false;
+        }
+
+        private void BottomResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Let the window handle resize automatically
+            e.Handled = false;
+        }
+
+        private void LeftResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Let the window handle resize automatically
+            e.Handled = false;
+        }
+
+        private void RightResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Let the window handle resize automatically
+            e.Handled = false;
+        }
+
+        private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = false;
+            Close();
+        }
+
         private void LoadSettings()
         {
             SavePathTextBox.Text = _originalSettings.SavePath;

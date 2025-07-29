@@ -5,7 +5,31 @@
         Height="600" Width="500"
         Style="{StaticResource DarkWindowStyle}"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="CanResize">
+        ResizeMode="CanResizeWithGrip"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        <Window.Resources>
+            <Style TargetType="ResizeGrip">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ResizeGrip">
+                            <Grid>
+                                <Path Data="M0,8 L2,6 L4,8 L6,6 L8,8 L8,10 L6,8 L4,10 L2,8 L0,10 Z" 
+                                      Fill="#FFFF8C00" 
+                                      Stretch="Uniform"
+                                      Width="12" 
+                                      Height="12"
+                                      HorizontalAlignment="Right"
+                                      VerticalAlignment="Bottom"
+                                      Margin="0,0,2,2"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Window.Resources>
     
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -13,19 +37,147 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        
+        <!-- Resize Handles -->
+        <Border Grid.Row="0" 
+                Height="8" 
+                Background="Transparent" 
+                Cursor="SizeNS" 
+                MouseLeftButtonDown="TopResizeHandle_MouseLeftButtonDown"/>
+        <Border Grid.Row="2" 
+                Height="8" 
+                Background="Transparent" 
+                Cursor="SizeNS" 
+                MouseLeftButtonDown="BottomResizeHandle_MouseLeftButtonDown"/>
+        <Border Grid.Column="0" 
+                Width="8" 
+                Background="Transparent" 
+                Cursor="SizeWE" 
+                MouseLeftButtonDown="LeftResizeHandle_MouseLeftButtonDown"/>
+        <Border Grid.Column="2" 
+                Width="8" 
+                Background="Transparent" 
+                Cursor="SizeWE" 
+                MouseLeftButtonDown="RightResizeHandle_MouseLeftButtonDown"/>
 
         <!-- Header -->
-        <TextBlock Grid.Row="0" 
-                   Text="Settings" 
-                   FontSize="24" 
-                   FontWeight="Bold" 
-                   x:Name="SettingsHeader"
-                   Foreground="#FFFF8C00"
-                   Margin="0,0,0,20"/>
+        <Grid Grid.Row="0" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" 
+                       Text="Settings" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       x:Name="SettingsHeader"
+                       Foreground="#FFFF8C00"
+                       MouseLeftButtonDown="Window_MouseLeftButtonDown"
+                       Cursor="Hand"/>
+            <Button Grid.Column="1" 
+                    x:Name="CloseSettingsButton"
+                    Content="✕"
+                    Width="30" 
+                    Height="30"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Foreground="#FFFF8C00"
+                    FontSize="16"
+                    Click="CloseSettingsButton_Click"
+                    Cursor="Hand"/>
+        </Grid>
 
         <!-- Settings Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+            <ScrollViewer.Resources>
+                <Style TargetType="ScrollBar">
+                    <Setter Property="Background" Value="#FF1A1A1A"/>
+                    <Setter Property="Foreground" Value="#FFFF8C00"/>
+                    <Setter Property="BorderBrush" Value="#FF404040"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ScrollBar">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- Top Button -->
+                                    <RepeatButton Grid.Row="0" 
+                                                 x:Name="PART_LineUpButton"
+                                                 Background="#FF1A1A1A"
+                                                 BorderBrush="#FF404040"
+                                                 BorderThickness="1"
+                                                 Height="16">
+                                        <RepeatButton.Style>
+                                            <Style TargetType="RepeatButton">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#FF2D2D2D"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </RepeatButton.Style>
+                                        <Path Data="M0,4 L8,4 L4,0 Z" 
+                                              Fill="#FFFF8C00" 
+                                              Stretch="Uniform"
+                                              Width="8" 
+                                              Height="4"/>
+                                    </RepeatButton>
+                                    
+                                    <!-- Track -->
+                                    <Track Grid.Row="1" 
+                                           x:Name="PART_Track"
+                                           IsDirectionReversed="True">
+                                        <Track.DecreaseRepeatButton>
+                                            <RepeatButton Background="#FF1A1A1A" 
+                                                          BorderBrush="#FFFF8C00"
+                                                          BorderThickness="1"/>
+                                        </Track.DecreaseRepeatButton>
+                                        <Track.IncreaseRepeatButton>
+                                            <RepeatButton Background="#FF1A1A1A" 
+                                                          BorderBrush="#FFFF8C00"
+                                                          BorderThickness="1"/>
+                                        </Track.IncreaseRepeatButton>
+                                        <Track.Thumb>
+                                            <Thumb Background="#FF404040" 
+                                                   BorderBrush="#FF606060"
+                                                   BorderThickness="1"/>
+                                        </Track.Thumb>
+                                    </Track>
+                                    
+                                    <!-- Bottom Button -->
+                                    <RepeatButton Grid.Row="2" 
+                                                 x:Name="PART_LineDownButton"
+                                                 Background="#FF1A1A1A"
+                                                 BorderBrush="#FF404040"
+                                                 BorderThickness="1"
+                                                 Height="16">
+                                        <RepeatButton.Style>
+                                            <Style TargetType="RepeatButton">
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#FF2D2D2D"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </RepeatButton.Style>
+                                        <Path Data="M0,0 L8,0 L4,4 Z" 
+                                              Fill="#FFFF8C00" 
+                                              Stretch="Uniform"
+                                              Width="8" 
+                                              Height="4"/>
+                                    </RepeatButton>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ScrollViewer.Resources>
+            <StackPanel Margin="0,0,15,0">
                 <!-- Save Path -->
                 <TextBlock Text="Save Path:" 
                            Foreground="{StaticResource TextBrush}" 
