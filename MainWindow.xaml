@@ -187,7 +187,7 @@
                 <Rectangle x:Name="CaptureCompletionSeparator1"
                            Width="1" 
                            Height="25" 
-                           Fill="#80FF8C00" 
+                           Fill="#FFFF8C00" 
                            Margin="8,0"
                            VerticalAlignment="Center"
                            Visibility="Collapsed"/>
@@ -240,7 +240,7 @@
                 <Rectangle x:Name="RecordingSelectionSeparator2"
                            Width="1" 
                            Height="25" 
-                           Fill="#80FF8C00" 
+                           Fill="#FFFF8C00" 
                            Margin="8,0"
                            VerticalAlignment="Center"
                            Visibility="Collapsed"/>

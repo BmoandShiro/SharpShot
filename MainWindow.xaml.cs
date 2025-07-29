@@ -80,12 +80,15 @@ namespace SharpShot
 
         private void PositionWindow()
         {
-            // Position in top-right corner
+            // Position at bottom middle of screen, above Windows taskbar
             var screenWidth = SystemParameters.PrimaryScreenWidth;
             var screenHeight = SystemParameters.PrimaryScreenHeight;
             
-            Left = screenWidth - Width - 20;
-            Top = 20;
+            // Center horizontally
+            Left = (screenWidth - Width) / 2;
+            
+            // Position above taskbar (typically 40-50 pixels from bottom)
+            Top = screenHeight - Height - 50;
         }
 
         #region Window Dragging
@@ -869,18 +872,29 @@ namespace SharpShot
         {
             try
             {
+                // Ensure separators always use full opacity by removing any alpha channel
+                var fullOpacityColor = color;
+                if (color.Length == 9) // Has alpha channel (e.g., #80FF8C00)
+                {
+                    fullOpacityColor = "#FF" + color.Substring(3); // Force full opacity
+                }
+                else if (color.Length == 7) // No alpha channel (e.g., #FF8C00)
+                {
+                    fullOpacityColor = "#FF" + color.Substring(1); // Add full opacity
+                }
+                
                 // Update named separators directly
                 if (MainToolbarSeparator1 != null)
-                    MainToolbarSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    MainToolbarSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
                 
                 if (MainToolbarSeparator2 != null)
-                    MainToolbarSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    MainToolbarSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
                 
                 if (RecordingSelectionSeparator2 != null)
-                    RecordingSelectionSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    RecordingSelectionSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
                 
                 if (CaptureCompletionSeparator1 != null)
-                    CaptureCompletionSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    CaptureCompletionSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
                 
                 // Find all Rectangle elements in the main StackPanel that are separators (fallback)
                 var mainStackPanel = this.FindName("MainToolbarStackPanel") as StackPanel;
@@ -890,7 +904,7 @@ namespace SharpShot
                     {
                         if (child is System.Windows.Shapes.Rectangle rectangle && rectangle.Width == 1)
                         {
-                            rectangle.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                            rectangle.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
                         }
                     }
                 }
