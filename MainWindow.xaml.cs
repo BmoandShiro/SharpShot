@@ -356,10 +356,15 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
-                // Show completion options
-                CancelButton.Visibility = Visibility.Visible;
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+
+                // Show completion options in correct order: Copy, Save, Separator, Cancel (X on far right)
                 CopyButton.Visibility = Visibility.Visible;
                 SaveButton.Visibility = Visibility.Visible;
+                CaptureCompletionSeparator1.Visibility = Visibility.Visible;
+                CancelButton.Visibility = Visibility.Visible;
 
                 // Set appropriate tooltips based on file type
                 bool isVideo = !string.IsNullOrEmpty(_lastCapturedFilePath) && 
@@ -398,6 +403,7 @@ namespace SharpShot
                 CancelButton.Visibility = Visibility.Collapsed;
                 CopyButton.Visibility = Visibility.Collapsed;
                 SaveButton.Visibility = Visibility.Collapsed;
+                CaptureCompletionSeparator1.Visibility = Visibility.Collapsed;
                 
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
@@ -872,6 +878,9 @@ namespace SharpShot
                 
                 if (RecordingSelectionSeparator2 != null)
                     RecordingSelectionSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (CaptureCompletionSeparator1 != null)
+                    CaptureCompletionSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
                 
                 // Find all Rectangle elements in the main StackPanel that are separators (fallback)
                 var mainStackPanel = this.FindName("MainToolbarStackPanel") as StackPanel;

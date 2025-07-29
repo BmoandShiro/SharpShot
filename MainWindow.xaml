@@ -155,21 +155,6 @@
                           Width="20" Height="20"/>
                 </Button>
 
-                <!-- Cancel Button (Hidden by default) -->
-                <Button x:Name="CancelButton" 
-                        Style="{StaticResource IconButtonStyle}"
-                        Click="CancelButton_Click"
-                        ToolTip="Cancel"
-                        Visibility="Collapsed"
-                        Margin="8,0,0,0">
-                    <Path Data="M1 1L11 11M11 1L1 11" 
-                          Stroke="#FFFF8C00" 
-                          StrokeThickness="2" 
-                          Fill="Transparent"
-                          Stretch="Uniform"
-                          Width="20" Height="20"/>
-                </Button>
-
                 <!-- Copy Button (Hidden by default) -->
                 <Button x:Name="CopyButton" 
                         Style="{StaticResource IconButtonStyle}"
@@ -193,6 +178,30 @@
                     <Path Data="M20.5996 9.5C20.8756 9.50013 21.0996 9.72394 21.0996 10V15C21.0996 15.8283 20.4279 16.4999 19.5996 16.5H1.59961C0.771182 16.5 0.0996094 15.8284 0.0996094 15V10C0.0996094 9.72386 0.323467 9.5 0.599609 9.5C0.87564 9.50013 1.09961 9.72394 1.09961 10V15C1.09961 15.2761 1.32347 15.5 1.59961 15.5H19.5996C19.8756 15.4999 20.0996 15.2761 20.0996 15V10C20.0996 9.72386 20.3235 9.5 20.5996 9.5ZM11.0615 11.5928L13.3896 9.26465C13.5849 9.06983 13.9015 9.06963 14.0967 9.26465C14.2918 9.45978 14.2916 9.77639 14.0967 9.97168L10.915 13.1533C10.7198 13.3486 10.4033 13.3486 10.208 13.1533L7.02637 9.97168C6.8312 9.77641 6.83114 9.45988 7.02637 9.26465C7.22163 9.0698 7.53826 9.06961 7.7334 9.26465L10.0615 11.5928V0.799805H11.0615V11.5928Z" 
                           Stroke="#FFFF8C00" 
                           StrokeThickness="1.5" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="20" Height="20"/>
+                </Button>
+
+                <!-- Separator -->
+                <Rectangle x:Name="CaptureCompletionSeparator1"
+                           Width="1" 
+                           Height="25" 
+                           Fill="#80FF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
+
+                <!-- Cancel Button (Hidden by default) -->
+                <Button x:Name="CancelButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="CancelButton_Click"
+                        ToolTip="Cancel"
+                        Visibility="Collapsed"
+                        Margin="8,0,0,0">
+                    <Path Data="M1 1L11 11M11 1L1 11" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
                           Fill="Transparent"
                           Stretch="Uniform"
                           Width="20" Height="20"/>
@@ -231,7 +240,7 @@
                 <Rectangle x:Name="RecordingSelectionSeparator2"
                            Width="1" 
                            Height="25" 
-                           Fill="#FFFF8C00" 
+                           Fill="#80FF8C00" 
                            Margin="8,0"
                            VerticalAlignment="Center"
                            Visibility="Collapsed"/>
