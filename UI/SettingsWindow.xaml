@@ -16,13 +16,13 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ResizeGrip">
                             <Grid>
-                                <Canvas Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1">
+                                <Canvas Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1">
                                     <!-- Bottom-left square -->
-                                    <Rectangle Canvas.Left="0" Canvas.Top="7" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <Rectangle Canvas.Left="0" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
                                     <!-- Bottom-right square -->
-                                    <Rectangle Canvas.Left="7" Canvas.Top="7" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <Rectangle Canvas.Left="6" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
                                     <!-- Top-right square -->
-                                    <Rectangle Canvas.Left="7" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <Rectangle Canvas.Left="6" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
                                 </Canvas>
                             </Grid>
                         </ControlTemplate>
