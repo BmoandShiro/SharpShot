@@ -201,7 +201,13 @@
                         Click="RegionRecordButton_Click"
                         ToolTip="Record Selected Region"
                         Visibility="Collapsed">
-                    🎬
+                    <Path Data="{StaticResource RegionIcon}" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          StrokeDashArray="5,3"
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="28" Height="23"/>
                 </Button>
 
                 <!-- Full Screen Recording Button (Hidden by default) -->

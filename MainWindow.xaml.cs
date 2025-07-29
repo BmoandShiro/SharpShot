@@ -553,9 +553,41 @@ namespace SharpShot
                 // Check if a region was selected
                 if (regionWindow.SelectedRegion.HasValue)
                 {
-                    // Start recording the selected region
-                    await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
-                    // The OnRecordingStateChanged event will handle UI updates
+                    // Update UI immediately to show recording controls
+                    Dispatcher.Invoke(() =>
+                    {
+                        // Show recording control buttons immediately
+                        RecordingTimer.Visibility = Visibility.Visible;
+                        RecordingButton.Content = "⏹️";
+                        StopRecordButton.Visibility = Visibility.Visible;
+                        PauseRecordButton.Visibility = Visibility.Visible;
+                        
+                        // Hide normal buttons immediately
+                        RegionButton.Visibility = Visibility.Collapsed;
+                        ScreenshotButton.Visibility = Visibility.Collapsed;
+                        RecordingButton.Visibility = Visibility.Collapsed;
+                        SettingsButton.Visibility = Visibility.Collapsed;
+                        CloseButton.Visibility = Visibility.Collapsed;
+                    }, System.Windows.Threading.DispatcherPriority.Render);
+                    
+                    // Start recording in the background (don't await it)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
+                            // If recording fails, revert UI on main thread
+                            Dispatcher.Invoke(() =>
+                            {
+                                ShowNotification("Recording failed to start!", isError: true);
+                                ShowNormalButtons();
+                            });
+                        }
+                    });
                 }
                 else
                 {
@@ -575,11 +607,42 @@ namespace SharpShot
         {
             try
             {
-                // Start full screen recording (without hiding window)
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                await _recordingService.StartRecording(new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+                // Update UI immediately to show recording controls
+                Dispatcher.Invoke(() =>
+                {
+                    // Show recording control buttons immediately
+                    RecordingTimer.Visibility = Visibility.Visible;
+                    RecordingButton.Content = "⏹️";
+                    StopRecordButton.Visibility = Visibility.Visible;
+                    PauseRecordButton.Visibility = Visibility.Visible;
+                    
+                    // Hide normal buttons immediately
+                    RegionButton.Visibility = Visibility.Collapsed;
+                    ScreenshotButton.Visibility = Visibility.Collapsed;
+                    RecordingButton.Visibility = Visibility.Collapsed;
+                    SettingsButton.Visibility = Visibility.Collapsed;
+                    CloseButton.Visibility = Visibility.Collapsed;
+                }, System.Windows.Threading.DispatcherPriority.Render);
                 
-                // The OnRecordingStateChanged event will handle UI updates
+                // Start recording in the background (don't await it)
+                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _recordingService.StartRecording(new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
+                        // If recording fails, revert UI on main thread
+                        Dispatcher.Invoke(() =>
+                        {
+                            ShowNotification("Recording failed to start!", isError: true);
+                            ShowNormalButtons();
+                        });
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -629,7 +692,7 @@ namespace SharpShot
                     // Show completion options when recording stops
                     ShowRecordingCompletionOptions();
                 }
-            });
+            }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
         private void OnRecordingTimeUpdated(TimeSpan duration)

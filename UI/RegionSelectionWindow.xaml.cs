@@ -116,7 +116,7 @@ namespace SharpShot.UI
                     
                     // Force UI update and wait a moment
                     Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
-                    System.Threading.Thread.Sleep(50); // Brief delay to ensure UI is hidden
+                    System.Threading.Thread.Sleep(20); // Reduced delay for faster UI response
                     
                     // Get the actual screen coordinates
                     var screenBounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
