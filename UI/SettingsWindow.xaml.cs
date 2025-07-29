@@ -373,6 +373,13 @@ namespace SharpShot.UI
                     resizeGripBrush.Color = color;
                 }
                 
+                // Update ScrollBarBrush resource for scroll bar arrows and elements
+                var scrollBarBrush = this.Resources["ScrollBarBrush"] as System.Windows.Media.SolidColorBrush;
+                if (scrollBarBrush != null)
+                {
+                    scrollBarBrush.Color = color;
+                }
+                
                 System.Diagnostics.Debug.WriteLine($"Updated settings theme colors: {iconColor}");
             }
             catch (Exception ex)

@@ -11,6 +11,7 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
         <Window.Resources>
             <SolidColorBrush x:Key="ResizeGripBrush" Color="#FFFF8C00"/>
+            <SolidColorBrush x:Key="ScrollBarBrush" Color="#FFFF8C00"/>
             <Style TargetType="ResizeGrip">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Template">
@@ -128,13 +129,13 @@
                                                             <Style.Triggers>
                                                                 <Trigger Property="IsMouseOver" Value="True">
                                                                     <Setter Property="Background" Value="#FF2D2D2D"/>
-                                                                    <Setter Property="BorderBrush" Value="#FFFF8C00"/>
+                                                                    <Setter Property="BorderBrush" Value="{StaticResource ScrollBarBrush}"/>
                                                                 </Trigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Border.Style>
                                                     <Path Data="M0,6 L6,6 L3,0 Z" 
-                                                          Fill="#FFFF8C00" 
+                                                          Fill="{StaticResource ScrollBarBrush}" 
                                                           Stretch="Uniform"
                                                           Width="6" 
                                                           Height="6"
@@ -161,7 +162,7 @@
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter Property="Background">
                                                                     <Setter.Value>
-                                                                        <SolidColorBrush Color="#FFFF8C00" Opacity="0.125"/>
+                                                                        <SolidColorBrush Color="{Binding Source={StaticResource ScrollBarBrush}, Path=Color}" Opacity="0.125"/>
                                                                     </Setter.Value>
                                                                 </Setter>
                                                             </Trigger>
@@ -182,7 +183,7 @@
                                                             <Trigger Property="IsMouseOver" Value="True">
                                                                 <Setter Property="Background">
                                                                     <Setter.Value>
-                                                                        <SolidColorBrush Color="#FFFF8C00" Opacity="0.125"/>
+                                                                        <SolidColorBrush Color="{Binding Source={StaticResource ScrollBarBrush}, Path=Color}" Opacity="0.125"/>
                                                                     </Setter.Value>
                                                                 </Setter>
                                                             </Trigger>
@@ -193,7 +194,7 @@
                                         </Track.IncreaseRepeatButton>
                                         <Track.Thumb>
                                             <Thumb Background="#FF404040" 
-                                                   BorderBrush="#FFFF8C00"
+                                                   BorderBrush="{StaticResource ScrollBarBrush}"
                                                    BorderThickness="1"
                                                    Margin="2,0,2,0"
                                                    MinHeight="20">
@@ -209,7 +210,7 @@
                                                                     <Style.Triggers>
                                                                         <Trigger Property="IsMouseOver" Value="True">
                                                                             <Setter Property="Background" Value="#FF505050"/>
-                                                                            <Setter Property="BorderBrush" Value="#FFFF8C00"/>
+                                                                            <Setter Property="BorderBrush" Value="{StaticResource ScrollBarBrush}"/>
                                                                         </Trigger>
 
                                                                     </Style.Triggers>
@@ -243,13 +244,13 @@
                                                             <Style.Triggers>
                                                                 <Trigger Property="IsMouseOver" Value="True">
                                                                     <Setter Property="Background" Value="#FF2D2D2D"/>
-                                                                    <Setter Property="BorderBrush" Value="#FFFF8C00"/>
+                                                                    <Setter Property="BorderBrush" Value="{StaticResource ScrollBarBrush}"/>
                                                                 </Trigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Border.Style>
                                                     <Path Data="M0,0 L6,0 L3,6 Z" 
-                                                          Fill="#FFFF8C00" 
+                                                          Fill="{StaticResource ScrollBarBrush}" 
                                                           Stretch="Uniform"
                                                           Width="6" 
                                                           Height="6"
