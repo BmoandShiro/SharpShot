@@ -555,8 +555,7 @@ namespace SharpShot
                 {
                     // Start recording the selected region
                     await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
-                    // Show completion options after starting recording
-                    ShowRecordingCompletionOptions();
+                    // The OnRecordingStateChanged event will handle UI updates
                 }
                 else
                 {
@@ -580,8 +579,7 @@ namespace SharpShot
                 var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
                 await _recordingService.StartRecording(new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height));
                 
-                // Show completion options after starting recording
-                ShowRecordingCompletionOptions();
+                // The OnRecordingStateChanged event will handle UI updates
             }
             catch (Exception ex)
             {
