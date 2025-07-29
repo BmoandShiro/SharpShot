@@ -316,7 +316,12 @@ namespace SharpShot
                 if (regionWindow.CapturedBitmap != null)
                 {
                     _lastCapturedBitmap = regionWindow.CapturedBitmap;
+                    System.Diagnostics.Debug.WriteLine($"Region captured successfully: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
                     ShowCaptureOptions();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No bitmap captured from region selection");
                 }
                 
                 // Show main window again
@@ -402,8 +407,27 @@ namespace SharpShot
             {
                 if (_lastCapturedBitmap != null)
                 {
-                    // Copy screenshot to clipboard
-                    System.Windows.Forms.Clipboard.SetImage(_lastCapturedBitmap);
+                    System.Diagnostics.Debug.WriteLine($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    LogToFile($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    
+                    // Run the copy operation on the UI thread since clipboard requires STA mode
+                    _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                    
+                    System.Diagnostics.Debug.WriteLine("Copy operation completed successfully");
+                    LogToFile("Copy operation completed successfully");
+                    
+                    // Verify clipboard has data
+                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    {
+                        System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
+                        LogToFile("Clipboard verification successful - image data is present");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Warning: Clipboard verification failed - no image data found");
+                        LogToFile("Warning: Clipboard verification failed - no image data found");
+                        ShowNotification("Copy completed but verification failed", isError: true);
+                    }
                 }
                 else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
                 {
@@ -415,16 +439,33 @@ namespace SharpShot
                     }
                     else
                     {
-                        // For screenshots, copy the file to clipboard
-                        var bitmap = new System.Drawing.Bitmap(_lastCapturedFilePath);
-                        System.Windows.Forms.Clipboard.SetImage(bitmap);
+                        // For screenshots, copy the file to clipboard using the service method
+                        _screenshotService.CopyToClipboard(_lastCapturedFilePath);
                     }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No bitmap or file path available for copying");
+                    ShowNotification("No image available to copy!", isError: true);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Copy failed: {ex.Message}");
-                ShowNotification("Copy failed!", isError: true);
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                LogToFile($"Copy failed: {ex.Message}");
+                LogToFile($"Stack trace: {ex.StackTrace}");
+                
+                // Check if clipboard actually has the image despite the exception
+                if (System.Windows.Forms.Clipboard.ContainsImage())
+                {
+                    System.Diagnostics.Debug.WriteLine("Clipboard verification successful despite exception");
+                    LogToFile("Clipboard verification successful despite exception");
+                }
+                else
+                {
+                    ShowNotification("Copy failed!", isError: true);
+                }
             }
         }
 
@@ -632,6 +673,21 @@ namespace SharpShot
             // For now, just show a message box
             var icon = isError ? MessageBoxImage.Error : MessageBoxImage.Information;
             MessageBox.Show(message, "SharpShot", MessageBoxButton.OK, icon);
+        }
+
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sharpshot_debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var logEntry = $"[{timestamp}] {message}\n";
+                File.AppendAllText(logPath, logEntry);
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
         }
 
         public void ApplyThemeSettings()

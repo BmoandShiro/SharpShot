@@ -134,8 +134,9 @@ namespace SharpShot.UI
                     
                     graphics.CopyFromScreen(actualX, actualY, 0, 0, new System.Drawing.Size(actualWidth, actualHeight));
                     
-                    // Store the bitmap for later use
+                    // Store the bitmap for later use - create a deep copy to avoid disposal issues
                     CapturedBitmap = new Bitmap(bitmap);
+                    System.Diagnostics.Debug.WriteLine($"Captured region: {actualWidth}x{actualHeight} at ({actualX},{actualY})");
                 }
             }
             catch (Exception ex)

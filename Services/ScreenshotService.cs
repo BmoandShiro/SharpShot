@@ -82,35 +82,59 @@ namespace SharpShot.Services
             return savePath;
         }
 
-        public void CopyToClipboard(Bitmap bitmap)
+                public void CopyToClipboard(Bitmap bitmap)
         {
             try
             {
-                // Create a memory stream for the image
-                using var stream = new MemoryStream();
-                bitmap.Save(stream, ImageFormat.Png);
-                stream.Position = 0;
-
-                // Create data object with multiple formats for better compatibility
-                var dataObject = new System.Windows.Forms.DataObject();
+                System.Diagnostics.Debug.WriteLine($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
                 
-                // Add the bitmap directly
-                dataObject.SetData(System.Windows.Forms.DataFormats.Bitmap, bitmap);
+                // Log to file for debugging
+                LogToFile($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
                 
-                // Add as image stream
-                dataObject.SetData("image/png", stream);
+                // Try clipboard operation with retry mechanism
+                bool clipboardSet = false;
+                int retryCount = 0;
+                const int maxRetries = 3;
                 
-                // Add as file drop (some apps prefer this)
-                var tempFile = Path.GetTempFileName() + ".png";
-                bitmap.Save(tempFile, ImageFormat.Png);
-                dataObject.SetData(System.Windows.Forms.DataFormats.FileDrop, new string[] { tempFile });
-
-                // Set the data to clipboard
-                System.Windows.Forms.Clipboard.SetDataObject(dataObject, true);
+                while (!clipboardSet && retryCount < maxRetries)
+                {
+                    try
+                    {
+                        // Clear clipboard first to avoid conflicts
+                        System.Windows.Forms.Clipboard.Clear();
+                        System.Threading.Thread.Sleep(50); // Brief delay
+                        
+                        // Use the simple SetImage method which is much faster
+                        System.Windows.Forms.Clipboard.SetImage(bitmap);
+                        clipboardSet = true;
+                        System.Diagnostics.Debug.WriteLine("Successfully set image to clipboard");
+                        LogToFile("Successfully set image to clipboard");
+                    }
+                    catch (Exception ex)
+                    {
+                        retryCount++;
+                        System.Diagnostics.Debug.WriteLine($"Clipboard attempt {retryCount} failed: {ex.Message}");
+                        LogToFile($"Clipboard attempt {retryCount} failed: {ex.Message}");
+                        
+                        if (retryCount < maxRetries)
+                        {
+                            System.Threading.Thread.Sleep(200); // Wait before retry
+                        }
+                        else
+                        {
+                            // If all retries failed, just throw the exception
+                            throw;
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Copy to clipboard failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Exception type: {ex.GetType().Name}");
+                LogToFile($"Copy to clipboard failed: {ex.Message}");
+                LogToFile($"Exception type: {ex.GetType().Name}");
+                throw; // Re-throw the exception so the calling code can handle it
             }
         }
 
@@ -124,6 +148,7 @@ namespace SharpShot.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Copy to clipboard failed: {ex.Message}");
+                throw; // Re-throw the exception so the calling code can handle it
             }
         }
 
@@ -149,6 +174,21 @@ namespace SharpShot.Services
                 timer.Dispose();
             };
             timer.Start();
+        }
+
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sharpshot_debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var logEntry = $"[{timestamp}] {message}\n";
+                File.AppendAllText(logPath, logEntry);
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
         }
     }
 } 
