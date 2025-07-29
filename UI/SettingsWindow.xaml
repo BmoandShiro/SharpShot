@@ -10,6 +10,7 @@
         AllowsTransparency="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
         <Window.Resources>
+            <SolidColorBrush x:Key="ResizeGripBrush" Color="#FFFF8C00"/>
             <Style TargetType="ResizeGrip">
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Template">
@@ -18,11 +19,11 @@
                             <Grid>
                                 <Canvas Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1">
                                     <!-- Bottom-left square -->
-                                    <Rectangle Canvas.Left="0" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <Rectangle Canvas.Left="0" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
                                     <!-- Bottom-right square -->
-                                    <Rectangle Canvas.Left="6" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <Rectangle Canvas.Left="6" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
                                     <!-- Top-right square -->
-                                    <Rectangle Canvas.Left="6" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <Rectangle Canvas.Left="6" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
                                 </Canvas>
                             </Grid>
                         </ControlTemplate>

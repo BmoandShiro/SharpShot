@@ -366,6 +366,13 @@ namespace SharpShot.UI
                     CloseSettingsButton.Foreground = brush;
                 }
                 
+                // Update ResizeGripBrush resource for the 3 squares in bottom right
+                var resizeGripBrush = this.Resources["ResizeGripBrush"] as System.Windows.Media.SolidColorBrush;
+                if (resizeGripBrush != null)
+                {
+                    resizeGripBrush.Color = color;
+                }
+                
                 System.Diagnostics.Debug.WriteLine($"Updated settings theme colors: {iconColor}");
             }
             catch (Exception ex)
