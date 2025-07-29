@@ -16,14 +16,14 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="ResizeGrip">
                             <Grid>
-                                <Path Data="M0,8 L2,8 L2,10 L0,10 Z M4,8 L6,8 L6,10 L4,10 Z M4,6 L6,6 L6,8 L4,8 Z M6,6 L8,6 L8,8 L6,8 Z" 
-                                      Fill="#FFFF8C00" 
-                                      Stretch="Uniform"
-                                      Width="12" 
-                                      Height="12"
-                                      HorizontalAlignment="Right"
-                                      VerticalAlignment="Bottom"
-                                      Margin="0,0,2,2"/>
+                                <Canvas Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1">
+                                    <!-- Bottom-left square -->
+                                    <Rectangle Canvas.Left="0" Canvas.Top="7" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <!-- Bottom-right square -->
+                                    <Rectangle Canvas.Left="7" Canvas.Top="7" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                    <!-- Top-right square -->
+                                    <Rectangle Canvas.Left="7" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="#FFFF8C00" StrokeThickness="1"/>
+                                </Canvas>
                             </Grid>
                         </ControlTemplate>
                     </Setter.Value>
@@ -95,6 +95,7 @@
                     <Setter Property="Foreground" Value="#FFFF8C00"/>
                     <Setter Property="BorderBrush" Value="Transparent"/>
                     <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Width" Value="16"/>
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="ScrollBar">
@@ -157,7 +158,11 @@
                                                     <Style TargetType="RepeatButton">
                                                         <Style.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Background" Value="#20FF8C00"/>
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value>
+                                                                        <SolidColorBrush Color="#FFFF8C00" Opacity="0.125"/>
+                                                                    </Setter.Value>
+                                                                </Setter>
                                                             </Trigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -174,7 +179,11 @@
                                                     <Style TargetType="RepeatButton">
                                                         <Style.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Background" Value="#20FF8C00"/>
+                                                                <Setter Property="Background">
+                                                                    <Setter.Value>
+                                                                        <SolidColorBrush Color="#FFFF8C00" Opacity="0.125"/>
+                                                                    </Setter.Value>
+                                                                </Setter>
                                                             </Trigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -185,7 +194,8 @@
                                             <Thumb Background="#FF404040" 
                                                    BorderBrush="#FFFF8C00"
                                                    BorderThickness="1"
-                                                   Margin="2,0,2,0">
+                                                   Margin="2,0,2,0"
+                                                   MinHeight="20">
                                                 <Thumb.Template>
                                                     <ControlTemplate TargetType="Thumb">
                                                         <Border Background="{TemplateBinding Background}"
@@ -200,6 +210,7 @@
                                                                             <Setter Property="Background" Value="#FF505050"/>
                                                                             <Setter Property="BorderBrush" Value="#FFFF8C00"/>
                                                                         </Trigger>
+
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </Border.Style>
