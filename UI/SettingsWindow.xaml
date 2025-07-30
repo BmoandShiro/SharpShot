@@ -369,7 +369,7 @@
                             Minimum="0" 
                             Maximum="1" 
                             Value="0.125"
-                            TickFrequency="0.1"
+                            TickFrequency="0.01"
                             IsSnapToTickEnabled="True"
                             VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" 
@@ -396,7 +396,7 @@
                             Minimum="0" 
                             Maximum="1" 
                             Value="0.15"
-                            TickFrequency="0.1"
+                            TickFrequency="0.01"
                             IsSnapToTickEnabled="True"
                             VerticalAlignment="Center"/>
                     <TextBlock Grid.Column="1" 
