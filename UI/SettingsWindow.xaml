@@ -322,6 +322,22 @@
                     <ComboBoxItem Content="Low"/>
                 </ComboBox>
 
+                <!-- Screen Selection for Full-Screen Capture -->
+                <TextBlock Text="Full-Screen Capture Target:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="ScreenComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15">
+                    <ComboBoxItem Content="All Monitors"/>
+                    <ComboBoxItem Content="Primary Monitor"/>
+                    <ComboBoxItem Content="Monitor 1"/>
+                    <ComboBoxItem Content="Monitor 2"/>
+                    <ComboBoxItem Content="Monitor 3"/>
+                    <ComboBoxItem Content="Monitor 4"/>
+                </ComboBox>
+
                 <!-- Checkboxes -->
                 <CheckBox x:Name="AudioRecordingCheckBox" 
                           Content="Enable Audio Recording" 

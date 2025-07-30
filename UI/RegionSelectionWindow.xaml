@@ -7,7 +7,7 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
-        WindowState="Maximized">
+        ResizeMode="NoResize">
     
     <Canvas x:Name="SelectionCanvas" Background="#80000000">
         <Rectangle x:Name="SelectionRect" 

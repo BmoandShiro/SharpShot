@@ -42,17 +42,18 @@ namespace SharpShot
             // Setup event handlers
             SetupEventHandlers();
             
-            // Position window
-            PositionWindow();
+            // Position window - temporarily disabled for debugging
+            // PositionWindow();
             
-            // Start minimized if setting is enabled
-            if (_settingsService.CurrentSettings.StartMinimized)
-            {
-                WindowState = WindowState.Minimized;
-            }
+            // Force window to be visible and not minimized for debugging
+            WindowState = WindowState.Normal;
+            Visibility = Visibility.Visible;
             
             // Apply theme settings
             ApplyThemeSettings();
+            
+            // Debug output
+            System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");
         }
 
         private void SetupEventHandlers()
@@ -80,15 +81,28 @@ namespace SharpShot
 
         private void PositionWindow()
         {
-            // Position at bottom middle of screen, above Windows taskbar
-            var screenWidth = SystemParameters.PrimaryScreenWidth;
-            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            // Get virtual desktop bounds for multi-monitor support
+            var allScreens = System.Windows.Forms.Screen.AllScreens;
+            var virtualBounds = GetVirtualDesktopBounds(allScreens);
+            
+            // Position at bottom middle of the virtual desktop, above Windows taskbar
+            var screenWidth = virtualBounds.Width;
+            var screenHeight = virtualBounds.Height;
             
             // Center horizontally
-            Left = (screenWidth - Width) / 2;
+            Left = virtualBounds.X + (screenWidth - Width) / 2;
             
             // Position above taskbar (typically 40-50 pixels from bottom)
-            Top = screenHeight - Height - 50;
+            Top = virtualBounds.Y + screenHeight - Height - 50;
+            
+            // Debug output for positioning
+            System.Diagnostics.Debug.WriteLine($"Positioning window: Virtual bounds: {virtualBounds}, Window size: {Width}x{Height}, Position: ({Left}, {Top})");
+            
+            // Ensure window is within visible bounds
+            if (Left < virtualBounds.X) Left = virtualBounds.X;
+            if (Top < virtualBounds.Y) Top = virtualBounds.Y;
+            if (Left + Width > virtualBounds.X + virtualBounds.Width) Left = virtualBounds.X + virtualBounds.Width - Width;
+            if (Top + Height > virtualBounds.Y + virtualBounds.Height) Top = virtualBounds.Y + virtualBounds.Height - Height;
         }
 
         #region Window Dragging
@@ -284,21 +298,14 @@ namespace SharpShot
                 Visibility = Visibility.Hidden;
                 await Task.Delay(100); // Brief delay to ensure window is hidden
                 
-                // Capture full screen and get both file path and bitmap
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                using var bitmap = new Bitmap(bounds.Width, bounds.Height);
-                using var graphics = Graphics.FromImage(bitmap);
-                
-                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
-                
-                // Store the bitmap for copying
-                _lastCapturedBitmap = new Bitmap(bitmap);
-                
-                // Save to file
-                var filePath = _screenshotService.SaveScreenshot(bitmap);
+                // Use the screenshot service to capture based on selected screen
+                var filePath = _screenshotService.CaptureFullScreen();
                 
                 if (!string.IsNullOrEmpty(filePath))
                 {
+                    // Load the captured bitmap for copying
+                    using var bitmap = new Bitmap(filePath);
+                    _lastCapturedBitmap = new Bitmap(bitmap);
                     _lastCapturedFilePath = filePath;
                     ShowCaptureOptions();
                 }
@@ -311,6 +318,28 @@ namespace SharpShot
                 ShowNotification("Screenshot failed!", isError: true);
                 Visibility = Visibility.Visible;
             }
+        }
+
+        private Rectangle GetVirtualDesktopBounds(System.Windows.Forms.Screen[] screens)
+        {
+            if (screens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                return System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+            }
+
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (var screen in screens)
+            {
+                minX = Math.Min(minX, screen.Bounds.X);
+                minY = Math.Min(minY, screen.Bounds.Y);
+                maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+            }
+
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
 
         private async Task CaptureRegion()
@@ -651,12 +680,11 @@ namespace SharpShot
                 }, System.Windows.Threading.DispatcherPriority.Render);
                 
                 // Start recording in the background (don't await it)
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await _recordingService.StartRecording(new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height));
+                        await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
                     }
                     catch (Exception ex)
                     {

@@ -16,11 +16,18 @@ namespace SharpShot.UI
         private bool _isSelecting;
         public Rectangle? SelectedRegion { get; private set; }
         public Bitmap? CapturedBitmap { get; private set; }
+        private Rectangle _virtualDesktopBounds;
 
         public RegionSelectionWindow(ScreenshotService screenshotService)
         {
             InitializeComponent();
             _screenshotService = screenshotService;
+            
+            // Calculate virtual desktop bounds (all monitors combined)
+            _virtualDesktopBounds = GetVirtualDesktopBounds();
+            
+            // Position and size the window to cover all monitors
+            PositionWindowForAllMonitors();
             
             // Setup event handlers
             SelectionCanvas.MouseLeftButtonDown += OnMouseLeftButtonDown;
@@ -39,6 +46,38 @@ namespace SharpShot.UI
                 timer.Stop();
             };
             timer.Start();
+        }
+
+        private Rectangle GetVirtualDesktopBounds()
+        {
+            var allScreens = System.Windows.Forms.Screen.AllScreens;
+            if (allScreens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                return System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+            }
+
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (var screen in allScreens)
+            {
+                minX = Math.Min(minX, screen.Bounds.X);
+                minY = Math.Min(minY, screen.Bounds.Y);
+                maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+            }
+
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+        }
+
+        private void PositionWindowForAllMonitors()
+        {
+            // Position the window to cover the entire virtual desktop
+            Left = _virtualDesktopBounds.X;
+            Top = _virtualDesktopBounds.Y;
+            Width = _virtualDesktopBounds.Width;
+            Height = _virtualDesktopBounds.Height;
         }
 
         private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -67,7 +106,11 @@ namespace SharpShot.UI
             
             if (width > 10 && height > 10)
             {
-                SelectedRegion = new Rectangle((int)x, (int)y, (int)width, (int)height);
+                // Convert window coordinates to screen coordinates
+                var screenX = (int)(Left + x);
+                var screenY = (int)(Top + y);
+                
+                SelectedRegion = new Rectangle(screenX, screenY, (int)width, (int)height);
                 CaptureRegion();
             }
             else
@@ -118,13 +161,9 @@ namespace SharpShot.UI
                     Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
                     System.Threading.Thread.Sleep(20); // Reduced delay for faster UI response
                     
-                    // Get the actual screen coordinates
-                    var screenBounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                    var windowPosition = new System.Drawing.Point((int)Left, (int)Top);
-                    
-                    // Calculate the actual screen coordinates of the selected region
-                    var actualX = windowPosition.X + SelectedRegion.Value.X;
-                    var actualY = windowPosition.Y + SelectedRegion.Value.Y;
+                    // Use the selected region coordinates directly (they're already in screen coordinates)
+                    var actualX = SelectedRegion.Value.X;
+                    var actualY = SelectedRegion.Value.Y;
                     var actualWidth = SelectedRegion.Value.Width;
                     var actualHeight = SelectedRegion.Value.Height;
                     

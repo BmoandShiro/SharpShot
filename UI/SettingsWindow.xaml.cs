@@ -30,6 +30,9 @@ namespace SharpShot.UI
             
             LoadSettings();
             
+            // Populate screen dropdown with actual monitors
+            PopulateScreenDropdown();
+            
             // Add event handlers for sliders
             HoverOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
             DropShadowOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
@@ -96,6 +99,17 @@ namespace SharpShot.UI
                     comboItem.Content.ToString() == _originalSettings.VideoQuality)
                 {
                     QualityComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            
+            // Set screen combo box
+            foreach (var item in ScreenComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.SelectedScreen)
+                {
+                    ScreenComboBox.SelectedItem = item;
                     break;
                 }
             }
@@ -216,6 +230,11 @@ namespace SharpShot.UI
                     _originalSettings.VideoQuality = qualityItem.Content.ToString();
                 }
                 
+                if (ScreenComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem screenItem)
+                {
+                    _originalSettings.SelectedScreen = screenItem.Content.ToString();
+                }
+                
                 _originalSettings.EnableAudioRecording = AudioRecordingCheckBox.IsChecked ?? false;
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
@@ -283,12 +302,54 @@ namespace SharpShot.UI
             target.IconColor = source.IconColor;
             target.HoverOpacity = source.HoverOpacity;
             target.DropShadowOpacity = source.DropShadowOpacity;
+            target.SelectedScreen = source.SelectedScreen;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
             foreach (var kvp in source.Hotkeys)
             {
                 target.Hotkeys[kvp.Key] = kvp.Value;
+            }
+        }
+
+        private void PopulateScreenDropdown()
+        {
+            // Clear existing items
+            ScreenComboBox.Items.Clear();
+            
+            // Add "All Monitors" option
+            ScreenComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "All Monitors" });
+            
+            // Get all screens
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Add primary monitor option
+            ScreenComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Primary Monitor" });
+            
+            // Add individual monitors
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                var isPrimary = screen.Primary;
+                var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
+                ScreenComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = monitorName });
+            }
+            
+            // Select the saved setting
+            foreach (var item in ScreenComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.SelectedScreen)
+                {
+                    ScreenComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            
+            // If no match found, default to "All Monitors"
+            if (ScreenComboBox.SelectedItem == null)
+            {
+                ScreenComboBox.SelectedIndex = 0;
             }
         }
 

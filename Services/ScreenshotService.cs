@@ -22,7 +22,9 @@ namespace SharpShot.Services
         {
             try
             {
-                var bounds = Screen.PrimaryScreen.Bounds;
+                // Get bounds based on selected screen
+                var bounds = GetBoundsForSelectedScreen();
+                
                 using var bitmap = new Bitmap(bounds.Width, bounds.Height);
                 using var graphics = Graphics.FromImage(bitmap);
                 
@@ -35,6 +37,65 @@ namespace SharpShot.Services
                 System.Diagnostics.Debug.WriteLine($"Full screen capture failed: {ex.Message}");
                 return string.Empty;
             }
+        }
+
+        private Rectangle GetBoundsForSelectedScreen()
+        {
+            var selectedScreen = _settingsService.CurrentSettings.SelectedScreen;
+            var allScreens = Screen.AllScreens;
+            
+            if (allScreens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                return Screen.PrimaryScreen.Bounds;
+            }
+            
+            // Handle different screen selection options
+            switch (selectedScreen)
+            {
+                case "All Monitors":
+                    return GetVirtualDesktopBounds();
+                    
+                case "Primary Monitor":
+                    return Screen.PrimaryScreen.Bounds;
+                    
+                default:
+                    // Check if it's a specific monitor (e.g., "Monitor 1", "Monitor 2", etc.)
+                    if (selectedScreen.StartsWith("Monitor "))
+                    {
+                        var monitorNumber = selectedScreen.Replace("Monitor ", "").Replace(" (Primary)", "");
+                        if (int.TryParse(monitorNumber, out int index) && index > 0 && index <= allScreens.Length)
+                        {
+                            return allScreens[index - 1].Bounds;
+                        }
+                    }
+                    
+                    // Fallback to virtual desktop bounds
+                    return GetVirtualDesktopBounds();
+            }
+        }
+
+        private Rectangle GetVirtualDesktopBounds()
+        {
+            var allScreens = Screen.AllScreens;
+            if (allScreens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                return Screen.PrimaryScreen.Bounds;
+            }
+
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (var screen in allScreens)
+            {
+                minX = Math.Min(minX, screen.Bounds.X);
+                minY = Math.Min(minY, screen.Bounds.Y);
+                maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+            }
+
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
 
         public string CaptureRegion(Rectangle region)
@@ -164,7 +225,8 @@ namespace SharpShot.Services
                 ShowInTaskbar = false
             };
 
-            overlay.Bounds = Screen.PrimaryScreen.Bounds;
+            // Use bounds based on selected screen
+            overlay.Bounds = GetBoundsForSelectedScreen();
             overlay.Show();
 
             var timer = new Timer { Interval = 200 };

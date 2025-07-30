@@ -17,6 +17,7 @@ namespace SharpShot.Models
         private string _iconColor = string.Empty;
         private double _hoverOpacity;
         private double _dropShadowOpacity;
+        private string _selectedScreen = string.Empty;
 
         public Settings()
         {
@@ -30,6 +31,7 @@ namespace SharpShot.Models
             IconColor = "#FFFF8C00";
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
+            SelectedScreen = "All Monitors"; // Default to capturing all monitors
             
             // Default hotkeys
             Hotkeys = new Dictionary<string, string>
@@ -102,6 +104,12 @@ namespace SharpShot.Models
         {
             get => _dropShadowOpacity;
             set => SetProperty(ref _dropShadowOpacity, value);
+        }
+
+        public string SelectedScreen
+        {
+            get => _selectedScreen;
+            set => SetProperty(ref _selectedScreen, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
