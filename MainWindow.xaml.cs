@@ -42,15 +42,33 @@ namespace SharpShot
             // Setup event handlers
             SetupEventHandlers();
             
-            // Position window - temporarily disabled for debugging
-            // PositionWindow();
+            // Position window
+            PositionWindow();
             
-            // Force window to be visible and not minimized for debugging
+            // Force window to be visible and not minimized
             WindowState = WindowState.Normal;
             Visibility = Visibility.Visible;
             
+            // Ensure window is on top and visible
+            Activate();
+            Focus();
+            
+            // Debug output
+            System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}, Visibility: {Visibility}");
+            
             // Apply theme settings
             ApplyThemeSettings();
+            
+            // Ensure window is visible after a short delay
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (Visibility != Visibility.Visible)
+                {
+                    Visibility = Visibility.Visible;
+                    Activate();
+                    Focus();
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
             
             // Debug output
             System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");
@@ -81,28 +99,50 @@ namespace SharpShot
 
         private void PositionWindow()
         {
-            // Get virtual desktop bounds for multi-monitor support
-            var allScreens = System.Windows.Forms.Screen.AllScreens;
-            var virtualBounds = GetVirtualDesktopBounds(allScreens);
-            
-            // Position at bottom middle of the virtual desktop, above Windows taskbar
-            var screenWidth = virtualBounds.Width;
-            var screenHeight = virtualBounds.Height;
-            
-            // Center horizontally
-            Left = virtualBounds.X + (screenWidth - Width) / 2;
-            
-            // Position above taskbar (typically 40-50 pixels from bottom)
-            Top = virtualBounds.Y + screenHeight - Height - 50;
-            
-            // Debug output for positioning
-            System.Diagnostics.Debug.WriteLine($"Positioning window: Virtual bounds: {virtualBounds}, Window size: {Width}x{Height}, Position: ({Left}, {Top})");
-            
-            // Ensure window is within visible bounds
-            if (Left < virtualBounds.X) Left = virtualBounds.X;
-            if (Top < virtualBounds.Y) Top = virtualBounds.Y;
-            if (Left + Width > virtualBounds.X + virtualBounds.Width) Left = virtualBounds.X + virtualBounds.Width - Width;
-            if (Top + Height > virtualBounds.Y + virtualBounds.Height) Top = virtualBounds.Y + virtualBounds.Height - Height;
+            try
+            {
+                // Use the primary screen for reliable positioning
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Fallback to first available screen
+                    var allScreens = System.Windows.Forms.Screen.AllScreens;
+                    if (allScreens.Length > 0)
+                    {
+                        primaryScreen = allScreens[0];
+                    }
+                    else
+                    {
+                        // Last resort - use default positioning
+                        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                        return;
+                    }
+                }
+                
+                // Position on primary screen, above taskbar
+                var screenBounds = primaryScreen.Bounds;
+                
+                // Center horizontally on the primary screen
+                Left = screenBounds.X + (screenBounds.Width - Width) / 2;
+                
+                // Position above taskbar (typically 40-50 pixels from bottom)
+                Top = screenBounds.Y + screenBounds.Height - Height - 50;
+                
+                // Ensure window is within the primary screen bounds
+                if (Left < screenBounds.X) Left = screenBounds.X;
+                if (Top < screenBounds.Y) Top = screenBounds.Y;
+                if (Left + Width > screenBounds.X + screenBounds.Width) Left = screenBounds.X + screenBounds.Width - Width;
+                if (Top + Height > screenBounds.Y + screenBounds.Height) Top = screenBounds.Y + screenBounds.Height - Height;
+                
+                // Debug output for positioning
+                System.Diagnostics.Debug.WriteLine($"Positioning window: Primary screen bounds: {screenBounds}, Window size: {Width}x{Height}, Position: ({Left}, {Top})");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Positioning failed: {ex.Message}");
+                // Fallback to center screen if positioning fails
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
         }
 
         #region Window Dragging

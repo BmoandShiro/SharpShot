@@ -4,7 +4,6 @@
         Title="SharpShot"
         Height="80" Width="500"
         Style="{StaticResource DarkWindowStyle}"
-        WindowStartupLocation="CenterScreen"
         Topmost="True"
         ShowInTaskbar="True"
         ResizeMode="NoResize"
