@@ -247,10 +247,10 @@ namespace SharpShot.Services
                 Console.WriteLine("Waiting for UI to settle...");
                 await Task.Delay(1000); // 1 second delay for UI to settle
                 
-                // Wait longer before checking if it exited (5 seconds)
-                LogToFile("Waiting 5 seconds to check if FFmpeg started properly...");
-                Console.WriteLine("Waiting 5 seconds to check if FFmpeg started properly...");
-                await Task.Delay(5000);
+                // Wait shorter before checking if it exited (2 seconds)
+                LogToFile("Waiting 2 seconds to check if FFmpeg started properly...");
+                Console.WriteLine("Waiting 2 seconds to check if FFmpeg started properly...");
+                await Task.Delay(2000);
                 
                 if (_ffmpegProcess.HasExited)
                 {
@@ -359,9 +359,6 @@ namespace SharpShot.Services
             // Handle different screen selection options
             switch (selectedScreen)
             {
-                case "All Monitors":
-                    return GetVirtualDesktopBounds();
-                    
                 case "Primary Monitor":
                     return Screen.PrimaryScreen.Bounds;
                     
@@ -376,8 +373,8 @@ namespace SharpShot.Services
                         }
                     }
                     
-                    // Fallback to virtual desktop bounds
-                    return GetVirtualDesktopBounds();
+                    // Fallback to primary screen
+                    return Screen.PrimaryScreen.Bounds;
             }
         }
 

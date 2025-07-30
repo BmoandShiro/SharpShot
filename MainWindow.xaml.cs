@@ -208,8 +208,8 @@ namespace SharpShot
             try
             {
                 await _recordingService.StopRecording();
-                // Show completion options after stopping
-                ShowRecordingCompletionOptions();
+                // Return to main home page after stopping
+                ShowNormalButtons();
             }
             catch (Exception ex)
             {
@@ -467,6 +467,9 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Visible;
                 CloseButton.Visibility = Visibility.Visible;
                 
+                // Reset recording button content to the original Path (video camera icon)
+                // The content is already set correctly in XAML, so we don't need to change it
+                
                 // Show main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Visible;
                 MainToolbarSeparator2.Visibility = Visibility.Visible;
@@ -621,8 +624,8 @@ namespace SharpShot
                 if (_recordingService.IsRecording)
                 {
                     await _recordingService.StopRecording();
-                    // Show recording completion options
-                    ShowRecordingCompletionOptions();
+                    // Return to main home page
+                    ShowNormalButtons();
                 }
                 else
                 {
@@ -653,7 +656,7 @@ namespace SharpShot
                     {
                         // Show recording control buttons immediately
                         RecordingTimer.Visibility = Visibility.Visible;
-                        RecordingButton.Content = "⏹️";
+                        // Don't change RecordingButton.Content - keep the original Path
                         StopRecordButton.Visibility = Visibility.Visible;
                         PauseRecordButton.Visibility = Visibility.Visible;
                         
@@ -675,12 +678,16 @@ namespace SharpShot
                         catch (Exception ex)
                         {
                             System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
-                            // If recording fails, revert UI on main thread
-                            Dispatcher.Invoke(() =>
+                            // Only show error if recording state hasn't changed to recording
+                            // This prevents false error messages when recording actually works
+                            if (!_recordingService.IsRecording)
                             {
-                                ShowNotification("Recording failed to start!", isError: true);
-                                ShowNormalButtons();
-                            });
+                                Dispatcher.Invoke(() =>
+                                {
+                                    ShowNotification("Recording failed to start!", isError: true);
+                                    ShowNormalButtons();
+                                });
+                            }
                         }
                     });
                 }
@@ -693,8 +700,12 @@ namespace SharpShot
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Region recording failed: {ex.Message}");
-                ShowNotification("Region recording failed!", isError: true);
-                ShowNormalButtons();
+                // Only show error if recording state hasn't changed to recording
+                if (!_recordingService.IsRecording)
+                {
+                    ShowNotification("Region recording failed!", isError: true);
+                    ShowNormalButtons();
+                }
             }
         }
 
@@ -707,7 +718,7 @@ namespace SharpShot
                 {
                     // Show recording control buttons immediately
                     RecordingTimer.Visibility = Visibility.Visible;
-                    RecordingButton.Content = "⏹️";
+                    // Don't change RecordingButton.Content - keep the original Path
                     StopRecordButton.Visibility = Visibility.Visible;
                     PauseRecordButton.Visibility = Visibility.Visible;
                     
@@ -729,20 +740,28 @@ namespace SharpShot
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
-                        // If recording fails, revert UI on main thread
-                        Dispatcher.Invoke(() =>
+                        // Only show error if recording state hasn't changed to recording
+                        // This prevents false error messages when recording actually works
+                        if (!_recordingService.IsRecording)
                         {
-                            ShowNotification("Recording failed to start!", isError: true);
-                            ShowNormalButtons();
-                        });
+                            Dispatcher.Invoke(() =>
+                            {
+                                ShowNotification("Recording failed to start!", isError: true);
+                                ShowNormalButtons();
+                            });
+                        }
                     }
                 });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Full screen recording failed: {ex.Message}");
-                ShowNotification("Full screen recording failed!", isError: true);
-                ShowNormalButtons();
+                // Only show error if recording state hasn't changed to recording
+                if (!_recordingService.IsRecording)
+                {
+                    ShowNotification("Full screen recording failed!", isError: true);
+                    ShowNormalButtons();
+                }
             }
         }
 
@@ -754,7 +773,7 @@ namespace SharpShot
                 {
                     // Batch all UI changes together to reduce flickering
                     RecordingTimer.Visibility = Visibility.Visible;
-                    RecordingButton.Content = "⏹️";
+                    // Don't change RecordingButton.Content - keep the original Path
                     
                     // Show recording control buttons
                     StopRecordButton.Visibility = Visibility.Visible;
@@ -771,7 +790,7 @@ namespace SharpShot
                 {
                     // Batch all UI changes together to reduce flickering
                     RecordingTimer.Visibility = Visibility.Collapsed;
-                    RecordingButton.Content = "🎥";
+                    // Don't change RecordingButton.Content - keep the original Path
                     
                     // Hide recording control buttons
                     StopRecordButton.Visibility = Visibility.Collapsed;
@@ -783,8 +802,8 @@ namespace SharpShot
                         _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath();
                     }
                     
-                    // Show completion options when recording stops
-                    ShowRecordingCompletionOptions();
+                    // Return to main home page when recording stops
+                    ShowNormalButtons();
                 }
             }, System.Windows.Threading.DispatcherPriority.Render);
         }

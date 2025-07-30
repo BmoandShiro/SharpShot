@@ -31,7 +31,7 @@ namespace SharpShot.Models
             IconColor = "#FFFF8C00";
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
-            SelectedScreen = "All Monitors"; // Default to capturing all monitors
+            SelectedScreen = "Primary Monitor"; // Default to primary monitor
             
             // Default hotkeys
             Hotkeys = new Dictionary<string, string>

@@ -317,9 +317,6 @@ namespace SharpShot.UI
             // Clear existing items
             ScreenComboBox.Items.Clear();
             
-            // Add "All Monitors" option
-            ScreenComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "All Monitors" });
-            
             // Get all screens
             var screens = System.Windows.Forms.Screen.AllScreens;
             
@@ -346,7 +343,7 @@ namespace SharpShot.UI
                 }
             }
             
-            // If no match found, default to "All Monitors"
+            // If no match found, default to "Primary Monitor"
             if (ScreenComboBox.SelectedItem == null)
             {
                 ScreenComboBox.SelectedIndex = 0;
