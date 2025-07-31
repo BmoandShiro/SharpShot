@@ -12,16 +12,20 @@ namespace SharpShot.UI
     public partial class RegionSelectionWindow : Window
     {
         private readonly ScreenshotService _screenshotService;
+        private readonly SettingsService? _settingsService;
         private Point _startPoint;
         private bool _isSelecting;
         public Rectangle? SelectedRegion { get; private set; }
         public Bitmap? CapturedBitmap { get; private set; }
         private Rectangle _virtualDesktopBounds;
+        private MagnifierWindow? _magnifier;
+        private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
 
-        public RegionSelectionWindow(ScreenshotService screenshotService)
+        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null)
         {
             InitializeComponent();
             _screenshotService = screenshotService;
+            _settingsService = settingsService;
             
             // Calculate virtual desktop bounds (all monitors combined)
             _virtualDesktopBounds = GetVirtualDesktopBounds();
@@ -46,6 +50,9 @@ namespace SharpShot.UI
                 timer.Stop();
             };
             timer.Start();
+            
+            // Initialize magnifier
+            InitializeMagnifier();
         }
 
         private Rectangle GetVirtualDesktopBounds()
@@ -62,10 +69,13 @@ namespace SharpShot.UI
 
             foreach (var screen in allScreens)
             {
-                minX = Math.Min(minX, screen.Bounds.X);
-                minY = Math.Min(minY, screen.Bounds.Y);
-                maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
-                maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+                if (screen != null)
+                {
+                    minX = Math.Min(minX, screen.Bounds.X);
+                    minY = Math.Min(minY, screen.Bounds.Y);
+                    maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                    maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+                }
             }
 
             return new Rectangle(minX, minY, maxX - minX, maxY - minY);
@@ -80,6 +90,73 @@ namespace SharpShot.UI
             Height = _virtualDesktopBounds.Height;
         }
 
+        private void InitializeMagnifier()
+        {
+            // Only initialize magnifier if the setting is enabled
+            if (_settingsService?.CurrentSettings.EnableMagnifier != true)
+            {
+                return;
+            }
+            
+            try
+            {
+                _magnifier = new MagnifierWindow();
+                
+                // Create timer for updating magnifier
+                _magnifierTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(50) // Update 20 times per second
+                };
+                _magnifierTimer.Tick += (sender, e) =>
+                {
+                    if (_magnifier != null && _isSelecting)
+                    {
+                        _magnifier.UpdateMagnifier();
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize magnifier: {ex.Message}");
+            }
+        }
+        
+        private void StartMagnifier()
+        {
+            try
+            {
+                if (_magnifier != null && _magnifierTimer != null)
+                {
+                    _magnifier.ShowMagnifier();
+                    _magnifierTimer.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to start magnifier: {ex.Message}");
+            }
+        }
+        
+        private void StopMagnifier()
+        {
+            try
+            {
+                if (_magnifierTimer != null)
+                {
+                    _magnifierTimer.Stop();
+                }
+                
+                if (_magnifier != null)
+                {
+                    _magnifier.HideMagnifier();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to stop magnifier: {ex.Message}");
+            }
+        }
+
         private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             _startPoint = e.GetPosition(SelectionCanvas);
@@ -90,6 +167,9 @@ namespace SharpShot.UI
             System.Windows.Controls.Canvas.SetTop(SelectionRect, _startPoint.Y);
             SelectionRect.Width = 0;
             SelectionRect.Height = 0;
+            
+            // Start magnifier when selection begins
+            StartMagnifier();
         }
 
         private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -97,6 +177,10 @@ namespace SharpShot.UI
             if (!_isSelecting) return;
             
             _isSelecting = false;
+            
+            // Stop magnifier when selection ends
+            StopMagnifier();
+            
             var endPoint = e.GetPosition(SelectionCanvas);
             
             var x = Math.Min(_startPoint.X, endPoint.X);
@@ -140,6 +224,8 @@ namespace SharpShot.UI
         {
             if (e.Key == Key.Escape)
             {
+                // Stop magnifier when canceling
+                StopMagnifier();
                 Close();
             }
         }
@@ -185,8 +271,17 @@ namespace SharpShot.UI
             }
             finally
             {
+                // Clean up magnifier before closing
+                StopMagnifier();
                 Close();
             }
+        }
+        
+        protected override void OnClosed(EventArgs e)
+        {
+            // Ensure magnifier is cleaned up when window closes
+            StopMagnifier();
+            base.OnClosed(e);
         }
     }
 } 

@@ -19,6 +19,7 @@ namespace SharpShot.Models
         private double _dropShadowOpacity;
         private string _selectedScreen = string.Empty;
         private bool _autoCopyScreenshots;
+        private bool _enableMagnifier;
 
         public Settings()
         {
@@ -34,6 +35,7 @@ namespace SharpShot.Models
             DropShadowOpacity = 0.15;
             SelectedScreen = "Primary Monitor"; // Default to primary monitor
             AutoCopyScreenshots = false; // Default to false - user must manually copy
+            EnableMagnifier = true; // Default to true - magnifier helps with precise selection
             
             // Default hotkeys
             Hotkeys = new Dictionary<string, string>
@@ -118,6 +120,12 @@ namespace SharpShot.Models
         {
             get => _autoCopyScreenshots;
             set => SetProperty(ref _autoCopyScreenshots, value);
+        }
+
+        public bool EnableMagnifier
+        {
+            get => _enableMagnifier;
+            set => SetProperty(ref _enableMagnifier, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

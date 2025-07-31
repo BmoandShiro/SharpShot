@@ -1,0 +1,69 @@
+<Window x:Class="SharpShot.UI.MagnifierWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Magnifier"
+        Height="200" Width="200"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual">
+    
+    <Border Background="#FF1A1A1A" 
+            CornerRadius="8" 
+            BorderBrush="#FFFF8C00" 
+            BorderThickness="2"
+            Effect="{x:Null}">
+        
+        <Grid>
+            <!-- Magnified content area -->
+            <Border x:Name="MagnifierContent"
+                    Background="Transparent"
+                    Margin="4">
+                <Image x:Name="MagnifiedImage"
+                       Stretch="Uniform"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+            </Border>
+            
+            <!-- Crosshair overlay -->
+            <Canvas x:Name="CrosshairCanvas" 
+                    Background="Transparent">
+                <!-- Horizontal line -->
+                <Line x:Name="HorizontalLine"
+                      X1="0" Y1="100" X2="200" Y2="100"
+                      Stroke="#FFFF8C00"
+                      StrokeThickness="1"
+                      Opacity="0.8"/>
+                
+                <!-- Vertical line -->
+                <Line x:Name="VerticalLine"
+                      X1="100" Y1="0" X2="100" Y2="200"
+                      Stroke="#FFFF8C00"
+                      StrokeThickness="1"
+                      Opacity="0.8"/>
+                
+                <!-- Center dot -->
+                <Ellipse x:Name="CenterDot"
+                         Width="4" Height="4"
+                         Fill="#FFFF8C00"
+                         Canvas.Left="98" Canvas.Top="98"/>
+            </Canvas>
+            
+            <!-- Zoom level indicator -->
+            <Border Background="#80000000"
+                    CornerRadius="4"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="8,8,0,0"
+                    Padding="4,2">
+                <TextBlock x:Name="ZoomLevelText"
+                           Text="2x"
+                           Foreground="#FFFF8C00"
+                           FontSize="10"
+                           FontWeight="Bold"/>
+            </Border>
+        </Grid>
+    </Border>
+</Window> 

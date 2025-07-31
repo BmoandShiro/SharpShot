@@ -445,7 +445,7 @@ namespace SharpShot
                 await Task.Delay(100);
                 
                 // Show region selection window
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
                 regionWindow.ShowDialog();
                 
                 // Check if a region was captured
@@ -704,10 +704,10 @@ namespace SharpShot
             }
         }
 
-        private async Task StartRegionRecording()
+                private Task StartRegionRecording()
         {
             // Show region selection window for recording (without hiding main window)
-            var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
             regionWindow.ShowDialog();
             
             // Check if a region was selected
@@ -740,9 +740,11 @@ namespace SharpShot
                 // If no region selected, go back to normal buttons
                 ShowNormalButtons();
             }
+            
+            return Task.CompletedTask;
         }
 
-        private async Task StartFullScreenRecording()
+        private Task StartFullScreenRecording()
         {
             // Update UI immediately to show recording controls
             Dispatcher.Invoke(() =>
@@ -765,6 +767,8 @@ namespace SharpShot
                     // The OnRecordingStateChanged event will handle UI updates
                 }
             });
+            
+            return Task.CompletedTask;
         }
 
         private void OnRecordingStateChanged(bool isRecording)

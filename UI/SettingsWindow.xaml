@@ -354,6 +354,10 @@
                 <CheckBox x:Name="AutoCopyScreenshotsCheckBox" 
                           Content="Auto-copy screenshots to clipboard" 
                           Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
+                <CheckBox x:Name="EnableMagnifierCheckBox" 
+                          Content="Enable magnifier during region selection" 
+                          Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,20"/>
 
                 <!-- Theme Customization Section -->

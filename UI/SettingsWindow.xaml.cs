@@ -118,6 +118,7 @@ namespace SharpShot.UI
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
+            EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             
             // Load theme customization settings
             IconColorTextBox.Text = _originalSettings.IconColor;
@@ -223,23 +224,24 @@ namespace SharpShot.UI
                 
                 if (FormatComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem formatItem)
                 {
-                    _originalSettings.ScreenshotFormat = formatItem.Content.ToString();
+                    _originalSettings.ScreenshotFormat = formatItem.Content?.ToString() ?? "PNG";
                 }
                 
                 if (QualityComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem qualityItem)
                 {
-                    _originalSettings.VideoQuality = qualityItem.Content.ToString();
+                    _originalSettings.VideoQuality = qualityItem.Content?.ToString() ?? "High";
                 }
                 
                 if (ScreenComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem screenItem)
                 {
-                    _originalSettings.SelectedScreen = screenItem.Content.ToString();
+                    _originalSettings.SelectedScreen = screenItem.Content?.ToString() ?? "Primary Monitor";
                 }
                 
                 _originalSettings.EnableAudioRecording = AudioRecordingCheckBox.IsChecked ?? false;
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
+                _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 
                 // Save theme customization settings
                 _originalSettings.IconColor = IconColorTextBox.Text;
@@ -306,6 +308,7 @@ namespace SharpShot.UI
             target.DropShadowOpacity = source.DropShadowOpacity;
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
+            target.EnableMagnifier = source.EnableMagnifier;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
