@@ -218,22 +218,40 @@ namespace SharpShot
             }
         }
 
-        private void PauseRecordButton_Click(object sender, RoutedEventArgs e)
+        private async void PauseRecordButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_recordingService != null)
+            try
             {
-                if (_recordingService.IsPaused)
+                if (_recordingService != null && _recordingService.IsRecording)
                 {
-                    _recordingService.ResumeRecording();
-                    // Don't change button content - keep the original Path
-                    PauseRecordButton.ToolTip = "Pause Recording";
+                    // Stop the recording
+                    await _recordingService.StopRecording();
+                    
+                    // Delete the recorded video file
+                    var recordingPath = _recordingService.GetCurrentRecordingPath();
+                    if (!string.IsNullOrEmpty(recordingPath) && File.Exists(recordingPath))
+                    {
+                        try
+                        {
+                            File.Delete(recordingPath);
+                            System.Diagnostics.Debug.WriteLine($"Deleted recording file: {recordingPath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to delete recording file: {ex.Message}");
+                        }
+                    }
+                    
+                    // Return to recording selection menu
+                    ShowRecordingSelectionButtons();
                 }
-                else
-                {
-                    _recordingService.PauseRecording();
-                    // Don't change button content - keep the original Path
-                    PauseRecordButton.ToolTip = "Resume Recording";
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Cancel recording failed: {ex.Message}");
+                ShowNotification("Failed to cancel recording!", isError: true);
+                // Still return to recording selection menu even if deletion failed
+                ShowRecordingSelectionButtons();
             }
         }
 
@@ -307,7 +325,7 @@ namespace SharpShot
                 
                 // Show recording control buttons
                 StopRecordButton.Visibility = Visibility.Visible;
-                PauseRecordButton.Visibility = Visibility.Visible;
+                PauseRecordButton.Visibility = Visibility.Visible; // This is now the cancel button
                 
                 // Show recording timer
                 RecordingTimer.Visibility = Visibility.Visible;
@@ -499,7 +517,7 @@ namespace SharpShot
             {
                 // Hide recording control buttons first
                 StopRecordButton.Visibility = Visibility.Collapsed;
-                PauseRecordButton.Visibility = Visibility.Collapsed;
+                PauseRecordButton.Visibility = Visibility.Collapsed; // This is now the cancel button
                 RecordingTimer.Visibility = Visibility.Collapsed;
                 
                 // Show normal buttons
