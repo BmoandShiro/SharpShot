@@ -41,6 +41,9 @@ namespace SharpShot.UI
             EnableMagnifierCheckBox.Checked += (s, e) => MagnifierZoomPanel.Visibility = Visibility.Visible;
             EnableMagnifierCheckBox.Unchecked += (s, e) => MagnifierZoomPanel.Visibility = Visibility.Collapsed;
             
+            // Add event handler for color wheel text box
+            IconColorTextBox.TextChanged += IconColorTextBox_TextChanged;
+            
             // Set initial visibility
             MagnifierZoomPanel.Visibility = _originalSettings.EnableMagnifier ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -145,6 +148,8 @@ namespace SharpShot.UI
             
             // Load theme customization settings
             IconColorTextBox.Text = _originalSettings.IconColor;
+            IconColorWheel.SetColor(_originalSettings.IconColor);
+            IconColorWheel.ColorChanged += (s, color) => IconColorTextBox.Text = color;
             HoverOpacitySlider.Value = _originalSettings.HoverOpacity;
             DropShadowOpacitySlider.Value = _originalSettings.DropShadowOpacity;
             UpdateOpacityLabels();
@@ -513,6 +518,29 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to apply theme changes: {ex.Message}");
+            }
+        }
+        
+        private void IconColorTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            try
+            {
+                var text = IconColorTextBox.Text;
+                if (!string.IsNullOrEmpty(text) && text.StartsWith("#"))
+                {
+                    // Temporarily remove the event handler to avoid infinite loop
+                    IconColorWheel.ColorChanged -= (s, color) => IconColorTextBox.Text = color;
+                    
+                    // Update the color wheel
+                    IconColorWheel.SetColor(text);
+                    
+                    // Re-add the event handler
+                    IconColorWheel.ColorChanged += (s, color) => IconColorTextBox.Text = color;
+                }
+            }
+            catch
+            {
+                // Ignore invalid color formats
             }
         }
     }

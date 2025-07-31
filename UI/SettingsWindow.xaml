@@ -1,8 +1,9 @@
 <Window x:Class="SharpShot.UI.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SharpShot.UI"
         Title="SharpShot Settings"
-        Height="600" Width="500"
+        Height="700" Width="500"
         Style="{StaticResource DarkWindowStyle}"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
@@ -404,14 +405,33 @@
                            Margin="0,0,0,10"/>
                 
                 <!-- Icon Color -->
-                <TextBlock Text="Icon Color (Hex):" 
+                <TextBlock Text="Icon Color:" 
                            Foreground="{StaticResource TextBrush}" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,5"/>
-                <TextBox x:Name="IconColorTextBox" 
-                         Style="{StaticResource DarkTextBoxStyle}"
-                         Text="#FFFF8C00"
-                         Margin="0,0,0,15"/>
+                
+                <!-- RGB Color Picker -->
+                <Border Background="#FF1A1A1A" 
+                        BorderBrush="#FF404040" 
+                        BorderThickness="1" 
+                        CornerRadius="8" 
+                        Padding="20" 
+                        Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Use the RGB sliders to select a color" 
+                                   Foreground="{StaticResource TextBrush}" 
+                                   FontSize="12" 
+                                   HorizontalAlignment="Center" 
+                                   Margin="0,0,0,10"/>
+                        <local:ColorWheelControl x:Name="IconColorWheel" 
+                                                HorizontalAlignment="Center"/>
+                        <TextBox x:Name="IconColorTextBox" 
+                                 Style="{StaticResource DarkTextBoxStyle}"
+                                 Text="#FFFF8C00"
+                                 Margin="0,10,0,0"
+                                 TextChanged="IconColorTextBox_TextChanged"/>
+                    </StackPanel>
+                </Border>
                 
                 <!-- Hover Opacity -->
                 <TextBlock Text="Hover Highlight Opacity:" 
