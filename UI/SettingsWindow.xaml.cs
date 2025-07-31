@@ -28,14 +28,21 @@ namespace SharpShot.UI
             // Copy current settings to avoid modifying the original
             CopySettings(_settingsService.CurrentSettings, _originalSettings);
             
-            LoadSettings();
-            
             // Populate screen dropdown with actual monitors
             PopulateScreenDropdown();
+            
+            LoadSettings();
             
             // Add event handlers for sliders
             HoverOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
             DropShadowOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
+            
+            // Add event handler for magnifier checkbox
+            EnableMagnifierCheckBox.Checked += (s, e) => MagnifierZoomPanel.Visibility = Visibility.Visible;
+            EnableMagnifierCheckBox.Unchecked += (s, e) => MagnifierZoomPanel.Visibility = Visibility.Collapsed;
+            
+            // Set initial visibility
+            MagnifierZoomPanel.Visibility = _originalSettings.EnableMagnifier ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -79,7 +86,9 @@ namespace SharpShot.UI
 
         private void LoadSettings()
         {
-            SavePathTextBox.Text = _originalSettings.SavePath;
+            try
+            {
+                SavePathTextBox.Text = _originalSettings.SavePath;
             
             // Set format combo box
             foreach (var item in FormatComboBox.Items)
@@ -120,6 +129,20 @@ namespace SharpShot.UI
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             
+            // Load magnifier zoom level
+            if (MagnifierZoomComboBox != null && MagnifierZoomComboBox.Items.Count > 0)
+            {
+                var zoomText = $"{_originalSettings.MagnifierZoomLevel:F1}x";
+                foreach (System.Windows.Controls.ComboBoxItem item in MagnifierZoomComboBox.Items)
+                {
+                    if (item.Content?.ToString() == zoomText)
+                    {
+                        MagnifierZoomComboBox.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+            
             // Load theme customization settings
             IconColorTextBox.Text = _originalSettings.IconColor;
             HoverOpacitySlider.Value = _originalSettings.HoverOpacity;
@@ -144,6 +167,12 @@ namespace SharpShot.UI
             
             // Apply current theme colors
             UpdateThemeColors();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading settings: {ex.Message}");
+                // Continue with default values if loading fails
+            }
         }
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
@@ -243,6 +272,16 @@ namespace SharpShot.UI
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 
+                // Save magnifier zoom level
+                if (MagnifierZoomComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem zoomItem)
+                {
+                    var zoomText = zoomItem.Content?.ToString() ?? "2.0x";
+                    if (double.TryParse(zoomText.Replace("x", ""), out double zoomLevel))
+                    {
+                        _originalSettings.MagnifierZoomLevel = zoomLevel;
+                    }
+                }
+                
                 // Save theme customization settings
                 _originalSettings.IconColor = IconColorTextBox.Text;
                 _originalSettings.HoverOpacity = HoverOpacitySlider.Value;
@@ -309,6 +348,7 @@ namespace SharpShot.UI
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.EnableMagnifier = source.EnableMagnifier;
+            target.MagnifierZoomLevel = source.MagnifierZoomLevel;
             
             // Copy hotkeys
             target.Hotkeys.Clear();

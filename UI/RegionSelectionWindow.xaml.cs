@@ -100,7 +100,8 @@ namespace SharpShot.UI
             
             try
             {
-                _magnifier = new MagnifierWindow();
+                var zoomLevel = _settingsService?.CurrentSettings.MagnifierZoomLevel ?? 2.0;
+                _magnifier = new MagnifierWindow(zoomLevel);
                 
                 // Create timer for updating magnifier
                 _magnifierTimer = new System.Windows.Threading.DispatcherTimer

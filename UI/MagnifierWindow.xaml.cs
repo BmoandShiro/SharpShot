@@ -11,8 +11,8 @@ namespace SharpShot.UI
     public partial class MagnifierWindow : Window
     {
         private const int MagnifierSize = 200;
-        private const int CaptureSize = 100; // Size of area to capture around cursor
-        private const double ZoomLevel = 2.0; // 2x zoom
+        private int _captureSize; // Size of area to capture around cursor (calculated based on zoom)
+        private double _zoomLevel = 2.0; // Default zoom level
         private double _currentX, _currentY; // Track current magnifier position
         
         [DllImport("user32.dll")]
@@ -51,16 +51,22 @@ namespace SharpShot.UI
         
         private const uint SRCCOPY = 0x00CC0020;
         
-        public MagnifierWindow()
+                public MagnifierWindow(double zoomLevel = 2.0)
         {
             InitializeComponent();
-            
+
+            // Set zoom level
+            _zoomLevel = Math.Max(0.5, Math.Min(10.0, zoomLevel)); // Clamp between 0.5x and 10x
+
+            // Calculate capture size based on zoom level
+            _captureSize = (int)(MagnifierSize / _zoomLevel);
+
             // Set window size
             Width = MagnifierSize;
             Height = MagnifierSize;
-            
+
             // Update zoom level text
-            ZoomLevelText.Text = $"{ZoomLevel}x";
+            ZoomLevelText.Text = $"{_zoomLevel:F1}x";
         }
         
         public void UpdateMagnifier()
@@ -73,16 +79,16 @@ namespace SharpShot.UI
                 // Position magnifier first to know where it will be
                 PositionMagnifier(cursorPos.X, cursorPos.Y);
                 
-                // Calculate capture area around cursor
-                int captureX = cursorPos.X - CaptureSize / 2;
-                int captureY = cursorPos.Y - CaptureSize / 2;
-                
-                // Ensure capture area is within screen bounds
-                captureX = Math.Max(0, captureX);
-                captureY = Math.Max(0, captureY);
-                
-                // Capture screen area, excluding the magnifier's own area
-                var capturedBitmap = CaptureScreenAreaExcludingMagnifier(captureX, captureY, CaptureSize, CaptureSize);
+                                       // Calculate capture area around cursor
+                       int captureX = cursorPos.X - _captureSize / 2;
+                       int captureY = cursorPos.Y - _captureSize / 2;
+
+                       // Ensure capture area is within screen bounds
+                       captureX = Math.Max(0, captureX);
+                       captureY = Math.Max(0, captureY);
+
+                       // Capture screen area, excluding the magnifier's own area
+                       var capturedBitmap = CaptureScreenAreaExcludingMagnifier(captureX, captureY, _captureSize, _captureSize);
                 
                 if (capturedBitmap != null)
                 {

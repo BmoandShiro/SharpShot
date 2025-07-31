@@ -20,6 +20,7 @@ namespace SharpShot.Models
         private string _selectedScreen = string.Empty;
         private bool _autoCopyScreenshots;
         private bool _enableMagnifier;
+        private double _magnifierZoomLevel;
 
         public Settings()
         {
@@ -33,9 +34,10 @@ namespace SharpShot.Models
             IconColor = "#FFFF8C00";
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
-            SelectedScreen = "Primary Monitor"; // Default to primary monitor
-            AutoCopyScreenshots = false; // Default to false - user must manually copy
-            EnableMagnifier = true; // Default to true - magnifier helps with precise selection
+                               SelectedScreen = "Primary Monitor"; // Default to primary monitor
+                   AutoCopyScreenshots = false; // Default to false - user must manually copy
+                   EnableMagnifier = true; // Default to true - magnifier helps with precise selection
+                   MagnifierZoomLevel = 2.0; // Default to 2x zoom
             
             // Default hotkeys
             Hotkeys = new Dictionary<string, string>
@@ -126,6 +128,12 @@ namespace SharpShot.Models
         {
             get => _enableMagnifier;
             set => SetProperty(ref _enableMagnifier, value);
+        }
+
+        public double MagnifierZoomLevel
+        {
+            get => _magnifierZoomLevel;
+            set => SetProperty(ref _magnifierZoomLevel, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
