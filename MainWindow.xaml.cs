@@ -220,37 +220,35 @@ namespace SharpShot
 
         private async void PauseRecordButton_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (_recordingService != null && _recordingService.IsRecording)
             {
-                if (_recordingService != null && _recordingService.IsRecording)
+                // Stop the recording (don't treat exceptions as errors when canceling)
+                try
                 {
-                    // Stop the recording
                     await _recordingService.StopRecording();
-                    
-                    // Delete the recorded video file
-                    var recordingPath = _recordingService.GetCurrentRecordingPath();
-                    if (!string.IsNullOrEmpty(recordingPath) && File.Exists(recordingPath))
-                    {
-                        try
-                        {
-                            File.Delete(recordingPath);
-                            System.Diagnostics.Debug.WriteLine($"Deleted recording file: {recordingPath}");
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Failed to delete recording file: {ex.Message}");
-                        }
-                    }
-                    
-                    // Return to recording selection menu
-                    ShowRecordingSelectionButtons();
                 }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Cancel recording failed: {ex.Message}");
-                ShowNotification("Failed to cancel recording!", isError: true);
-                // Still return to recording selection menu even if deletion failed
+                catch (Exception ex)
+                {
+                    // Log the exception but don't show error to user when canceling
+                    System.Diagnostics.Debug.WriteLine($"Stop recording during cancel: {ex.Message}");
+                }
+                
+                // Delete the recorded video file
+                var recordingPath = _recordingService.GetCurrentRecordingPath();
+                if (!string.IsNullOrEmpty(recordingPath) && File.Exists(recordingPath))
+                {
+                    try
+                    {
+                        File.Delete(recordingPath);
+                        System.Diagnostics.Debug.WriteLine($"Deleted recording file: {recordingPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to delete recording file: {ex.Message}");
+                    }
+                }
+                
+                // Return to recording selection menu
                 ShowRecordingSelectionButtons();
             }
         }
@@ -702,66 +700,12 @@ namespace SharpShot
 
         private async Task StartRegionRecording()
         {
-            try
-            {
-                // Show region selection window for recording (without hiding main window)
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
-                regionWindow.ShowDialog();
-                
-                // Check if a region was selected
-                if (regionWindow.SelectedRegion.HasValue)
-                {
-                    // Update UI immediately to show recording controls
-                    Dispatcher.Invoke(() =>
-                    {
-                        // Use the proper recording controls method
-                        ShowRecordingControls();
-                    }, System.Windows.Threading.DispatcherPriority.Render);
-                    
-                    // Start recording in the background (don't await it)
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
-                            // Only show error if recording state hasn't changed to recording
-                            // This prevents false error messages when recording actually works
-                            if (!_recordingService.IsRecording)
-                            {
-                                Dispatcher.Invoke(() =>
-                                {
-                                    ShowNotification("Recording failed to start!", isError: true);
-                                    ShowNormalButtons();
-                                });
-                            }
-                        }
-                    });
-                }
-                else
-                {
-                    // If no region selected, go back to normal buttons
-                    ShowNormalButtons();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Region recording failed: {ex.Message}");
-                // Only show error if recording state hasn't changed to recording
-                if (!_recordingService.IsRecording)
-                {
-                    ShowNotification("Region recording failed!", isError: true);
-                    ShowNormalButtons();
-                }
-            }
-        }
-
-        private async Task StartFullScreenRecording()
-        {
-            try
+            // Show region selection window for recording (without hiding main window)
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
+            regionWindow.ShowDialog();
+            
+            // Check if a region was selected
+            if (regionWindow.SelectedRegion.HasValue)
             {
                 // Update UI immediately to show recording controls
                 Dispatcher.Invoke(() =>
@@ -775,34 +719,46 @@ namespace SharpShot
                 {
                     try
                     {
-                        await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                        await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
                     }
                     catch (Exception ex)
                     {
                         System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
-                        // Only show error if recording state hasn't changed to recording
-                        // This prevents false error messages when recording actually works
-                        if (!_recordingService.IsRecording)
-                        {
-                            Dispatcher.Invoke(() =>
-                            {
-                                ShowNotification("Recording failed to start!", isError: true);
-                                ShowNormalButtons();
-                            });
-                        }
+                        // Don't show error to user since recording might still work
+                        // The OnRecordingStateChanged event will handle UI updates
                     }
                 });
             }
-            catch (Exception ex)
+            else
             {
-                System.Diagnostics.Debug.WriteLine($"Full screen recording failed: {ex.Message}");
-                // Only show error if recording state hasn't changed to recording
-                if (!_recordingService.IsRecording)
-                {
-                    ShowNotification("Full screen recording failed!", isError: true);
-                    ShowNormalButtons();
-                }
+                // If no region selected, go back to normal buttons
+                ShowNormalButtons();
             }
+        }
+
+        private async Task StartFullScreenRecording()
+        {
+            // Update UI immediately to show recording controls
+            Dispatcher.Invoke(() =>
+            {
+                // Use the proper recording controls method
+                ShowRecordingControls();
+            }, System.Windows.Threading.DispatcherPriority.Render);
+            
+            // Start recording in the background (don't await it)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
+                    // Don't show error to user since recording might still work
+                    // The OnRecordingStateChanged event will handle UI updates
+                }
+            });
         }
 
         private void OnRecordingStateChanged(bool isRecording)
