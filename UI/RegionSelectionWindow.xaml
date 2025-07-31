@@ -9,7 +9,7 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize">
     
-    <Canvas x:Name="SelectionCanvas" Background="#80000000">
+    <Canvas x:Name="SelectionCanvas" Background="#01000000">
         <Rectangle x:Name="SelectionRect" 
                    Stroke="{StaticResource AccentBrush}" 
                    StrokeThickness="2" 

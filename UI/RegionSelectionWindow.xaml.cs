@@ -110,11 +110,14 @@ namespace SharpShot.UI
                 };
                 _magnifierTimer.Tick += (sender, e) =>
                 {
-                    if (_magnifier != null && _isSelecting)
+                    if (_magnifier != null)
                     {
                         _magnifier.UpdateMagnifier();
                     }
                 };
+                
+                // Start magnifier immediately when window opens
+                StartMagnifier();
             }
             catch (Exception ex)
             {
@@ -169,8 +172,7 @@ namespace SharpShot.UI
             SelectionRect.Width = 0;
             SelectionRect.Height = 0;
             
-            // Start magnifier when selection begins
-            StartMagnifier();
+            // Magnifier is already running since window opened
         }
 
         private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -179,8 +181,7 @@ namespace SharpShot.UI
             
             _isSelecting = false;
             
-            // Stop magnifier when selection ends
-            StopMagnifier();
+            // Magnifier continues running until window closes
             
             var endPoint = e.GetPosition(SelectionCanvas);
             
@@ -225,8 +226,7 @@ namespace SharpShot.UI
         {
             if (e.Key == Key.Escape)
             {
-                // Stop magnifier when canceling
-                StopMagnifier();
+                // Magnifier will be stopped when window closes
                 Close();
             }
         }
@@ -272,8 +272,7 @@ namespace SharpShot.UI
             }
             finally
             {
-                // Clean up magnifier before closing
-                StopMagnifier();
+                // Magnifier will be stopped when window closes
                 Close();
             }
         }
