@@ -475,6 +475,12 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
+                // Auto-copy if enabled
+                if (_settingsService.CurrentSettings.AutoCopyScreenshots && _lastCapturedBitmap != null)
+                {
+                    AutoCopyScreenshot();
+                }
+                
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
@@ -817,6 +823,42 @@ namespace SharpShot
         #endregion
 
         #region Utility Methods
+        private void AutoCopyScreenshot()
+        {
+            try
+            {
+                if (_lastCapturedBitmap != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Auto-copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    LogToFile($"Auto-copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    
+                    // Run the copy operation on the UI thread since clipboard requires STA mode
+                    _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                    
+                    System.Diagnostics.Debug.WriteLine("Auto-copy operation completed successfully");
+                    LogToFile("Auto-copy operation completed successfully");
+                    
+                    // Verify clipboard has data
+                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    {
+                        System.Diagnostics.Debug.WriteLine("Auto-copy clipboard verification successful - image data is present");
+                        LogToFile("Auto-copy clipboard verification successful - image data is present");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Warning: Auto-copy clipboard verification failed - no image data found");
+                        LogToFile("Warning: Auto-copy clipboard verification failed - no image data found");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Auto-copy failed: {ex.Message}");
+                LogToFile($"Auto-copy failed: {ex.Message}");
+                // Don't show error notification for auto-copy to avoid interrupting user workflow
+            }
+        }
+
         private void ShowNotification(string message, bool isError = false)
         {
             // TODO: Implement proper toast notification

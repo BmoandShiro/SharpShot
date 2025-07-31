@@ -18,6 +18,7 @@ namespace SharpShot.Models
         private double _hoverOpacity;
         private double _dropShadowOpacity;
         private string _selectedScreen = string.Empty;
+        private bool _autoCopyScreenshots;
 
         public Settings()
         {
@@ -32,6 +33,7 @@ namespace SharpShot.Models
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
             SelectedScreen = "Primary Monitor"; // Default to primary monitor
+            AutoCopyScreenshots = false; // Default to false - user must manually copy
             
             // Default hotkeys
             Hotkeys = new Dictionary<string, string>
@@ -110,6 +112,12 @@ namespace SharpShot.Models
         {
             get => _selectedScreen;
             set => SetProperty(ref _selectedScreen, value);
+        }
+
+        public bool AutoCopyScreenshots
+        {
+            get => _autoCopyScreenshots;
+            set => SetProperty(ref _autoCopyScreenshots, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

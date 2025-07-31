@@ -117,6 +117,7 @@ namespace SharpShot.UI
             AudioRecordingCheckBox.IsChecked = _originalSettings.EnableAudioRecording;
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
+            AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             
             // Load theme customization settings
             IconColorTextBox.Text = _originalSettings.IconColor;
@@ -238,6 +239,7 @@ namespace SharpShot.UI
                 _originalSettings.EnableAudioRecording = AudioRecordingCheckBox.IsChecked ?? false;
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
+                _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 
                 // Save theme customization settings
                 _originalSettings.IconColor = IconColorTextBox.Text;
@@ -303,6 +305,7 @@ namespace SharpShot.UI
             target.HoverOpacity = source.HoverOpacity;
             target.DropShadowOpacity = source.DropShadowOpacity;
             target.SelectedScreen = source.SelectedScreen;
+            target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
