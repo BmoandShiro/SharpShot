@@ -225,13 +225,13 @@ namespace SharpShot
                 if (_recordingService.IsPaused)
                 {
                     _recordingService.ResumeRecording();
-                    PauseRecordButton.Content = "⏸";
+                    // Don't change button content - keep the original Path
                     PauseRecordButton.ToolTip = "Pause Recording";
                 }
                 else
                 {
                     _recordingService.PauseRecording();
-                    PauseRecordButton.Content = "▶";
+                    // Don't change button content - keep the original Path
                     PauseRecordButton.ToolTip = "Resume Recording";
                 }
             }
@@ -269,10 +269,48 @@ namespace SharpShot
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
-                CancelRecordButton.Visibility = Visibility.Visible;
-
-                // Show separator
+                
+                // Show separator before cancel button
                 RecordingSelectionSeparator2.Visibility = Visibility.Visible;
+                
+                // Show cancel button on the far right
+                CancelRecordButton.Visibility = Visibility.Visible;
+            });
+        }
+
+        private void ShowRecordingControls()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Hide all other buttons first
+                RegionButton.Visibility = Visibility.Collapsed;
+                ScreenshotButton.Visibility = Visibility.Collapsed;
+                RecordingButton.Visibility = Visibility.Collapsed;
+                SettingsButton.Visibility = Visibility.Collapsed;
+                CloseButton.Visibility = Visibility.Collapsed;
+                
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                
+                // Hide recording selection buttons
+                RegionRecordButton.Visibility = Visibility.Collapsed;
+                FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                CancelRecordButton.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                
+                // Hide capture option buttons
+                CancelButton.Visibility = Visibility.Collapsed;
+                CopyButton.Visibility = Visibility.Collapsed;
+                SaveButton.Visibility = Visibility.Collapsed;
+                CaptureCompletionSeparator1.Visibility = Visibility.Collapsed;
+                
+                // Show recording control buttons
+                StopRecordButton.Visibility = Visibility.Visible;
+                PauseRecordButton.Visibility = Visibility.Visible;
+                
+                // Show recording timer
+                RecordingTimer.Visibility = Visibility.Visible;
             });
         }
 
@@ -459,6 +497,10 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
+                // Hide recording control buttons first
+                StopRecordButton.Visibility = Visibility.Collapsed;
+                PauseRecordButton.Visibility = Visibility.Collapsed;
+                RecordingTimer.Visibility = Visibility.Collapsed;
                 
                 // Show normal buttons
                 RegionButton.Visibility = Visibility.Visible;
@@ -654,18 +696,8 @@ namespace SharpShot
                     // Update UI immediately to show recording controls
                     Dispatcher.Invoke(() =>
                     {
-                        // Show recording control buttons immediately
-                        RecordingTimer.Visibility = Visibility.Visible;
-                        // Don't change RecordingButton.Content - keep the original Path
-                        StopRecordButton.Visibility = Visibility.Visible;
-                        PauseRecordButton.Visibility = Visibility.Visible;
-                        
-                        // Hide normal buttons immediately
-                        RegionButton.Visibility = Visibility.Collapsed;
-                        ScreenshotButton.Visibility = Visibility.Collapsed;
-                        RecordingButton.Visibility = Visibility.Collapsed;
-                        SettingsButton.Visibility = Visibility.Collapsed;
-                        CloseButton.Visibility = Visibility.Collapsed;
+                        // Use the proper recording controls method
+                        ShowRecordingControls();
                     }, System.Windows.Threading.DispatcherPriority.Render);
                     
                     // Start recording in the background (don't await it)
@@ -716,18 +748,8 @@ namespace SharpShot
                 // Update UI immediately to show recording controls
                 Dispatcher.Invoke(() =>
                 {
-                    // Show recording control buttons immediately
-                    RecordingTimer.Visibility = Visibility.Visible;
-                    // Don't change RecordingButton.Content - keep the original Path
-                    StopRecordButton.Visibility = Visibility.Visible;
-                    PauseRecordButton.Visibility = Visibility.Visible;
-                    
-                    // Hide normal buttons immediately
-                    RegionButton.Visibility = Visibility.Collapsed;
-                    ScreenshotButton.Visibility = Visibility.Collapsed;
-                    RecordingButton.Visibility = Visibility.Collapsed;
-                    SettingsButton.Visibility = Visibility.Collapsed;
-                    CloseButton.Visibility = Visibility.Collapsed;
+                    // Use the proper recording controls method
+                    ShowRecordingControls();
                 }, System.Windows.Threading.DispatcherPriority.Render);
                 
                 // Start recording in the background (don't await it)
@@ -771,31 +793,11 @@ namespace SharpShot
             {
                 if (isRecording)
                 {
-                    // Batch all UI changes together to reduce flickering
-                    RecordingTimer.Visibility = Visibility.Visible;
-                    // Don't change RecordingButton.Content - keep the original Path
-                    
-                    // Show recording control buttons
-                    StopRecordButton.Visibility = Visibility.Visible;
-                    PauseRecordButton.Visibility = Visibility.Visible;
-                    
-                    // Hide normal buttons in one batch
-                    RegionButton.Visibility = Visibility.Collapsed;
-                    ScreenshotButton.Visibility = Visibility.Collapsed;
-                    RecordingButton.Visibility = Visibility.Collapsed;
-                    SettingsButton.Visibility = Visibility.Collapsed;
-                    CloseButton.Visibility = Visibility.Collapsed;
+                    // Use the proper recording controls method
+                    ShowRecordingControls();
                 }
                 else
                 {
-                    // Batch all UI changes together to reduce flickering
-                    RecordingTimer.Visibility = Visibility.Collapsed;
-                    // Don't change RecordingButton.Content - keep the original Path
-                    
-                    // Hide recording control buttons
-                    StopRecordButton.Visibility = Visibility.Collapsed;
-                    PauseRecordButton.Visibility = Visibility.Collapsed;
-                    
                     // Store the recording file path for save/copy options
                     if (_recordingService != null)
                     {
