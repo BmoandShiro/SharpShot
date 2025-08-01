@@ -61,7 +61,13 @@ namespace SharpShot.UI
             if (allScreens.Length == 0)
             {
                 // Fallback to primary screen if no screens detected
-                return System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
             }
 
             int minX = int.MaxValue, minY = int.MaxValue;
@@ -93,14 +99,14 @@ namespace SharpShot.UI
         private void InitializeMagnifier()
         {
             // Only initialize magnifier if the setting is enabled
-            if (_settingsService?.CurrentSettings.EnableMagnifier != true)
+            if (_settingsService?.CurrentSettings?.EnableMagnifier != true)
             {
                 return;
             }
             
             try
             {
-                var zoomLevel = _settingsService?.CurrentSettings.MagnifierZoomLevel ?? 2.0;
+                var zoomLevel = _settingsService?.CurrentSettings?.MagnifierZoomLevel ?? 2.0;
                 _magnifier = new MagnifierWindow(zoomLevel);
                 
                 // Create timer for updating magnifier

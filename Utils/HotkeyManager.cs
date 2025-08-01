@@ -12,9 +12,12 @@ namespace SharpShot.Utils
         private readonly SettingsService _settingsService;
         private readonly Dictionary<int, Action> _registeredHotkeys;
         private readonly Dictionary<string, int> _hotkeyIds;
+        private readonly Dictionary<string, int> _hotkeyPressCounts;
+        private readonly Dictionary<string, DateTime> _hotkeyLastPressTimes;
         private int _nextHotkeyId = 1;
         private bool _isInitialized;
         private IntPtr _windowHandle;
+        private const int TRIPLE_CLICK_TIMEOUT_MS = 500; // 500ms window for triple click
 
         // Windows API imports
         [DllImport("user32.dll")]
@@ -31,6 +34,8 @@ namespace SharpShot.Utils
             _settingsService = settingsService;
             _registeredHotkeys = new Dictionary<int, Action>();
             _hotkeyIds = new Dictionary<string, int>();
+            _hotkeyPressCounts = new Dictionary<string, int>();
+            _hotkeyLastPressTimes = new Dictionary<string, DateTime>();
             _isInitialized = false;
         }
         
@@ -58,13 +63,19 @@ namespace SharpShot.Utils
             // Unregister existing hotkeys
             UnregisterAllHotkeys();
 
-            // Register hotkeys from settings
-            RegisterHotkey("RegionCapture", _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault("RegionCapture", "Double Ctrl"));
-            RegisterHotkey("FullScreenCapture", _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault("FullScreenCapture", "Ctrl+Shift+S"));
-            RegisterHotkey("ToggleRecording", _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault("ToggleRecording", "Ctrl+Shift+R"));
-            RegisterHotkey("Cancel", _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault("Cancel", "Escape"));
-            RegisterHotkey("Save", _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault("Save", "Space"));
-            RegisterHotkey("Copy", _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault("Copy", "Enter"));
+            // Register hotkeys from settings - only register if they exist
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotRegion"))
+                RegisterHotkey("ScreenshotRegion", _settingsService.CurrentSettings.Hotkeys["ScreenshotRegion"]);
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotFullscreen"))
+                RegisterHotkey("ScreenshotFullscreen", _settingsService.CurrentSettings.Hotkeys["ScreenshotFullscreen"]);
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordRegion"))
+                RegisterHotkey("RecordRegion", _settingsService.CurrentSettings.Hotkeys["RecordRegion"]);
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordFullscreen"))
+                RegisterHotkey("RecordFullscreen", _settingsService.CurrentSettings.Hotkeys["RecordFullscreen"]);
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("Copy"))
+                RegisterHotkey("Copy", _settingsService.CurrentSettings.Hotkeys["Copy"]);
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("Save"))
+                RegisterHotkey("Save", _settingsService.CurrentSettings.Hotkeys["Save"]);
         }
 
         private void RegisterHotkey(string actionName, string hotkeyString)
@@ -72,7 +83,13 @@ namespace SharpShot.Utils
             try
             {
                 var (modifiers, keyCode) = ParseHotkey(hotkeyString);
-                if (keyCode == 0) return; // Invalid hotkey
+                
+                // Validate hotkey - must have both modifiers and a key, or just a key
+                if (keyCode == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Invalid hotkey '{hotkeyString}' for {actionName}: Missing key code. Hotkeys must include a key (e.g., 'Ctrl+A', 'F1', 'Space')");
+                    return;
+                }
 
                 var hotkeyId = _nextHotkeyId++;
                 if (_windowHandle != IntPtr.Zero)
@@ -103,6 +120,26 @@ namespace SharpShot.Utils
         {
             uint modifiers = 0;
             uint keyCode = 0;
+
+            // Handle single modifier keys
+            if (hotkeyString == "Ctrl" || hotkeyString == "Control")
+            {
+                modifiers = 0x0003; // MOD_CONTROL
+                keyCode = 0x11; // VK_CONTROL
+                return (modifiers, keyCode);
+            }
+            if (hotkeyString == "Shift")
+            {
+                modifiers = 0x0004; // MOD_SHIFT
+                keyCode = 0x10; // VK_SHIFT
+                return (modifiers, keyCode);
+            }
+            if (hotkeyString == "Alt")
+            {
+                modifiers = 0x0001; // MOD_ALT
+                keyCode = 0x12; // VK_MENU (Alt key)
+                return (modifiers, keyCode);
+            }
 
             var parts = hotkeyString.Split('+');
             foreach (var part in parts)
@@ -200,10 +237,10 @@ namespace SharpShot.Utils
         {
             return actionName switch
             {
-                "RegionCapture" => () => OnRegionCaptureRequested?.Invoke(),
-                "FullScreenCapture" => () => OnFullScreenCaptureRequested?.Invoke(),
-                "ToggleRecording" => () => OnToggleRecordingRequested?.Invoke(),
-                "Cancel" => () => OnCancelRequested?.Invoke(),
+                "ScreenshotRegion" => () => OnRegionCaptureRequested?.Invoke(),
+                "ScreenshotFullscreen" => () => OnFullScreenCaptureRequested?.Invoke(),
+                "RecordRegion" => () => OnToggleRecordingRequested?.Invoke(),
+                "RecordFullscreen" => () => OnToggleRecordingRequested?.Invoke(),
                 "Save" => () => OnSaveRequested?.Invoke(),
                 "Copy" => () => OnCopyRequested?.Invoke(),
                 _ => () => { }
@@ -214,7 +251,76 @@ namespace SharpShot.Utils
         {
             if (_registeredHotkeys.TryGetValue(hotkeyId, out var action))
             {
+                // Find the action name for this hotkey ID
+                string? actionName = null;
+                foreach (var kvp in _hotkeyIds)
+                {
+                    if (kvp.Value == hotkeyId)
+                    {
+                        actionName = kvp.Key;
+                        break;
+                    }
+                }
+
+                if (actionName != null)
+                {
+                    // Check if triple-click is required for this action
+                    bool requiresTripleClick = _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault($"{actionName}TripleClick", "false") == "true";
+                    
+                    if (requiresTripleClick)
+                    {
+                        HandleTripleClickAction(actionName, action);
+                    }
+                    else
+                    {
+                        // Normal single-click behavior
+                        action?.Invoke();
+                    }
+                }
+                else
+                {
+                    // Fallback to normal behavior if action name not found
+                    action?.Invoke();
+                }
+            }
+        }
+
+        private void HandleTripleClickAction(string actionName, Action action)
+        {
+            var now = DateTime.Now;
+            
+            // Initialize if not exists
+            if (!_hotkeyPressCounts.ContainsKey(actionName))
+            {
+                _hotkeyPressCounts[actionName] = 0;
+                _hotkeyLastPressTimes[actionName] = now;
+            }
+
+            var lastPressTime = _hotkeyLastPressTimes[actionName];
+            var timeSinceLastPress = (now - lastPressTime).TotalMilliseconds;
+
+            // Reset counter if too much time has passed
+            if (timeSinceLastPress > TRIPLE_CLICK_TIMEOUT_MS)
+            {
+                _hotkeyPressCounts[actionName] = 0;
+            }
+
+            // Increment press count
+            _hotkeyPressCounts[actionName]++;
+            _hotkeyLastPressTimes[actionName] = now;
+
+            // Check if we have 3 presses within the timeout window
+            if (_hotkeyPressCounts[actionName] >= 3)
+            {
+                System.Diagnostics.Debug.WriteLine($"Triple-click detected for {actionName}, executing action");
                 action?.Invoke();
+                
+                // Reset counter after successful triple-click
+                _hotkeyPressCounts[actionName] = 0;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Triple-click progress for {actionName}: {_hotkeyPressCounts[actionName]}/3");
             }
         }
 
@@ -229,6 +335,8 @@ namespace SharpShot.Utils
             }
             _registeredHotkeys.Clear();
             _hotkeyIds.Clear();
+            _hotkeyPressCounts.Clear();
+            _hotkeyLastPressTimes.Clear();
         }
 
         public void UpdateHotkeys()
@@ -254,9 +362,7 @@ namespace SharpShot.Utils
         // Events
         public event Action? OnRegionCaptureRequested;
         public event Action? OnFullScreenCaptureRequested;
-        public event Action? OnPinScreenshotRequested;
         public event Action? OnToggleRecordingRequested;
-        public event Action? OnCancelRequested;
         public event Action? OnSaveRequested;
         public event Action? OnCopyRequested;
     }

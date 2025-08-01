@@ -47,7 +47,13 @@ namespace SharpShot.Services
             if (allScreens.Length == 0)
             {
                 // Fallback to primary screen if no screens detected
-                return Screen.PrimaryScreen.Bounds;
+                var primaryScreen = Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
             }
             
             // Handle different screen selection options
@@ -57,7 +63,13 @@ namespace SharpShot.Services
                     return GetVirtualDesktopBounds();
                     
                 case "Primary Monitor":
-                    return Screen.PrimaryScreen.Bounds;
+                    var primaryScreen = Screen.PrimaryScreen;
+                    if (primaryScreen == null)
+                    {
+                        // Ultimate fallback - return a default rectangle
+                        return new Rectangle(0, 0, 1920, 1080);
+                    }
+                    return primaryScreen.Bounds;
                     
                 default:
                     // Check if it's a specific monitor (e.g., "Monitor 1", "Monitor 2", etc.)
@@ -81,7 +93,13 @@ namespace SharpShot.Services
             if (allScreens.Length == 0)
             {
                 // Fallback to primary screen if no screens detected
-                return Screen.PrimaryScreen.Bounds;
+                var primaryScreen = Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
             }
 
             int minX = int.MaxValue, minY = int.MaxValue;

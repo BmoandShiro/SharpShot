@@ -89,7 +89,6 @@ namespace SharpShot
             _hotkeyManager.OnRegionCaptureRequested += OnRegionCaptureRequested;
             _hotkeyManager.OnFullScreenCaptureRequested += OnFullScreenCaptureRequested;
             _hotkeyManager.OnToggleRecordingRequested += OnToggleRecordingRequested;
-            _hotkeyManager.OnCancelRequested += OnCancelRequested;
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
             _hotkeyManager.OnCopyRequested += OnCopyRequested;
             
@@ -419,7 +418,13 @@ namespace SharpShot
             if (screens.Length == 0)
             {
                 // Fallback to primary screen if no screens detected
-                return System.Windows.Forms.Screen.PrimaryScreen.Bounds;
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
             }
 
             int minX = int.MaxValue, minY = int.MaxValue;
@@ -810,11 +815,6 @@ namespace SharpShot
         #endregion
 
         #region Hotkey Handlers
-        private void OnCancelRequested()
-        {
-            // TODO: Implement cancel functionality for annotation mode
-        }
-
         private void OnSaveRequested()
         {
             // TODO: Implement save functionality for annotation mode

@@ -39,17 +39,8 @@ namespace SharpShot.Models
                    EnableMagnifier = true; // Default to true - magnifier helps with precise selection
                    MagnifierZoomLevel = 2.0; // Default to 2x zoom
             
-            // Default hotkeys
-            Hotkeys = new Dictionary<string, string>
-            {
-                { "RegionCapture", "DoubleCtrl" },
-                { "FullScreenCapture", "Ctrl+Shift+S" },
-                { "PinScreenshot", "Ctrl+T" },
-                { "ToggleRecording", "Ctrl+Shift+R" },
-                { "Cancel", "Escape" },
-                { "Save", "Space" },
-                { "Copy", "Enter" }
-            };
+            // Start with empty hotkeys - users will set their own
+            Hotkeys = new Dictionary<string, string>();
         }
 
         public string SavePath

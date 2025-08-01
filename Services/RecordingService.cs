@@ -353,14 +353,26 @@ namespace SharpShot.Services
             if (allScreens.Length == 0)
             {
                 // Fallback to primary screen if no screens detected
-                return Screen.PrimaryScreen.Bounds;
+                var fallbackScreen = Screen.PrimaryScreen;
+                if (fallbackScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return fallbackScreen.Bounds;
             }
             
             // Handle different screen selection options
             switch (selectedScreen)
             {
                 case "Primary Monitor":
-                    return Screen.PrimaryScreen.Bounds;
+                    var primaryScreen = Screen.PrimaryScreen;
+                    if (primaryScreen == null)
+                    {
+                        // Ultimate fallback - return a default rectangle
+                        return new Rectangle(0, 0, 1920, 1080);
+                    }
+                    return primaryScreen.Bounds;
                     
                 default:
                     // Check if it's a specific monitor (e.g., "Monitor 1", "Monitor 2", etc.)
@@ -374,7 +386,13 @@ namespace SharpShot.Services
                     }
                     
                     // Fallback to primary screen
-                    return Screen.PrimaryScreen.Bounds;
+                    var fallbackPrimaryScreen = Screen.PrimaryScreen;
+                    if (fallbackPrimaryScreen == null)
+                    {
+                        // Ultimate fallback - return a default rectangle
+                        return new Rectangle(0, 0, 1920, 1080);
+                    }
+                    return fallbackPrimaryScreen.Bounds;
             }
         }
 
@@ -384,7 +402,13 @@ namespace SharpShot.Services
             if (allScreens.Length == 0)
             {
                 // Fallback to primary screen if no screens detected
-                return Screen.PrimaryScreen.Bounds;
+                var fallbackScreen = Screen.PrimaryScreen;
+                if (fallbackScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return fallbackScreen.Bounds;
             }
 
             int minX = int.MaxValue, minY = int.MaxValue;

@@ -226,8 +226,11 @@ namespace SharpShot.UI
         private void PositionMagnifier(int cursorX, int cursorY)
         {
             // Get screen dimensions
-            var screenWidth = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width;
-            var screenHeight = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height;
+            var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+            if (primaryScreen == null) return;
+            
+            var screenWidth = primaryScreen.Bounds.Width;
+            var screenHeight = primaryScreen.Bounds.Height;
             
             // Calculate position to place magnifier farther from cursor to avoid self-capture
             double magnifierX = cursorX + 50; // Increased offset to the right
