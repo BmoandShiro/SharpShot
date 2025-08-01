@@ -3,10 +3,8 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0
 
-# Install FFmpeg
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+# Note: FFmpeg is installed on Windows host, not in Docker
+# Docker is only used for building the .NET application
 
 # Set working directory
 WORKDIR /app

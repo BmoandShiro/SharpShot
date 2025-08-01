@@ -339,11 +339,61 @@
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
 
-                <!-- Checkboxes -->
-                <CheckBox x:Name="AudioRecordingCheckBox" 
-                          Content="Enable Audio Recording" 
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"/>
+                <!-- Audio Recording Mode -->
+                <TextBlock Text="Audio Recording Mode:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="AudioRecordingModeComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,10"
+                          SelectionChanged="AudioRecordingModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="No Audio"/>
+                    <ComboBoxItem Content="System Audio Only"/>
+                    <ComboBoxItem Content="Microphone Only"/>
+                    <ComboBoxItem Content="System Audio + Microphone"/>
+                </ComboBox>
+
+                <!-- Output Audio Device Selection -->
+                <StackPanel x:Name="OutputAudioDevicePanel" 
+                           Margin="0,0,0,10" 
+                           Visibility="Collapsed">
+                    <TextBlock Text="Output Audio Device (System Audio):" 
+                               Foreground="{StaticResource TextBrush}" 
+                               FontWeight="SemiBold" 
+                               Margin="0,0,0,5"/>
+                    <ComboBox x:Name="OutputAudioDeviceComboBox" 
+                              Style="{StaticResource DarkComboBoxStyle}"
+                              Margin="0,0,0,10"/>
+                </StackPanel>
+
+                <!-- Input Audio Device Selection -->
+                <StackPanel x:Name="InputAudioDevicePanel" 
+                           Margin="0,0,0,10" 
+                           Visibility="Collapsed">
+                    <TextBlock Text="Input Audio Device (Microphone):" 
+                               Foreground="{StaticResource TextBrush}" 
+                               FontWeight="SemiBold" 
+                               Margin="0,0,0,5"/>
+                    <ComboBox x:Name="InputAudioDeviceComboBox" 
+                              Style="{StaticResource DarkComboBoxStyle}"
+                              Margin="0,0,0,10"/>
+                </StackPanel>
+
+                <!-- Refresh Audio Devices Button -->
+                <Button x:Name="RefreshAudioDevicesButton"
+                        Style="{StaticResource ModernButtonStyle}"
+                        Margin="0,0,0,15"
+                        Click="RefreshAudioDevicesButton_Click"
+                        Width="150"
+                        Height="32">
+                    <TextBlock Text="Refresh Audio Devices" 
+                               Foreground="#FFFF8C00" 
+                               FontSize="12" 
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
                 <CheckBox x:Name="GlobalHotkeysCheckBox" 
                           Content="Enable Global Hotkeys" 
                           Style="{StaticResource DarkCheckBoxStyle}"
@@ -356,10 +406,10 @@
                           Content="Auto-copy screenshots to clipboard" 
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
-                               <CheckBox x:Name="EnableMagnifierCheckBox"
-                         Content="Enable magnifier during region selection"
-                         Style="{StaticResource DarkCheckBoxStyle}"
-                         Margin="0,0,0,10"/>
+                <CheckBox x:Name="EnableMagnifierCheckBox"
+                          Content="Enable magnifier during region selection"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
                
                <!-- Magnifier Zoom Level -->
                <StackPanel x:Name="MagnifierZoomPanel"

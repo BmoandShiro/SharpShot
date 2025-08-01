@@ -12,8 +12,8 @@ if (!(Test-Path $OutputPath)) {
     New-Item -ItemType Directory -Path $OutputPath | Out-Null
 }
 
-# FFmpeg download URL (Windows builds from https://www.gyan.dev/ffmpeg/builds/)
-$ffmpegUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
+# FFmpeg download URL (Full build with WASAPI support from BtbN/FFmpeg-Builds)
+$ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
 $zipPath = "ffmpeg-temp.zip"
 
 Write-Host "Downloading FFmpeg..." -ForegroundColor Yellow
@@ -26,7 +26,7 @@ try {
     # Extract the zip file
     Expand-Archive -Path $zipPath -DestinationPath "temp-ffmpeg" -Force
     
-    # Find the extracted folder (it has a version number)
+    # Find the extracted folder (BtbN builds have a different structure)
     $extractedFolder = Get-ChildItem -Path "temp-ffmpeg" -Directory | Select-Object -First 1
     
     if ($extractedFolder) {
@@ -36,7 +36,14 @@ try {
             Copy-Item -Path $binPath -Destination $OutputPath -Recurse -Force
             Write-Host "FFmpeg setup complete!" -ForegroundColor Green
         } else {
-            Write-Host "Error: Could not find FFmpeg bin directory" -ForegroundColor Red
+            # Try alternative structure (some builds have bin directly in root)
+            $altBinPath = Join-Path $extractedFolder.FullName "bin"
+            if (Test-Path $altBinPath) {
+                Copy-Item -Path $altBinPath -Destination $OutputPath -Recurse -Force
+                Write-Host "FFmpeg setup complete!" -ForegroundColor Green
+            } else {
+                Write-Host "Error: Could not find FFmpeg bin directory" -ForegroundColor Red
+            }
         }
     } else {
         Write-Host "Error: Could not find extracted FFmpeg folder" -ForegroundColor Red

@@ -10,7 +10,9 @@ namespace SharpShot.Models
         private string _savePath = string.Empty;
         private string _screenshotFormat = string.Empty;
         private string _videoQuality = string.Empty;
-        private bool _enableAudioRecording;
+        private string _audioRecordingMode = string.Empty;
+        private string _selectedOutputAudioDevice = string.Empty;
+        private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
         private bool _startMinimized;
         private Dictionary<string, string> _hotkeys = new();
@@ -28,16 +30,18 @@ namespace SharpShot.Models
             SavePath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\SharpShot";
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
-            EnableAudioRecording = true;
+            AudioRecordingMode = "No Audio";
+            SelectedOutputAudioDevice = string.Empty;
+            SelectedInputAudioDevice = string.Empty;
             EnableGlobalHotkeys = false;
             StartMinimized = false;
             IconColor = "#FFFF8C00";
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
-                               SelectedScreen = "Primary Monitor"; // Default to primary monitor
-                   AutoCopyScreenshots = false; // Default to false - user must manually copy
-                   EnableMagnifier = true; // Default to true - magnifier helps with precise selection
-                   MagnifierZoomLevel = 2.0; // Default to 2x zoom
+            SelectedScreen = "Primary Monitor"; // Default to primary monitor
+            AutoCopyScreenshots = false; // Default to false - user must manually copy
+            EnableMagnifier = true; // Default to true - magnifier helps with precise selection
+            MagnifierZoomLevel = 2.0; // Default to 2x zoom
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
@@ -61,10 +65,22 @@ namespace SharpShot.Models
             set => SetProperty(ref _videoQuality, value);
         }
 
-        public bool EnableAudioRecording
+        public string AudioRecordingMode
         {
-            get => _enableAudioRecording;
-            set => SetProperty(ref _enableAudioRecording, value);
+            get => _audioRecordingMode;
+            set => SetProperty(ref _audioRecordingMode, value);
+        }
+
+        public string SelectedOutputAudioDevice
+        {
+            get => _selectedOutputAudioDevice;
+            set => SetProperty(ref _selectedOutputAudioDevice, value);
+        }
+
+        public string SelectedInputAudioDevice
+        {
+            get => _selectedInputAudioDevice;
+            set => SetProperty(ref _selectedInputAudioDevice, value);
         }
 
         public bool EnableGlobalHotkeys

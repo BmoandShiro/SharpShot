@@ -451,15 +451,333 @@ namespace SharpShot.Services
                 Console.WriteLine(logMsg);
             }
 
-            command += $" -video_size {width}x{height} -i desktop -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -y \"{_currentRecordingPath}\"";
+            command += $" -video_size {width}x{height} -i desktop";
+
+            // Add audio input based on settings
+            var audioMode = _settingsService.CurrentSettings.AudioRecordingMode;
+            
+            if (audioMode != "No Audio")
+            {
+                // Try to add audio input using DirectShow
+                var audioInput = GetAudioInputCommand(audioMode);
+                if (!string.IsNullOrEmpty(audioInput))
+                {
+                    command += $" {audioInput}";
+                }
+            }
+
+            // Add video codec
+            command += " -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p";
+
+            // Add audio codec and mapping if audio is enabled
+            if (audioMode != "No Audio")
+            {
+                // Count how many audio inputs we actually have
+                var audioInputCount = 0;
+                if (audioMode == "System Audio Only" || audioMode == "Microphone Only")
+                {
+                    audioInputCount = 1;
+                }
+                else if (audioMode == "System Audio + Microphone")
+                {
+                    var settings = _settingsService.CurrentSettings;
+                    var outputDevice = GetOutputAudioDevice(settings);
+                    var inputDevice = GetInputAudioDevice(settings);
+                    
+                    if (!string.IsNullOrEmpty(outputDevice) && !string.IsNullOrEmpty(inputDevice))
+                    {
+                        if (outputDevice.Equals(inputDevice, StringComparison.OrdinalIgnoreCase))
+                        {
+                            audioInputCount = 1; // Same device, only one input
+                        }
+                        else
+                        {
+                            audioInputCount = 2; // Different devices, two inputs
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(outputDevice) || !string.IsNullOrEmpty(inputDevice))
+                    {
+                        audioInputCount = 1; // Only one device found
+                    }
+                }
+                
+                LogToFile($"Audio input count: {audioInputCount}");
+                
+                if (audioInputCount == 2)
+                {
+                    // For multiple audio inputs, we need to map the mixed audio
+                    command += " -filter_complex \"[1:a][2:a]amix=inputs=2:duration=longest[aout]\" -map 0:v -map \"[aout]\" -c:a aac -b:a 128k";
+                }
+                else
+                {
+                    // For single audio input, use default mapping
+                    command += " -c:a aac -b:a 128k";
+                }
+            }
+
+            command += $" -y \"{_currentRecordingPath}\"";
 
             return command;
+        }
+
+        private string GetAudioInputCommand(string audioMode)
+        {
+            try
+            {
+                var settings = _settingsService.CurrentSettings;
+                var command = string.Empty;
+
+                if (audioMode == "System Audio Only")
+                {
+                    var outputAudioDevice = GetOutputAudioDevice(settings);
+                    if (!string.IsNullOrEmpty(outputAudioDevice))
+                    {
+                        // Use WASAPI for system audio capture (loopback)
+                        command = $"-f wasapi -i \"{outputAudioDevice}\"";
+                    }
+                }
+                else if (audioMode == "Microphone Only")
+                {
+                    var inputAudioDevice = GetInputAudioDevice(settings);
+                    if (!string.IsNullOrEmpty(inputAudioDevice))
+                    {
+                        // Use WASAPI for microphone input
+                        command = $"-f wasapi -i \"{inputAudioDevice}\"";
+                    }
+                }
+                else if (audioMode == "System Audio + Microphone")
+                {
+                    var outputAudioDevice = GetOutputAudioDevice(settings);
+                    var inputAudioDevice = GetInputAudioDevice(settings);
+                    
+                    if (!string.IsNullOrEmpty(outputAudioDevice) && !string.IsNullOrEmpty(inputAudioDevice))
+                    {
+                        // Check if both devices are the same (like Focusrite USB for both input and output)
+                        if (outputAudioDevice.Equals(inputAudioDevice, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // If same device, only add it once to avoid duplicate audio
+                            LogToFile($"Same device for input and output: {outputAudioDevice}, adding only once");
+                            command = $"-f wasapi -i \"{outputAudioDevice}\"";
+                        }
+                        else
+                        {
+                            // Different devices, add both with WASAPI
+                            command = $"-f wasapi -i \"{outputAudioDevice}\" -f wasapi -i \"{inputAudioDevice}\"";
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(outputAudioDevice))
+                    {
+                        command = $"-f wasapi -i \"{outputAudioDevice}\"";
+                    }
+                    else if (!string.IsNullOrEmpty(inputAudioDevice))
+                    {
+                        command = $"-f wasapi -i \"{inputAudioDevice}\"";
+                    }
+                }
+
+                LogToFile($"Audio input command: {command}");
+                LogToFile($"Audio mode: {audioMode}");
+                
+                // Log device information for debugging
+                var currentSettings = _settingsService.CurrentSettings;
+                if (audioMode == "System Audio Only")
+                {
+                    var device = GetOutputAudioDevice(currentSettings);
+                    LogToFile($"Output device: '{device}'");
+                }
+                else if (audioMode == "Microphone Only")
+                {
+                    var device = GetInputAudioDevice(currentSettings);
+                    LogToFile($"Input device: '{device}'");
+                }
+                else if (audioMode == "System Audio + Microphone")
+                {
+                    var outputDevice = GetOutputAudioDevice(currentSettings);
+                    var inputDevice = GetInputAudioDevice(currentSettings);
+                    LogToFile($"Output device: '{outputDevice}'");
+                    LogToFile($"Input device: '{inputDevice}'");
+                }
+                
+                return command;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting audio input command: {ex.Message}");
+                Console.WriteLine($"Error getting audio input command: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private string GetOutputAudioDevice(Settings settings)
+        {
+            // If user has selected a specific device, use it directly (now using DirectShow names)
+            if (!string.IsNullOrEmpty(settings.SelectedOutputAudioDevice) && 
+                settings.SelectedOutputAudioDevice != "Auto-detect")
+            {
+                return settings.SelectedOutputAudioDevice;
+            }
+
+            // Otherwise, try to auto-detect
+            try
+            {
+                var ffmpegPath = GetBundledFFmpegPath();
+                if (string.IsNullOrEmpty(ffmpegPath))
+                    return string.Empty;
+
+                var deviceProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = "-list_devices true -f wasapi -i dummy",
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                deviceProcess.Start();
+                var deviceOutput = deviceProcess.StandardError.ReadToEnd();
+                deviceProcess.WaitForExit();
+
+                var audioDevices = ParseAudioDevices(deviceOutput);
+                return FindSystemAudioDevice(audioDevices);
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error auto-detecting output audio device: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private string GetInputAudioDevice(Settings settings)
+        {
+            // If user has selected a specific device, use it directly (now using DirectShow names)
+            if (!string.IsNullOrEmpty(settings.SelectedInputAudioDevice) && 
+                settings.SelectedInputAudioDevice != "Auto-detect")
+            {
+                return settings.SelectedInputAudioDevice;
+            }
+
+            // Otherwise, try to auto-detect
+            try
+            {
+                var ffmpegPath = GetBundledFFmpegPath();
+                if (string.IsNullOrEmpty(ffmpegPath))
+                    return string.Empty;
+
+                var deviceProcess = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = "-list_devices true -f wasapi -i dummy",
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                deviceProcess.Start();
+                var deviceOutput = deviceProcess.StandardError.ReadToEnd();
+                deviceProcess.WaitForExit();
+
+                var audioDevices = ParseAudioDevices(deviceOutput);
+                return FindMicrophoneDevice(audioDevices);
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error auto-detecting input audio device: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        private List<string> ParseAudioDevices(string deviceOutput)
+        {
+            var devices = new List<string>();
+            var lines = deviceOutput.Split('\n');
+            bool inAudioSection = false;
+
+            foreach (var line in lines)
+            {
+                // Look for DirectShow audio section
+                if (line.Contains("DirectShow audio devices"))
+                {
+                    inAudioSection = true;
+                    continue;
+                }
+
+                if (inAudioSection)
+                {
+                    // Look for quoted device names
+                    if (line.Contains("\"") && line.Contains("audio"))
+                    {
+                        var startIndex = line.IndexOf('"');
+                        var endIndex = line.LastIndexOf('"');
+                        if (startIndex >= 0 && endIndex > startIndex)
+                        {
+                            var deviceName = line.Substring(startIndex + 1, endIndex - startIndex - 1);
+                            if (!string.IsNullOrEmpty(deviceName) && 
+                                !deviceName.Contains("Alternative name") && 
+                                !deviceName.Contains("@device"))
+                            {
+                                devices.Add(deviceName);
+                            }
+                        }
+                    }
+                    else if (line.Contains("DirectShow video devices"))
+                    {
+                        // End of audio section
+                        break;
+                    }
+                }
+            }
+
+            return devices;
+        }
+
+        private string FindSystemAudioDevice(List<string> devices)
+        {
+            var systemAudioKeywords = new[] { "stereo mix", "what u hear", "cable output", "vb-audio", "system audio" };
+            
+            foreach (var device in devices)
+            {
+                foreach (var keyword in systemAudioKeywords)
+                {
+                    if (device.ToLower().Contains(keyword.ToLower()))
+                    {
+                        return device;
+                    }
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private string FindMicrophoneDevice(List<string> devices)
+        {
+            var microphoneKeywords = new[] { "microphone", "mic", "cable input", "input" };
+            
+            foreach (var device in devices)
+            {
+                foreach (var keyword in microphoneKeywords)
+                {
+                    if (device.ToLower().Contains(keyword.ToLower()))
+                    {
+                        return device;
+                    }
+                }
+            }
+
+            return string.Empty;
         }
         
         private bool IsDirectShowAvailable()
         {
             return false; // Always use gdigrab for simplicity
         }
+
+        // Removed ConvertToDirectShowName method - now using DirectShow names directly from UI
         
         private void TestFFmpegVersion(string ffmpegPath)
         {

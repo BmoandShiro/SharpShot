@@ -7,6 +7,9 @@ using SharpShot.Services;
 using SharpShot.Utils;
 using System.Collections.Generic;
 using System.Windows.Controls;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
 namespace SharpShot.UI
 {
@@ -126,7 +129,22 @@ namespace SharpShot.UI
                 }
             }
             
-            AudioRecordingCheckBox.IsChecked = _originalSettings.EnableAudioRecording;
+            // Set audio recording mode combo box
+            foreach (var item in AudioRecordingModeComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.AudioRecordingMode)
+                {
+                    AudioRecordingModeComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+
+            // Load audio devices
+            LoadAudioDevices();
+            
+            // Set selected audio devices
+            SetSelectedAudioDevices();
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
@@ -338,7 +356,21 @@ namespace SharpShot.UI
                     _originalSettings.SelectedScreen = screenItem.Content?.ToString() ?? "Primary Monitor";
                 }
                 
-                _originalSettings.EnableAudioRecording = AudioRecordingCheckBox.IsChecked ?? false;
+                if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem audioModeItem)
+                {
+                    _originalSettings.AudioRecordingMode = audioModeItem.Content?.ToString() ?? "No Audio";
+                }
+
+                // Save selected audio devices
+                if (OutputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem outputAudioItem)
+                {
+                    _originalSettings.SelectedOutputAudioDevice = outputAudioItem.Content?.ToString() ?? string.Empty;
+                }
+
+                if (InputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem inputAudioItem)
+                {
+                    _originalSettings.SelectedInputAudioDevice = inputAudioItem.Content?.ToString() ?? string.Empty;
+                }
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
@@ -417,7 +449,9 @@ namespace SharpShot.UI
             target.SavePath = source.SavePath;
             target.ScreenshotFormat = source.ScreenshotFormat;
             target.VideoQuality = source.VideoQuality;
-            target.EnableAudioRecording = source.EnableAudioRecording;
+            target.AudioRecordingMode = source.AudioRecordingMode;
+            target.SelectedOutputAudioDevice = source.SelectedOutputAudioDevice;
+            target.SelectedInputAudioDevice = source.SelectedInputAudioDevice;
             target.EnableGlobalHotkeys = source.EnableGlobalHotkeys;
             target.StartMinimized = source.StartMinimized;
             target.IconColor = source.IconColor;
@@ -615,6 +649,371 @@ namespace SharpShot.UI
             {
                 // Ignore invalid color formats
             }
+        }
+
+        private void LoadAudioDevices()
+        {
+            try
+            {
+                LogToFile("Loading audio devices...");
+                var audioDevices = GetAvailableAudioDevices();
+                
+                LogToFile($"Found {audioDevices.Count} total audio devices");
+                
+                // Simple categorization based on device names
+                var outputDevices = new List<string>();
+                var inputDevices = new List<string>();
+                
+                foreach (var device in audioDevices)
+                {
+                    var isInput = IsInputDevice(device);
+                    var isOutput = IsOutputDevice(device);
+                    
+                    if (isOutput)
+                    {
+                        outputDevices.Add(device);
+                    }
+                    if (isInput)
+                    {
+                        inputDevices.Add(device);
+                    }
+                }
+                
+                // Populate output audio devices
+                OutputAudioDeviceComboBox.Items.Clear();
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                
+                foreach (var device in outputDevices)
+                {
+                    OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
+                }
+                
+                // Populate input audio devices
+                InputAudioDeviceComboBox.Items.Clear();
+                InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                
+                foreach (var device in inputDevices)
+                {
+                    InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
+                }
+                
+                LogToFile($"Found {outputDevices.Count} output devices: {string.Join(", ", outputDevices)}");
+                LogToFile($"Found {inputDevices.Count} input devices: {string.Join(", ", inputDevices)}");
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error loading audio devices: {ex.Message}");
+            }
+        }
+
+        private void SetSelectedAudioDevices()
+        {
+            // Set output audio device
+            foreach (var item in OutputAudioDeviceComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.SelectedOutputAudioDevice)
+                {
+                    OutputAudioDeviceComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+
+            // Set input audio device
+            foreach (var item in InputAudioDeviceComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.SelectedInputAudioDevice)
+                {
+                    InputAudioDeviceComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+
+        private List<string> GetAvailableAudioDevices()
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                // Modern approach: Use FFmpeg with WASAPI for better device detection
+                var ffmpegPath = GetFFmpegPath();
+                if (string.IsNullOrEmpty(ffmpegPath))
+                {
+                    LogToFile("FFmpeg path not found");
+                    return devices;
+                }
+
+                LogToFile($"Using FFmpeg path: {ffmpegPath}");
+
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = "-f dshow -list_devices true -i dummy",
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = process.StandardError.ReadToEnd();
+                var stdout = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                LogToFile($"FFmpeg WASAPI exit code: {process.ExitCode}");
+                LogToFile($"FFmpeg WASAPI output: {output}");
+                LogToFile($"FFmpeg WASAPI stdout: {stdout}");
+
+                var lines = output.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                var uniqueDevices = new HashSet<string>();
+
+                foreach (var line in lines)
+                {
+                    LogToFile($"Processing WASAPI line: {line}");
+                    
+                    // Look for WASAPI device lines: [wasapi @ ...] "Device Name"
+                    if (line.Contains("[wasapi @") && line.Contains("\""))
+                    {
+                        var startIndex = line.IndexOf('"');
+                        var endIndex = line.LastIndexOf('"');
+                        if (startIndex >= 0 && endIndex > startIndex)
+                        {
+                            var deviceName = line.Substring(startIndex + 1, endIndex - startIndex - 1);
+                            if (!string.IsNullOrEmpty(deviceName) && deviceName.Length > 3)
+                            {
+                                if (uniqueDevices.Add(deviceName))
+                                {
+                                    devices.Add(deviceName);
+                                    LogToFile($"Added WASAPI device: {deviceName}");
+                                }
+                                else
+                                {
+                                    LogToFile($"Skipped duplicate WASAPI device: {deviceName}");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                LogToFile($"Total WASAPI devices found: {devices.Count}");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting WASAPI audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        // Simplified approach - removed complex device mapping classes
+
+        // Removed complex device mapping methods - using simple DirectShow approach
+
+        // Removed old GetWindowsAudioDevices method - replaced with GetWindowsAudioDevicesWithIDs
+
+        private string GetFFmpegPath()
+        {
+            // Look for FFmpeg in common locations
+            var possiblePaths = new[]
+            {
+                "ffmpeg.exe",
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg", "bin", "ffmpeg.exe"),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ffmpeg.exe")
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    LogToFile($"Found FFmpeg at: {path}");
+                    return path;
+                }
+            }
+
+            LogToFile("FFmpeg not found in any location");
+            return string.Empty;
+        }
+
+        // Removed keyword-based categorization - now using Windows native device detection
+        // All devices are shown in both dropdowns, letting users decide which is input/output
+
+        private void AudioRecordingModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
+            {
+                var mode = selectedItem.Content.ToString();
+                
+                switch (mode)
+                {
+                    case "No Audio":
+                        OutputAudioDevicePanel.Visibility = Visibility.Collapsed;
+                        InputAudioDevicePanel.Visibility = Visibility.Collapsed;
+                        break;
+                    case "System Audio Only":
+                        OutputAudioDevicePanel.Visibility = Visibility.Visible;
+                        InputAudioDevicePanel.Visibility = Visibility.Collapsed;
+                        break;
+                    case "Microphone Only":
+                        OutputAudioDevicePanel.Visibility = Visibility.Collapsed;
+                        InputAudioDevicePanel.Visibility = Visibility.Visible;
+                        break;
+                    case "System Audio + Microphone":
+                        OutputAudioDevicePanel.Visibility = Visibility.Visible;
+                        InputAudioDevicePanel.Visibility = Visibility.Visible;
+                        break;
+                }
+            }
+        }
+
+        private void RefreshAudioDevicesButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Test FFmpeg command manually and show results
+            var ffmpegPath = GetFFmpegPath();
+            var ffmpegFound = !string.IsNullOrEmpty(ffmpegPath);
+            
+            var testResult = TestFFmpegAudioDevices();
+            
+            LoadAudioDevices();
+            SetSelectedAudioDevices();
+            
+            // Show detailed results
+            var outputDevices = OutputAudioDeviceComboBox.Items.Count - 1; // Subtract 1 for "Auto-detect"
+            var inputDevices = InputAudioDeviceComboBox.Items.Count - 1; // Subtract 1 for "Auto-detect"
+            
+            var message = $"FFmpeg found: {ffmpegFound}\n";
+            message += $"FFmpeg path: {ffmpegPath}\n\n";
+            message += $"FFmpeg test result: {testResult}\n\n";
+            message += $"Found {outputDevices} output devices and {inputDevices} input devices.\n\n";
+            message += "Check audio_debug.log for detailed information.";
+            
+            MessageBox.Show(message, "Audio Device Detection Results", 
+                          MessageBoxButton.OK, 
+                          MessageBoxImage.Information);
+        }
+
+        private string TestFFmpegAudioDevices()
+        {
+            try
+            {
+                var ffmpegPath = GetFFmpegPath();
+                if (string.IsNullOrEmpty(ffmpegPath))
+                {
+                    LogToFile("FFmpeg not found for testing");
+                    return "FFmpeg not found";
+                }
+
+                LogToFile("Testing FFmpeg audio device detection...");
+                
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = "-f dshow -list_devices true -i dummy",
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    }
+                };
+
+                process.Start();
+                var output = process.StandardError.ReadToEnd();
+                var stdout = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+
+                LogToFile($"FFmpeg test exit code: {process.ExitCode}");
+                LogToFile($"FFmpeg test stderr: {output}");
+                LogToFile($"FFmpeg test stdout: {stdout}");
+
+                return $"Exit code: {process.ExitCode}, Output length: {output.Length}";
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error testing FFmpeg: {ex.Message}");
+                return $"Error: {ex.Message}";
+            }
+        }
+
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "audio_debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var logEntry = $"[{timestamp}] {message}\n";
+                File.AppendAllText(logPath, logEntry);
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
+        }
+
+        // Removed complex categorization method - using simple keyword-based approach
+
+        private bool IsInputDevice(string deviceName)
+        {
+            // For WASAPI, devices without "(loopback)" are typically input devices
+            // Also check for common input keywords
+            var inputKeywords = new[] { 
+                "microphone", "mic", "input", "focusrite", "audio interface", "usb audio",
+                "nomachine", "adapter", "cable input", "line in"
+            };
+            
+            var deviceNameLower = deviceName.ToLower();
+            
+            // If it doesn't contain "loopback", it's likely an input device
+            if (!deviceNameLower.Contains("loopback"))
+            {
+                // Check for input keywords
+                foreach (var keyword in inputKeywords)
+                {
+                    if (deviceNameLower.Contains(keyword))
+                    {
+                        return true;
+                    }
+                }
+                
+                // If no specific keywords but no loopback, assume it's input
+                return true;
+            }
+            
+            return false;
+        }
+
+        private bool IsOutputDevice(string deviceName)
+        {
+            // For WASAPI, devices with "(loopback)" are output devices for capturing system audio
+            var outputKeywords = new[] { 
+                "speakers", "headphones", "output", "nvidia", "realtek", "amd", "digital output",
+                "focusrite", "audio interface", "usb audio", "vb-audio", "voicemeeter",
+                "virtual", "stereo mix", "what u hear", "loopback"
+            };
+            
+            var deviceNameLower = deviceName.ToLower();
+            
+            // If it contains "loopback", it's definitely an output device
+            if (deviceNameLower.Contains("loopback"))
+            {
+                return true;
+            }
+            
+            // Check for output keywords
+            foreach (var keyword in outputKeywords)
+            {
+                if (deviceNameLower.Contains(keyword))
+                {
+                    return true;
+                }
+            }
+            
+            return false;
         }
     }
 } 
