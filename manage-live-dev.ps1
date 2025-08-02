@@ -47,7 +47,7 @@ function Show-Logs {
 
 function Build-Project {
     Write-Host "Building project in Docker..." -ForegroundColor Yellow
-    docker exec sharpshot-live-development dotnet build
+    docker exec sharpshot-live-development dotnet build -p:Platform=x64
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Build successful!" -ForegroundColor Green
     } else {

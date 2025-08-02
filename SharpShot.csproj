@@ -14,17 +14,16 @@
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platform>x64</Platform>
+    <Platforms>x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
-    <PackageReference Include="FFmpeg.AutoGen" Version="6.1.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="ffmpeg\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="ScreenRecorderLib" Version="6.5.1" />
   </ItemGroup>
 
 </Project> 

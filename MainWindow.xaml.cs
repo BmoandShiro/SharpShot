@@ -776,7 +776,7 @@ namespace SharpShot
             return Task.CompletedTask;
         }
 
-        private void OnRecordingStateChanged(bool isRecording)
+        private void OnRecordingStateChanged(object? sender, bool isRecording)
         {
             Dispatcher.Invoke(() =>
             {
@@ -790,7 +790,7 @@ namespace SharpShot
                     // Store the recording file path for save/copy options
                     if (_recordingService != null)
                     {
-                        _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath();
+                        _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath() ?? string.Empty;
                     }
                     
                     // Return to main home page when recording stops
@@ -799,7 +799,7 @@ namespace SharpShot
             }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
-        private void OnRecordingTimeUpdated(TimeSpan duration)
+        private void OnRecordingTimeUpdated(object? sender, TimeSpan duration)
         {
             // Reduce update frequency to minimize flickering
             Dispatcher.Invoke(() =>

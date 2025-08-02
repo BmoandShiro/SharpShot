@@ -11,6 +11,7 @@ namespace SharpShot.Models
         private string _screenshotFormat = string.Empty;
         private string _videoQuality = string.Empty;
         private string _audioRecordingMode = string.Empty;
+        private string _recordingEngine = string.Empty;
         private string _selectedOutputAudioDevice = string.Empty;
         private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
@@ -31,6 +32,7 @@ namespace SharpShot.Models
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
             AudioRecordingMode = "No Audio";
+            RecordingEngine = "ScreenRecorderLib";
             SelectedOutputAudioDevice = string.Empty;
             SelectedInputAudioDevice = string.Empty;
             EnableGlobalHotkeys = false;
@@ -69,6 +71,12 @@ namespace SharpShot.Models
         {
             get => _audioRecordingMode;
             set => SetProperty(ref _audioRecordingMode, value);
+        }
+
+        public string RecordingEngine
+        {
+            get => _recordingEngine;
+            set => SetProperty(ref _recordingEngine, value);
         }
 
         public string SelectedOutputAudioDevice

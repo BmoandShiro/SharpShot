@@ -339,6 +339,19 @@
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
 
+                <!-- Recording Engine -->
+                <TextBlock Text="Recording Engine:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="RecordingEngineComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,10"
+                          SelectionChanged="RecordingEngineComboBox_SelectionChanged">
+                    <ComboBoxItem Content="ScreenRecorderLib"/>
+                    <ComboBoxItem Content="FFmpeg"/>
+                </ComboBox>
+
                 <!-- Audio Recording Mode -->
                 <TextBlock Text="Audio Recording Mode:" 
                            Foreground="{StaticResource TextBrush}" 

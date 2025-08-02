@@ -39,7 +39,7 @@ switch ($Command.ToLower()) {
     
     "build-app" {
         Write-Host "Building SharpShot application..." -ForegroundColor Yellow
-        docker exec -it sharpshot-development dotnet build --configuration Release
+        docker exec -it sharpshot-development dotnet build --configuration Release -p:Platform=x64
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Application built successfully!" -ForegroundColor Green
             Write-Host "Output available in ./output directory" -ForegroundColor Cyan

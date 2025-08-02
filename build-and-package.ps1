@@ -12,7 +12,7 @@ if (!(Test-Path $ffmpegPath)) {
     # Check if current FFmpeg supports WASAPI
     try {
         # Use a simpler approach with Invoke-Expression
-        $output = & $ffmpegPath -formats 2>&1
+        $output = & $ffmpegPath -devices 2>&1
         if ($LASTEXITCODE -eq 0 -and $output -notmatch "wasapi") {
             Write-Host "Current FFmpeg does not support WASAPI. Updating..." -ForegroundColor Yellow
             & "$PSScriptRoot\setup-windows-ffmpeg.ps1"
@@ -26,7 +26,7 @@ if (!(Test-Path $ffmpegPath)) {
 
 # Build the application
 Write-Host "Building application..." -ForegroundColor Yellow
-dotnet build --configuration Release
+dotnet build --configuration Release -p:Platform=x64
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red

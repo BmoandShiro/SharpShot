@@ -88,7 +88,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "=== Quick Commands ===" -ForegroundColor Cyan
     Write-Host "Run locally: dotnet run" -ForegroundColor Gray
-    Write-Host "Build manually: docker exec sharpshot-live-development dotnet build" -ForegroundColor Gray
+    Write-Host "Build manually: docker exec sharpshot-live-development dotnet build -p:Platform=x64" -ForegroundColor Gray
     Write-Host "View logs: docker logs -f sharpshot-live-development" -ForegroundColor Gray
     Write-Host "Stop Docker: docker compose -f docker-compose.live-dev.yml down" -ForegroundColor Gray
     Write-Host ""

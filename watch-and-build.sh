@@ -9,7 +9,7 @@ echo "Watching for all file changes including assets..."
 # Function to build the project
 build_project() {
     echo "🔄 File change detected! Building project..."
-    dotnet build --project /app/SharpShot.csproj --configuration Debug
+    dotnet build --project /app/SharpShot.csproj --configuration Debug -p:Platform=x64
     if [ $? -eq 0 ]; then
         echo "✅ Build successful!"
         echo "📝 You can now run 'dotnet run' to test your changes"
@@ -21,7 +21,7 @@ build_project() {
 
 # Initial build
 echo "🔨 Performing initial build..."
-dotnet build --project /app/SharpShot.csproj --configuration Debug
+dotnet build --project /app/SharpShot.csproj --configuration Debug -p:Platform=x64
 if [ $? -eq 0 ]; then
     echo "✅ Initial build successful!"
 else

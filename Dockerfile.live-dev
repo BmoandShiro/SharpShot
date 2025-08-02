@@ -22,7 +22,7 @@ RUN dotnet restore
 COPY . ./
 
 # Build the application initially
-RUN dotnet build --configuration Debug
+RUN dotnet build --configuration Debug -p:Platform=x64
 
 # Expose port for potential debugging
 EXPOSE 5000
