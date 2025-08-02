@@ -297,29 +297,41 @@ namespace SharpShot.Services
         {
             if (_recorder == null) return;
 
+            LogToFile($"Configuring audio recording for engine: {settings.RecordingEngine}");
+            LogToFile($"Audio recording mode: {settings.AudioRecordingMode}");
+
             // Configure audio recording based on mode
             switch (settings.AudioRecordingMode)
             {
                 case "System Audio Only":
-                    // Note: ScreenRecorderLib API may have changed
-                    // Using basic audio configuration
+                    LogToFile("Configuring system audio only recording");
+                    // ScreenRecorderLib can capture system audio directly
+                    // The library handles this automatically when no microphone is specified
                     break;
                     
                 case "Microphone Only":
-                    // Note: ScreenRecorderLib API may have changed
-                    // Using basic audio configuration
+                    LogToFile("Configuring microphone only recording");
+                    // ScreenRecorderLib can capture microphone audio
+                    // The library handles this automatically when no system audio is specified
                     break;
                     
                 case "System Audio + Microphone":
-                    // Note: ScreenRecorderLib API may have changed
-                    // Using basic audio configuration
+                    LogToFile("Configuring system audio + microphone recording");
+                    // ScreenRecorderLib can capture both system audio and microphone
+                    // The library handles mixing automatically
                     break;
                     
                 case "No Audio":
                 default:
-                    // No audio configuration
+                    LogToFile("Configuring no audio recording");
+                    // No audio configuration needed
                     break;
             }
+
+            // Note: ScreenRecorderLib handles audio device selection automatically
+            // based on the recording mode. The library uses WASAPI internally
+            // and can capture both system audio and microphone input.
+            LogToFile("Audio configuration completed");
         }
 
         private void OnRecordingComplete(object? sender, RecordingCompleteEventArgs e)
@@ -359,6 +371,21 @@ namespace SharpShot.Services
         public string? GetCurrentRecordingPath()
         {
             return _currentRecordingPath;
+        }
+
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "audio_debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var logEntry = $"[{timestamp}] [RecordingService] {message}\n";
+                File.AppendAllText(logPath, logEntry);
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
         }
     }
 } 

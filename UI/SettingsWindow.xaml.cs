@@ -14,6 +14,172 @@ using SharpShot.Services;
 using SharpShot.Utils;
 using ScreenRecorderLib; // Added for ScreenRecorderLib
 
+// Windows Core Audio API imports
+[ComImport]
+[Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
+class MMDeviceEnumerator { }
+
+[Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceEnumerator
+{
+    void NotNeeded();
+    [PreserveSig]
+    int EnumAudioEndpoints(int dataFlow, int stateMask, out IntPtr ppDevices);
+    [PreserveSig]
+    int GetDefaultAudioEndpoint(int dataFlow, int role, out IntPtr ppEndpoint);
+    [PreserveSig]
+    int GetDevice(string pwstrId, out IntPtr ppDevice);
+    [PreserveSig]
+    int RegisterEndpointNotificationCallback(IntPtr pClient);
+    [PreserveSig]
+    int UnregisterEndpointNotificationCallback(IntPtr pClient);
+}
+
+[Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioEndpointVolume
+{
+    void NotNeeded();
+    [PreserveSig]
+    int NotNeeded2();
+    [PreserveSig]
+    int GetVolumeStepInfo(out uint pnStep, out uint pnStepCount);
+    [PreserveSig]
+    int VolumeStepUp(out Guid pguidEventContext);
+    [PreserveSig]
+    int VolumeStepDown(out Guid pguidEventContext);
+    [PreserveSig]
+    int SetMasterVolumeLevelScalar(float fLevel, ref Guid pguidEventContext);
+    [PreserveSig]
+    int GetMasterVolumeLevelScalar(out float pfLevel);
+    [PreserveSig]
+    int SetMasterVolumeLevel(float fLevelDB, ref Guid pguidEventContext);
+    [PreserveSig]
+    int GetMasterVolumeLevel(out float pfLevelDB);
+    [PreserveSig]
+    int GetVolumeRange(out float pflVolumeMindB, out float pflVolumeMaxdB, out float pflVolumeIncrementdB);
+}
+
+[Guid("1CB9AD4C-DBFA-4C32-B178-C2F568A703B2")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IAudioClient
+{
+    void NotNeeded();
+    [PreserveSig]
+    int Initialize(int ShareMode, uint StreamFlags, long hnsBufferDuration, long hnsPeriodicity, IntPtr pFormat, ref Guid AudioSessionGuid);
+    [PreserveSig]
+    int GetBufferSize(out uint pNumBufferFrames);
+    [PreserveSig]
+    int GetStreamLatency(out long phnsLatency);
+    [PreserveSig]
+    int GetCurrentPadding(out uint pNumPaddingFrames);
+    [PreserveSig]
+    int IsFormatSupported(int bIsSupported, IntPtr pFormat, out IntPtr ppClosestMatch);
+    [PreserveSig]
+    int GetMixFormat(out IntPtr ppDeviceFormat);
+    [PreserveSig]
+    int GetDevicePeriod(out long phnsDefaultDevicePeriod, out long phnsMinimumDevicePeriod);
+    [PreserveSig]
+    int Start();
+    [PreserveSig]
+    int Stop();
+    [PreserveSig]
+    int Reset();
+    [PreserveSig]
+    int SetEventHandle(IntPtr eventHandle);
+    [PreserveSig]
+    int GetService(ref Guid riid, out IntPtr ppv);
+}
+
+[Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDevice
+{
+    void NotNeeded();
+    [PreserveSig]
+    int Activate(ref Guid iid, uint dwClsCtx, IntPtr pActivationParams, out IntPtr ppInterface);
+    [PreserveSig]
+    int OpenPropertyStore(uint stgmAccess, out IntPtr ppProperties);
+    [PreserveSig]
+    int GetId(out string ppstrId);
+    [PreserveSig]
+    int GetState(out uint pdwState);
+}
+
+[Guid("2EDEF04C-8C67-4F1F-8AFC-8DC0F5D8C0B3")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IMMDeviceCollection
+{
+    void NotNeeded();
+    [PreserveSig]
+    int GetCount(out uint pcDevices);
+    [PreserveSig]
+    int Item(uint nDevice, out IntPtr ppDevice);
+}
+
+[Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface IPropertyStore
+{
+    void NotNeeded();
+    [PreserveSig]
+    int GetCount(out uint cProps);
+    [PreserveSig]
+    int GetAt(uint iProp, out PROPERTYKEY pkey);
+    [PreserveSig]
+    int GetValue(ref PROPERTYKEY key, out PROPVARIANT pv);
+    [PreserveSig]
+    int SetValue(ref PROPERTYKEY key, ref PROPVARIANT propvar);
+    [PreserveSig]
+    int Commit();
+}
+
+[StructLayout(LayoutKind.Sequential)]
+struct PROPERTYKEY
+{
+    public Guid fmtid;
+    public uint pid;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+struct PROPVARIANT
+{
+    public ushort vt;
+    public ushort wReserved1;
+    public ushort wReserved2;
+    public ushort wReserved3;
+    public IntPtr data;
+}
+
+// Windows Core Audio API constants
+static class WindowsCoreAudioAPI
+{
+    public const int eConsole = 0;
+    public const int eMultimedia = 1;
+    public const int eCommunications = 2;
+    public const int eRender = 0;
+    public const int eCapture = 1;
+    public const int eAll = 2;
+    public const int DEVICE_STATE_ACTIVE = 0x1;
+    public const int DEVICE_STATE_DISABLED = 0x2;
+    public const int DEVICE_STATE_NOTPRESENT = 0x4;
+    public const int DEVICE_STATE_UNPLUGGED = 0x8;
+    public const int DEVICE_STATEMASK_ALL = 0xf;
+
+    [DllImport("ole32.dll")]
+    public static extern int CoCreateInstance(ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, out IntPtr ppv);
+
+    [DllImport("ole32.dll")]
+    public static extern int CoInitialize(IntPtr pvReserved);
+
+    [DllImport("ole32.dll")]
+    public static extern void CoUninitialize();
+
+    [DllImport("oleaut32.dll")]
+    public static extern int VariantClear(IntPtr pvarg);
+}
+
 namespace SharpShot.UI
 {
     public partial class SettingsWindow : Window
@@ -59,7 +225,15 @@ namespace SharpShot.UI
             // Allow dragging the window by clicking anywhere on it
             if (e.ChangedButton == MouseButton.Left)
             {
-                DragMove();
+                try
+                {
+                    DragMove();
+                }
+                catch (InvalidOperationException)
+                {
+                    // Ignore drag move errors - they can occur when the window is in certain states
+                    // This prevents crashes when clicking the title bar
+                }
             }
         }
 
@@ -753,36 +927,70 @@ namespace SharpShot.UI
 
         private bool IsInputDevice(string deviceName)
         {
-            // ScreenRecorderLib handles device categorization automatically
-            // Just check if it's not a system audio device
-            var systemAudioKeywords = new[] { "stereo mix", "what u hear", "cable output", "vb-audio", "system audio" };
+            // More comprehensive input device detection
+            var inputKeywords = new[] { 
+                "microphone", "mic", "input", "capture", "line in", "aux in", 
+                "stereo mix", "what u hear", "cable input", "vb-audio", "system audio",
+                "realtek", "audio", "sound", "speakers", "headphones", "earphones"
+            };
             
-            foreach (var keyword in systemAudioKeywords)
+            var deviceLower = deviceName.ToLower();
+            
+            // Check for explicit input indicators
+            foreach (var keyword in inputKeywords)
             {
-                if (deviceName.ToLower().Contains(keyword.ToLower()))
+                if (deviceLower.Contains(keyword))
                 {
-                    return false; // This is an output device
+                    return true;
                 }
             }
             
-            return true; // Assume it's an input device
+            // Check for output device indicators that would make this NOT an input
+            var outputKeywords = new[] { "speakers", "headphones", "earphones", "monitor", "display" };
+            foreach (var keyword in outputKeywords)
+            {
+                if (deviceLower.Contains(keyword))
+                {
+                    return false; // This is likely an output device
+                }
+            }
+            
+            // Default to input if we can't determine
+            return true;
         }
 
         private bool IsOutputDevice(string deviceName)
         {
-            // ScreenRecorderLib handles device categorization automatically
-            // Just check if it's a system audio device
-            var systemAudioKeywords = new[] { "stereo mix", "what u hear", "cable output", "vb-audio", "system audio" };
+            // More comprehensive output device detection
+            var outputKeywords = new[] { 
+                "speakers", "headphones", "earphones", "monitor", "display", "output",
+                "stereo mix", "what u hear", "cable output", "vb-audio", "system audio",
+                "realtek", "audio", "sound"
+            };
             
-            foreach (var keyword in systemAudioKeywords)
+            var deviceLower = deviceName.ToLower();
+            
+            // Check for explicit output indicators
+            foreach (var keyword in outputKeywords)
             {
-                if (deviceName.ToLower().Contains(keyword.ToLower()))
+                if (deviceLower.Contains(keyword))
                 {
-                    return true; // This is an output device
+                    return true;
                 }
             }
             
-            return false; // Assume it's not an output device
+            // Check for input device indicators that would make this NOT an output
+            var inputKeywords = new[] { "microphone", "mic", "input", "capture", "line in", "aux in" };
+            foreach (var keyword in inputKeywords)
+            {
+                if (deviceLower.Contains(keyword))
+                {
+                    return false; // This is likely an input device
+                }
+            }
+            
+            // Default to output if we can't determine
+            return false;
         }
 
         private List<string> GetAvailableAudioDevices()
@@ -793,9 +1001,34 @@ namespace SharpShot.UI
             {
                 LogToFile("=== Getting available audio devices ===");
                 
-                // Note: ScreenRecorderLib API may have changed
-                // For now, return empty list - audio device detection will be implemented later
-                LogToFile("Audio device detection temporarily disabled - API changes detected");
+                // Prioritize ScreenRecorderLib device enumeration since it handles both input and output properly
+                var screenRecorderDevices = GetScreenRecorderLibAudioDevices();
+                devices.AddRange(screenRecorderDevices);
+                LogToFile($"ScreenRecorderLib found {screenRecorderDevices.Count} devices");
+                
+                // Get devices using Windows Core Audio API as fallback
+                var windowsDevices = GetWindowsAudioDevices();
+                foreach (var device in windowsDevices)
+                {
+                    if (!devices.Contains(device))
+                    {
+                        devices.Add(device);
+                    }
+                }
+                
+                // Only use FFmpeg devices if ScreenRecorderLib didn't find any
+                if (screenRecorderDevices.Count == 0)
+                {
+                    LogToFile("No ScreenRecorderLib devices found, trying FFmpeg as fallback");
+                    var ffmpegDevices = GetFFmpegAudioDevices();
+                    foreach (var device in ffmpegDevices)
+                    {
+                        if (!devices.Contains(device))
+                        {
+                            devices.Add(device);
+                        }
+                    }
+                }
                 
                 LogToFile($"Total audio devices found: {devices.Count}");
                 return devices;
@@ -803,6 +1036,410 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 LogToFile($"Error getting audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetScreenRecorderLibAudioDevices()
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile("Getting ScreenRecorderLib audio devices...");
+                
+                // ScreenRecorderLib provides access to audio devices through its API
+                // We'll use the Windows Core Audio API directly since ScreenRecorderLib uses it internally
+                var inputDevices = GetScreenRecorderLibDevicesByType("input");
+                var outputDevices = GetScreenRecorderLibDevicesByType("output");
+                
+                devices.AddRange(inputDevices);
+                devices.AddRange(outputDevices);
+                
+                LogToFile($"ScreenRecorderLib found {devices.Count} total devices (Input: {inputDevices.Count}, Output: {outputDevices.Count})");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting ScreenRecorderLib audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetScreenRecorderLibDevicesByType(string deviceType)
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile($"Getting ScreenRecorderLib {deviceType} devices...");
+                
+                // Use Windows Core Audio API to get devices that ScreenRecorderLib can use
+                // ScreenRecorderLib uses WASAPI internally, so we'll focus on WASAPI-compatible devices
+                
+                // Initialize COM for this operation
+                WindowsCoreAudioAPI.CoInitialize(IntPtr.Zero);
+                
+                try
+                {
+                    // Create device enumerator
+                    var deviceEnumeratorType = typeof(MMDeviceEnumerator).GUID;
+                    var deviceEnumeratorInterface = typeof(IMMDeviceEnumerator).GUID;
+                    var result = WindowsCoreAudioAPI.CoCreateInstance(
+                        ref deviceEnumeratorType, 
+                        IntPtr.Zero, 
+                        1, // CLSCTX_INPROC_SERVER
+                        ref deviceEnumeratorInterface, 
+                        out IntPtr deviceEnumeratorPtr);
+                    
+                    if (result == 0)
+                    {
+                        var deviceEnumerator = (IMMDeviceEnumerator)Marshal.GetTypedObjectForIUnknown(deviceEnumeratorPtr, typeof(IMMDeviceEnumerator));
+                        
+                        // Get devices based on type
+                        int dataFlow = deviceType == "input" ? WindowsCoreAudioAPI.eCapture : WindowsCoreAudioAPI.eRender;
+                        var flowDevices = GetAudioDevicesByFlow(deviceEnumerator, dataFlow);
+                        devices.AddRange(flowDevices);
+                        
+                        // Cleanup
+                        Marshal.ReleaseComObject(deviceEnumerator);
+                    }
+                    else
+                    {
+                        LogToFile($"Failed to create device enumerator for ScreenRecorderLib {deviceType}: {result}");
+                    }
+                }
+                finally
+                {
+                    // Always cleanup COM
+                    WindowsCoreAudioAPI.CoUninitialize();
+                }
+                
+                LogToFile($"ScreenRecorderLib {deviceType} devices found: {devices.Count}");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting ScreenRecorderLib {deviceType} devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetWindowsAudioDevices()
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile("Getting Windows audio devices...");
+                
+                // Initialize COM
+                WindowsCoreAudioAPI.CoInitialize(IntPtr.Zero);
+                
+                // Create device enumerator
+                var deviceEnumeratorType = typeof(MMDeviceEnumerator).GUID;
+                var deviceEnumeratorInterface = typeof(IMMDeviceEnumerator).GUID;
+                var result = WindowsCoreAudioAPI.CoCreateInstance(
+                    ref deviceEnumeratorType, 
+                    IntPtr.Zero, 
+                    1, // CLSCTX_INPROC_SERVER
+                    ref deviceEnumeratorInterface, 
+                    out IntPtr deviceEnumeratorPtr);
+                
+                if (result != 0)
+                {
+                    LogToFile($"Failed to create device enumerator: {result}");
+                    return devices;
+                }
+                
+                var deviceEnumerator = (IMMDeviceEnumerator)Marshal.GetTypedObjectForIUnknown(deviceEnumeratorPtr, typeof(IMMDeviceEnumerator));
+                
+                // Get input devices (capture)
+                var inputDevices = GetAudioDevicesByFlow(deviceEnumerator, WindowsCoreAudioAPI.eCapture);
+                devices.AddRange(inputDevices);
+                
+                // Get output devices (render)
+                var outputDevices = GetAudioDevicesByFlow(deviceEnumerator, WindowsCoreAudioAPI.eRender);
+                devices.AddRange(outputDevices);
+                
+                // Cleanup
+                Marshal.ReleaseComObject(deviceEnumerator);
+                WindowsCoreAudioAPI.CoUninitialize();
+                
+                LogToFile($"Windows API found {devices.Count} devices");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting Windows audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetAudioDevicesByFlow(IMMDeviceEnumerator enumerator, int dataFlow)
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile($"Starting enumeration for data flow {dataFlow} ({(dataFlow == WindowsCoreAudioAPI.eCapture ? "Capture" : "Render")})");
+                
+                var result = enumerator.EnumAudioEndpoints(dataFlow, WindowsCoreAudioAPI.DEVICE_STATE_ACTIVE, out IntPtr deviceCollectionPtr);
+                
+                if (result != 0)
+                {
+                    LogToFile($"Failed to enumerate audio endpoints for flow {dataFlow}: {result}");
+                    return devices;
+                }
+                
+                LogToFile($"Successfully enumerated audio endpoints for flow {dataFlow}");
+                
+                // Get the device collection interface
+                var deviceCollection = (IMMDeviceCollection)Marshal.GetTypedObjectForIUnknown(deviceCollectionPtr, typeof(IMMDeviceCollection));
+                
+                // Get the count of devices
+                uint deviceCount;
+                deviceCollection.GetCount(out deviceCount);
+                LogToFile($"Found {deviceCount} devices for flow {dataFlow}");
+                
+                // Iterate through each device
+                for (uint i = 0; i < deviceCount; i++)
+                {
+                    IntPtr devicePtr;
+                    var getDeviceResult = deviceCollection.Item(i, out devicePtr);
+                    
+                    if (getDeviceResult == 0 && devicePtr != IntPtr.Zero)
+                    {
+                        var device = (IMMDevice)Marshal.GetTypedObjectForIUnknown(devicePtr, typeof(IMMDevice));
+                        
+                        try
+                        {
+                            // Get the device ID
+                            string deviceId;
+                            device.GetId(out deviceId);
+                            LogToFile($"Processing device {i}: {deviceId}");
+                            
+                            // Get the device friendly name
+                            IntPtr propertyStorePtr;
+                            var openPropertyStoreResult = device.OpenPropertyStore(0x00000000, out propertyStorePtr); // STGM_READ
+                            
+                            if (openPropertyStoreResult == 0 && propertyStorePtr != IntPtr.Zero)
+                            {
+                                var propertyStore = (IPropertyStore)Marshal.GetTypedObjectForIUnknown(propertyStorePtr, typeof(IPropertyStore));
+                                
+                                try
+                                {
+                                    // Get the friendly name property
+                                    var friendlyNameKey = new PROPERTYKEY
+                                    {
+                                        fmtid = new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"),
+                                        pid = 14 // PKEY_Device_FriendlyName
+                                    };
+                                    
+                                    PROPVARIANT propVariant;
+                                    var getValueResult = propertyStore.GetValue(ref friendlyNameKey, out propVariant);
+                                    
+                                    if (getValueResult == 0)
+                                    {
+                                        LogToFile($"Successfully retrieved property for device {deviceId}, variant type: {propVariant.vt}");
+                                        
+                                        // Extract the string value from PROPVARIANT
+                                        if (propVariant.vt == 31) // VT_LPWSTR
+                                        {
+                                            string deviceName = Marshal.PtrToStringUni(propVariant.data);
+                                            if (!string.IsNullOrEmpty(deviceName) && !devices.Contains(deviceName))
+                                            {
+                                                devices.Add(deviceName);
+                                                LogToFile($"Added device: {deviceName} (ID: {deviceId})");
+                                            }
+                                            else if (string.IsNullOrEmpty(deviceName))
+                                            {
+                                                LogToFile($"Device name is null or empty for device {deviceId}");
+                                            }
+                                            else
+                                            {
+                                                LogToFile($"Device {deviceName} already exists in list");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            LogToFile($"Unexpected variant type {propVariant.vt} for device {deviceId}");
+                                        }
+                                        
+                                        // Clear the PROPVARIANT
+                                        var handle = GCHandle.Alloc(propVariant, GCHandleType.Pinned);
+                                        try
+                                        {
+                                            WindowsCoreAudioAPI.VariantClear(handle.AddrOfPinnedObject());
+                                        }
+                                        finally
+                                        {
+                                            handle.Free();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        LogToFile($"Failed to get property value for device {deviceId}: {getValueResult}");
+                                    }
+                                }
+                                finally
+                                {
+                                    Marshal.ReleaseComObject(propertyStore);
+                                }
+                            }
+                            else
+                            {
+                                LogToFile($"Failed to open property store for device {deviceId}: {openPropertyStoreResult}");
+                            }
+                        }
+                        finally
+                        {
+                            Marshal.ReleaseComObject(device);
+                        }
+                    }
+                    else
+                    {
+                        LogToFile($"Failed to get device {i}: {getDeviceResult}");
+                    }
+                }
+                
+                Marshal.ReleaseComObject(deviceCollection);
+                
+                LogToFile($"Successfully enumerated {devices.Count} devices for flow {dataFlow}");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting audio devices by flow: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetFFmpegAudioDevices()
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile("Getting FFmpeg audio devices...");
+                
+                var ffmpegPath = GetFFmpegPath();
+                if (string.IsNullOrEmpty(ffmpegPath))
+                {
+                    LogToFile("FFmpeg not found, skipping FFmpeg device detection");
+                    return devices;
+                }
+                
+                // Try both DirectShow and WASAPI to get comprehensive device list
+                var dshowDevices = GetFFmpegDevicesByFormat(ffmpegPath, "dshow");
+                var wasapiDevices = GetFFmpegDevicesByFormat(ffmpegPath, "wasapi");
+                
+                // Combine devices, avoiding duplicates
+                foreach (var device in dshowDevices)
+                {
+                    if (!devices.Contains(device))
+                    {
+                        devices.Add(device);
+                    }
+                }
+                
+                foreach (var device in wasapiDevices)
+                {
+                    if (!devices.Contains(device))
+                    {
+                        devices.Add(device);
+                    }
+                }
+                
+                LogToFile($"FFmpeg found {devices.Count} total devices (DirectShow: {dshowDevices.Count}, WASAPI: {wasapiDevices.Count})");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting FFmpeg audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetFFmpegDevicesByFormat(string ffmpegPath, string format)
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile($"Getting FFmpeg devices using {format} format...");
+                
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = ffmpegPath,
+                        Arguments = $"-list_devices true -f {format} -i dummy",
+                        UseShellExecute = false,
+                        RedirectStandardError = true,
+                        RedirectStandardOutput = true,
+                        CreateNoWindow = true
+                    }
+                };
+                
+                process.Start();
+                var output = process.StandardError.ReadToEnd();
+                var stdout = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+                
+                LogToFile($"FFmpeg {format} exit code: {process.ExitCode}");
+                LogToFile($"FFmpeg {format} stderr length: {output.Length}");
+                LogToFile($"FFmpeg {format} stdout length: {stdout.Length}");
+                
+                // Parse FFmpeg output for devices
+                var lines = output.Split('\n');
+                bool inAudioDevices = false;
+                bool inVideoDevices = false;
+                
+                foreach (var line in lines)
+                {
+                    var trimmedLine = line.Trim();
+                    
+                    // Look for audio device sections
+                    if (trimmedLine.Contains("DirectShow audio devices") || trimmedLine.Contains("WASAPI audio devices"))
+                    {
+                        inAudioDevices = true;
+                        inVideoDevices = false;
+                        LogToFile($"Found audio devices section: {trimmedLine}");
+                        continue;
+                    }
+                    
+                    // Skip video device sections
+                    if (trimmedLine.Contains("DirectShow video devices") || trimmedLine.Contains("WASAPI video devices"))
+                    {
+                        inAudioDevices = false;
+                        inVideoDevices = true;
+                        continue;
+                    }
+                    
+                    // Parse device names (they're usually in quotes)
+                    if (inAudioDevices && trimmedLine.Contains("\""))
+                    {
+                        var startIndex = trimmedLine.IndexOf('"') + 1;
+                        var endIndex = trimmedLine.LastIndexOf('"');
+                        if (startIndex > 0 && endIndex > startIndex)
+                        {
+                            var deviceName = trimmedLine.Substring(startIndex, endIndex - startIndex);
+                            if (!string.IsNullOrEmpty(deviceName) && !devices.Contains(deviceName))
+                            {
+                                devices.Add(deviceName);
+                                LogToFile($"Added {format} device: {deviceName}");
+                            }
+                        }
+                    }
+                }
+                
+                LogToFile($"FFmpeg {format} found {devices.Count} devices");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting FFmpeg {format} devices: {ex.Message}");
                 return devices;
             }
         }
@@ -872,17 +1509,25 @@ namespace SharpShot.UI
             {
                 LogToFile("=== Refreshing Audio Devices ===");
                 
-                // Test FFmpeg command manually and show results
+                // Test ScreenRecorderLib device enumeration
+                var screenRecorderDevices = GetScreenRecorderLibAudioDevices();
+                var screenRecorderInputDevices = GetScreenRecorderLibDevicesByType("input");
+                var screenRecorderOutputDevices = GetScreenRecorderLibDevicesByType("output");
+                
+                // Test FFmpeg as fallback
                 var ffmpegPath = GetFFmpegPath();
                 var ffmpegFound = !string.IsNullOrEmpty(ffmpegPath);
-                
                 var testResult = TestFFmpegAudioDevices();
                 
                 // Clear existing devices
                 OutputAudioDeviceComboBox.Items.Clear();
                 InputAudioDeviceComboBox.Items.Clear();
                 
-                // Get available devices
+                // Add "Auto-detect" options
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                
+                // Get available devices (prioritizes ScreenRecorderLib)
                 var devices = GetAvailableAudioDevices();
                 LogToFile($"Found {devices.Count} total devices");
                 
@@ -910,21 +1555,34 @@ namespace SharpShot.UI
                 // Populate dropdowns
                 foreach (var device in inputDevices)
                 {
-                    InputAudioDeviceComboBox.Items.Add(device);
+                    InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
                 }
                 
                 foreach (var device in outputDevices)
                 {
-                    OutputAudioDeviceComboBox.Items.Add(device);
+                    OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
                 }
                 
                 // Set selected devices
                 SetSelectedAudioDevices();
                 
-                var message = $"FFmpeg found: {ffmpegFound}\n";
-                message += $"FFmpeg path: {ffmpegPath}\n\n";
-                message += $"FFmpeg test result: {testResult}\n\n";
-                message += $"Found {inputDevices.Count} input devices and {outputDevices.Count} output devices.\n\n";
+                var message = $"=== Audio Device Detection Results ===\n\n";
+                message += $"ScreenRecorderLib (Primary):\n";
+                message += $"  - Total devices: {screenRecorderDevices.Count}\n";
+                message += $"  - Input devices: {screenRecorderInputDevices.Count}\n";
+                message += $"  - Output devices: {screenRecorderOutputDevices.Count}\n\n";
+                
+                if (ffmpegFound)
+                {
+                    message += $"FFmpeg (Fallback):\n";
+                    message += $"  - Found: {ffmpegFound}\n";
+                    message += $"  - Path: {ffmpegPath}\n";
+                    message += $"  - Test result: {testResult}\n\n";
+                }
+                
+                message += $"Final Results:\n";
+                message += $"  - Input devices: {inputDevices.Count}\n";
+                message += $"  - Output devices: {outputDevices.Count}\n\n";
                 message += $"Input devices: {string.Join(", ", inputDevices)}\n\n";
                 message += $"Output devices: {string.Join(", ", outputDevices)}\n\n";
                 message += "Check audio_debug.log for detailed information.";
@@ -953,29 +1611,29 @@ namespace SharpShot.UI
 
                 LogToFile("Testing FFmpeg audio device detection...");
                 
-                var process = new Process
+                var result = new System.Text.StringBuilder();
+                result.AppendLine($"FFmpeg path: {ffmpegPath}");
+                
+                // Test both DirectShow and WASAPI
+                var dshowDevices = GetFFmpegDevicesByFormat(ffmpegPath, "dshow");
+                var wasapiDevices = GetFFmpegDevicesByFormat(ffmpegPath, "wasapi");
+                
+                result.AppendLine($"DirectShow devices found: {dshowDevices.Count}");
+                foreach (var device in dshowDevices)
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = ffmpegPath,
-                        Arguments = "-list_devices true -f wasapi -i dummy",
-                        UseShellExecute = false,
-                        RedirectStandardError = true,
-                        RedirectStandardOutput = true,
-                        CreateNoWindow = true
-                    }
-                };
-
-                process.Start();
-                var output = process.StandardError.ReadToEnd();
-                var stdout = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
-
-                LogToFile($"FFmpeg test exit code: {process.ExitCode}");
-                LogToFile($"FFmpeg test stderr: {output}");
-                LogToFile($"FFmpeg test stdout: {stdout}");
-
-                return $"Exit code: {process.ExitCode}, Output length: {output.Length}";
+                    result.AppendLine($"  - {device}");
+                }
+                
+                result.AppendLine($"WASAPI devices found: {wasapiDevices.Count}");
+                foreach (var device in wasapiDevices)
+                {
+                    result.AppendLine($"  - {device}");
+                }
+                
+                var totalDevices = dshowDevices.Count + wasapiDevices.Count;
+                result.AppendLine($"Total unique devices: {totalDevices}");
+                
+                return result.ToString();
             }
             catch (Exception ex)
             {
