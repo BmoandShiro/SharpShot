@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using SharpShot.Models;
 using SharpShot.Services;
 using SharpShot.Utils;
@@ -368,6 +369,9 @@ namespace SharpShot.UI
             CopyHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Copy", "");
             SaveHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Save", "");
             
+            // Apply initial theme colors and close button style
+            UpdateThemeColors();
+            
             // Load triple-click settings
             ScreenshotRegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotRegionTripleClick", "false") == "true";
             ScreenshotFullscreenTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotFullscreenTripleClick", "false") == "true";
@@ -708,6 +712,59 @@ namespace SharpShot.UI
             DropShadowOpacityValue.Text = $"{(DropShadowOpacitySlider.Value * 100):F1}%";
         }
         
+        private Style CreateCloseButtonStyle(System.Windows.Media.Color themeColor)
+        {
+            var style = new Style(typeof(Button));
+            
+            // Base properties
+            style.Setters.Add(new Setter(Button.BackgroundProperty, System.Windows.Media.Brushes.Transparent));
+            style.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(0)));
+            style.Setters.Add(new Setter(Button.ForegroundProperty, new SolidColorBrush(themeColor)));
+            style.Setters.Add(new Setter(Button.WidthProperty, 30.0));
+            style.Setters.Add(new Setter(Button.HeightProperty, 30.0));
+            style.Setters.Add(new Setter(Button.FontSizeProperty, 16.0));
+            style.Setters.Add(new Setter(Button.CursorProperty, Cursors.Hand));
+            
+            // Template
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+            border.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Button.BorderBrushProperty));
+            border.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Button.BorderThicknessProperty));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+            
+            var contentPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentPresenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentPresenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            
+            border.AppendChild(contentPresenter);
+            template.VisualTree = border;
+            
+            // Hover trigger
+            var hoverTrigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
+            var hoverColor = System.Windows.Media.Color.FromArgb(21, themeColor.R, themeColor.G, themeColor.B); // 21 = 0x15
+            hoverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(hoverColor)));
+            
+            var dropShadow = new DropShadowEffect();
+            dropShadow.Color = themeColor;
+            dropShadow.BlurRadius = 8;
+            dropShadow.ShadowDepth = 0;
+            dropShadow.Opacity = 0.2;
+            hoverTrigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
+            
+            // Pressed trigger
+            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            var pressedColor = System.Windows.Media.Color.FromArgb(48, themeColor.R, themeColor.G, themeColor.B); // 48 = 0x30
+            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(pressedColor)));
+            
+            template.Triggers.Add(hoverTrigger);
+            template.Triggers.Add(pressedTrigger);
+            
+            style.Setters.Add(new Setter(Button.TemplateProperty, template));
+            
+            return style;
+        }
+
         private void UpdateThemeColors()
         {
             try
@@ -770,10 +827,12 @@ namespace SharpShot.UI
                         browseText.Foreground = brush;
                 }
                 
-                // Update CloseSettingsButton (X button) foreground color
+                // Update CloseSettingsButton (X button) with dynamic hover effects
                 if (CloseSettingsButton != null)
                 {
                     CloseSettingsButton.Foreground = brush;
+                    // Apply dynamic style that changes with theme
+                    CloseSettingsButton.Style = CreateCloseButtonStyle(color);
                 }
                 
                 // Update ResizeGripBrush resource for the 3 squares in bottom right
@@ -789,6 +848,8 @@ namespace SharpShot.UI
                 {
                     scrollBarBrush.Color = color;
                 }
+                
+
                 
                 System.Diagnostics.Debug.WriteLine($"Updated settings theme colors: {iconColor}");
             }
