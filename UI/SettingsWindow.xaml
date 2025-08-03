@@ -13,7 +13,7 @@
         <Window.Resources>
             <SolidColorBrush x:Key="ResizeGripBrush" Color="#FFFF8C00"/>
             <SolidColorBrush x:Key="ScrollBarBrush" Color="#FFFF8C00"/>
-            <SolidColorBrush x:Key="ScrollBarTrackHoverBrush" Color="#20FF8C00"/>
+            <SolidColorBrush x:Key="ScrollBarTrackHoverBrush" Color="#15FF8C00"/>
             <SolidColorBrush x:Key="ScrollBarButtonHoverBrush" Color="#15FF8C00"/>
             <Style TargetType="ResizeGrip">
                 <Setter Property="Background" Value="Transparent"/>
@@ -156,15 +156,24 @@
                                                               Margin="2,1,2,1"
                                                               x:Name="PART_DecreaseRepeatButton"
                                                               Command="ScrollBar.PageUpCommand">
-                                                    <RepeatButton.Style>
-                                                        <Style TargetType="RepeatButton">
-                                                            <Style.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter Property="Background" Value="{StaticResource ScrollBarTrackHoverBrush}"/>
-                                                                </Trigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </RepeatButton.Style>
+                                                    <RepeatButton.Template>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    Margin="{TemplateBinding Margin}">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="{StaticResource ScrollBarTrackHoverBrush}"/>
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </RepeatButton.Template>
                                                 </RepeatButton>
                                             </Track.DecreaseRepeatButton>
                                             <Track.IncreaseRepeatButton>
@@ -173,15 +182,24 @@
                                                               Margin="2,1,2,1"
                                                               x:Name="PART_IncreaseRepeatButton"
                                                               Command="ScrollBar.PageDownCommand">
-                                                    <RepeatButton.Style>
-                                                        <Style TargetType="RepeatButton">
-                                                            <Style.Triggers>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter Property="Background" Value="{StaticResource ScrollBarTrackHoverBrush}"/>
-                                                                </Trigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </RepeatButton.Style>
+                                                    <RepeatButton.Template>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    Margin="{TemplateBinding Margin}">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Style.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter Property="Background" Value="{StaticResource ScrollBarTrackHoverBrush}"/>
+                                                                            </Trigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </RepeatButton.Template>
                                                 </RepeatButton>
                                             </Track.IncreaseRepeatButton>
                                             <Track.Thumb>
