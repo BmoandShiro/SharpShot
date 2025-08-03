@@ -61,7 +61,7 @@ namespace SharpShot.Services
         {
             var settings = _settingsService.CurrentSettings;
             
-            // Create recorder with audio settings
+            // Create recorder with basic configuration
             _recorder = Recorder.CreateRecorder();
             
             // Configure audio recording based on settings
@@ -78,7 +78,8 @@ namespace SharpShot.Services
             _isRecording = true;
             RecordingStateChanged?.Invoke(this, true);
 
-            System.Diagnostics.Debug.WriteLine($"Started ScreenRecorderLib recording to: {_currentRecordingPath}");
+            LogToFile($"Started ScreenRecorderLib recording to: {_currentRecordingPath}");
+            LogToFile($"Audio recording mode: {settings.AudioRecordingMode}");
             
             return Task.CompletedTask;
         }

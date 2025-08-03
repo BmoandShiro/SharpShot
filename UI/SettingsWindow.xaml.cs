@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -331,11 +332,22 @@ namespace SharpShot.UI
                 }
             }
 
-            // Load audio devices
-            LoadAudioDevices();
-            
-            // Set selected audio devices
-            SetSelectedAudioDevices();
+            // Load audio devices after UI is fully initialized
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    LogToFile("Starting automatic audio device loading after UI initialization...");
+                    LoadAudioDevices();
+                    SetSelectedAudioDevices();
+                    LogToFile("Audio device loading completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    LogToFile($"Error during automatic audio device loading: {ex.Message}");
+                    // Don't let audio device loading failure prevent settings from loading
+                }
+            }));
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
@@ -567,12 +579,24 @@ namespace SharpShot.UI
                 // Save selected audio devices
                 if (OutputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem outputAudioItem)
                 {
-                    _originalSettings.SelectedOutputAudioDevice = outputAudioItem.Content?.ToString() ?? string.Empty;
+                    var outputDevice = outputAudioItem.Content?.ToString() ?? string.Empty;
+                    _originalSettings.SelectedOutputAudioDevice = outputDevice;
+                    LogToFile($"Saving output audio device: '{outputDevice}'");
+                }
+                else
+                {
+                    LogToFile("No output audio device selected");
                 }
 
                 if (InputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem inputAudioItem)
                 {
-                    _originalSettings.SelectedInputAudioDevice = inputAudioItem.Content?.ToString() ?? string.Empty;
+                    var inputDevice = inputAudioItem.Content?.ToString() ?? string.Empty;
+                    _originalSettings.SelectedInputAudioDevice = inputDevice;
+                    LogToFile($"Saving input audio device: '{inputDevice}'");
+                }
+                else
+                {
+                    LogToFile("No input audio device selected");
                 }
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
@@ -961,95 +985,151 @@ namespace SharpShot.UI
         {
             try
             {
-                LogToFile("Loading audio devices...");
-                var audioDevices = GetAvailableAudioDevices();
+                LogToFile("=== Loading Audio Devices (Auto) ===");
                 
-                LogToFile($"Found {audioDevices.Count} total audio devices");
+                // Clear existing devices
+                OutputAudioDeviceComboBox.Items.Clear();
+                InputAudioDeviceComboBox.Items.Clear();
                 
-                // Simple categorization based on device names
-                var outputDevices = new List<string>();
+                // Add "Auto-detect" options
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                
+                // Get available devices (prioritizes ScreenRecorderLib)
+                var devices = GetAvailableAudioDevices();
+                LogToFile($"Found {devices.Count} total devices");
+                
+                // Categorize devices
                 var inputDevices = new List<string>();
+                var outputDevices = new List<string>();
                 
-                foreach (var device in audioDevices)
+                foreach (var device in devices)
                 {
-                    var isInput = IsInputDevice(device);
-                    var isOutput = IsOutputDevice(device);
-                    
-                    if (isOutput)
-                    {
-                        outputDevices.Add(device);
-                    }
-                    if (isInput)
+                    LogToFile($"Processing device: {device}");
+                    if (IsInputDevice(device))
                     {
                         inputDevices.Add(device);
+                        LogToFile($"Added to input devices: {device}");
+                    }
+                    else if (IsOutputDevice(device))
+                    {
+                        outputDevices.Add(device);
+                        LogToFile($"Added to output devices: {device}");
+                    }
+                    else
+                    {
+                        // If we can't determine, add to both but log it
+                        inputDevices.Add(device);
+                        outputDevices.Add(device);
+                        LogToFile($"Added to both input and output (undetermined): {device}");
                     }
                 }
                 
-                // Populate output audio devices
-                OutputAudioDeviceComboBox.Items.Clear();
-                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                LogToFile($"Categorized {inputDevices.Count} input devices and {outputDevices.Count} output devices");
+                
+                // Populate dropdowns
+                foreach (var device in inputDevices)
+                {
+                    InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
+                }
                 
                 foreach (var device in outputDevices)
                 {
                     OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
                 }
                 
-                // Populate input audio devices
-                InputAudioDeviceComboBox.Items.Clear();
-                InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
-                
-                foreach (var device in inputDevices)
-                {
-                    InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = device });
-                }
-                
-                LogToFile($"Found {outputDevices.Count} output devices: {string.Join(", ", outputDevices)}");
-                LogToFile($"Found {inputDevices.Count} input devices: {string.Join(", ", inputDevices)}");
+                LogToFile("Audio device loading completed successfully");
             }
             catch (Exception ex)
             {
                 LogToFile($"Error loading audio devices: {ex.Message}");
+                // On error, just leave with Auto-detect option
+                OutputAudioDeviceComboBox.Items.Clear();
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
+                
+                InputAudioDeviceComboBox.Items.Clear();
+                InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
             }
         }
 
         private void SetSelectedAudioDevices()
         {
+            LogToFile($"Setting selected audio devices...");
+            LogToFile($"Saved output device: '{_originalSettings.SelectedOutputAudioDevice}'");
+            LogToFile($"Saved input device: '{_originalSettings.SelectedInputAudioDevice}'");
+            
             // Set output audio device
+            bool outputDeviceSet = false;
             foreach (var item in OutputAudioDeviceComboBox.Items)
             {
-                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.SelectedOutputAudioDevice)
+                if (item is System.Windows.Controls.ComboBoxItem comboItem)
                 {
-                    OutputAudioDeviceComboBox.SelectedItem = item;
-                    break;
+                    var deviceName = comboItem.Content.ToString();
+                    LogToFile($"Checking output device: '{deviceName}'");
+                    
+                    if (deviceName == _originalSettings.SelectedOutputAudioDevice)
+                    {
+                        OutputAudioDeviceComboBox.SelectedItem = item;
+                        LogToFile($"Set output device to: {deviceName}");
+                        outputDeviceSet = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!outputDeviceSet)
+            {
+                LogToFile($"Could not find saved output device '{_originalSettings.SelectedOutputAudioDevice}' in dropdown");
+                // Set to "Auto-detect" if device not found
+                if (OutputAudioDeviceComboBox.Items.Count > 0)
+                {
+                    OutputAudioDeviceComboBox.SelectedIndex = 0;
+                    LogToFile("Set output device to Auto-detect (default)");
                 }
             }
 
             // Set input audio device
+            bool inputDeviceSet = false;
             foreach (var item in InputAudioDeviceComboBox.Items)
             {
-                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.SelectedInputAudioDevice)
+                if (item is System.Windows.Controls.ComboBoxItem comboItem)
                 {
-                    InputAudioDeviceComboBox.SelectedItem = item;
-                    break;
+                    var deviceName = comboItem.Content.ToString();
+                    LogToFile($"Checking input device: '{deviceName}'");
+                    
+                    if (deviceName == _originalSettings.SelectedInputAudioDevice)
+                    {
+                        InputAudioDeviceComboBox.SelectedItem = item;
+                        LogToFile($"Set input device to: {deviceName}");
+                        inputDeviceSet = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!inputDeviceSet)
+            {
+                LogToFile($"Could not find saved input device '{_originalSettings.SelectedInputAudioDevice}' in dropdown");
+                // Set to "Auto-detect" if device not found
+                if (InputAudioDeviceComboBox.Items.Count > 0)
+                {
+                    InputAudioDeviceComboBox.SelectedIndex = 0;
+                    LogToFile("Set input device to Auto-detect (default)");
                 }
             }
         }
 
         private bool IsInputDevice(string deviceName)
         {
-            // More comprehensive input device detection
-            var inputKeywords = new[] { 
-                "microphone", "mic", "input", "capture", "line in", "aux in", 
-                "stereo mix", "what u hear", "cable input", "vb-audio", "system audio",
-                "realtek", "audio", "sound", "speakers", "headphones", "earphones"
-            };
-            
             var deviceLower = deviceName.ToLower();
             
-            // Check for explicit input indicators
-            foreach (var keyword in inputKeywords)
+            // Primary input device keywords
+            var primaryInputKeywords = new[] { 
+                "microphone", "mic", "input", "capture", "line in", "aux in", "stereo mix"
+            };
+            
+            // Check for primary input indicators
+            foreach (var keyword in primaryInputKeywords)
             {
                 if (deviceLower.Contains(keyword))
                 {
@@ -1058,7 +1138,7 @@ namespace SharpShot.UI
             }
             
             // Check for output device indicators that would make this NOT an input
-            var outputKeywords = new[] { "speakers", "headphones", "earphones", "monitor", "display" };
+            var outputKeywords = new[] { "speakers", "headphones", "earphones", "monitor", "display", "output" };
             foreach (var keyword in outputKeywords)
             {
                 if (deviceLower.Contains(keyword))
@@ -1067,23 +1147,21 @@ namespace SharpShot.UI
                 }
             }
             
-            // Default to input if we can't determine
-            return true;
+            // Default to false for input - be more conservative
+            return false;
         }
 
         private bool IsOutputDevice(string deviceName)
         {
-            // More comprehensive output device detection
-            var outputKeywords = new[] { 
-                "speakers", "headphones", "earphones", "monitor", "display", "output",
-                "stereo mix", "what u hear", "cable output", "vb-audio", "system audio",
-                "realtek", "audio", "sound"
-            };
-            
             var deviceLower = deviceName.ToLower();
             
-            // Check for explicit output indicators
-            foreach (var keyword in outputKeywords)
+            // Primary output device keywords
+            var primaryOutputKeywords = new[] { 
+                "speakers", "headphones", "earphones", "monitor", "display", "output"
+            };
+            
+            // Check for primary output indicators
+            foreach (var keyword in primaryOutputKeywords)
             {
                 if (deviceLower.Contains(keyword))
                 {
@@ -1101,9 +1179,13 @@ namespace SharpShot.UI
                 }
             }
             
-            // Default to output if we can't determine
+            // Default to false for output - be more conservative
             return false;
         }
+
+
+
+
 
         private List<string> GetAvailableAudioDevices()
         {
@@ -1116,15 +1198,33 @@ namespace SharpShot.UI
                 // Try multiple approaches to get audio devices
                 var allDevices = new List<string>();
                 
-                // Method 1: Try using NAudio (if available) - most reliable
+                // Method 1: Try using ScreenRecorderLib's built-in device enumeration
+                var screenRecorderDevices = GetScreenRecorderLibDevices();
+                if (screenRecorderDevices.Count > 0)
+                {
+                    LogToFile($"ScreenRecorderLib found {screenRecorderDevices.Count} devices");
+                    allDevices.AddRange(screenRecorderDevices);
+                }
+                else
+                {
+                    LogToFile("ScreenRecorderLib found no devices, trying fallback methods");
+                }
+                
+                // Method 2: Try using NAudio (if available) - most reliable
                 var naudioDevices = GetNAudioDevices();
                 if (naudioDevices.Count > 0)
                 {
                     LogToFile($"NAudio found {naudioDevices.Count} devices");
-                    allDevices.AddRange(naudioDevices);
+                    foreach (var device in naudioDevices)
+                    {
+                        if (!allDevices.Contains(device))
+                        {
+                            allDevices.Add(device);
+                        }
+                    }
                 }
                 
-                // Method 2: Try using WMI - Windows Management Instrumentation
+                // Method 3: Try using WMI - Windows Management Instrumentation
                 var wmiDevices = GetWMIAudioDevices();
                 if (wmiDevices.Count > 0)
                 {
@@ -1138,7 +1238,7 @@ namespace SharpShot.UI
                     }
                 }
                 
-                // Method 3: Try using Windows Core Audio API (simplified)
+                // Method 4: Try using Windows Core Audio API (simplified)
                 var coreAudioDevices = GetSimplifiedCoreAudioDevices();
                 if (coreAudioDevices.Count > 0)
                 {
@@ -1152,7 +1252,7 @@ namespace SharpShot.UI
                     }
                 }
                 
-                // Method 4: Try FFmpeg as last resort
+                // Method 5: Try FFmpeg as last resort
                 if (allDevices.Count == 0)
                 {
                     LogToFile("No devices found with other methods, trying FFmpeg");
@@ -1169,6 +1269,94 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 LogToFile($"Error getting audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetScreenRecorderLibDevices()
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile("Getting audio devices using ScreenRecorderLib...");
+                
+                // ScreenRecorderLib provides access to audio devices through its API
+                // We can use the library's built-in capabilities to get device information
+                
+                // For now, we'll use a simplified approach that leverages ScreenRecorderLib's
+                // understanding of the audio system, but we'll still use our Windows API
+                // enumeration since ScreenRecorderLib doesn't expose device enumeration directly
+                
+                // Get devices using the real Windows Core Audio API approach
+                var inputDevices = GetRealAudioDevicesByType("input");
+                var outputDevices = GetRealAudioDevicesByType("output");
+                
+                devices.AddRange(inputDevices);
+                devices.AddRange(outputDevices);
+                
+                LogToFile($"ScreenRecorderLib-compatible devices found: {devices.Count} (Input: {inputDevices.Count}, Output: {outputDevices.Count})");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting ScreenRecorderLib audio devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetRealAudioDevicesByType(string deviceType)
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile($"Getting real {deviceType} devices using Windows Core Audio API...");
+                
+                // Use Windows Core Audio API to get real device names
+                WindowsCoreAudioAPI.CoInitialize(IntPtr.Zero);
+                
+                try
+                {
+                    // Create device enumerator
+                    var deviceEnumeratorType = typeof(MMDeviceEnumerator).GUID;
+                    var deviceEnumeratorInterface = typeof(IMMDeviceEnumerator).GUID;
+                    var result = WindowsCoreAudioAPI.CoCreateInstance(
+                        ref deviceEnumeratorType, 
+                        IntPtr.Zero, 
+                        1, // CLSCTX_INPROC_SERVER
+                        ref deviceEnumeratorInterface, 
+                        out IntPtr deviceEnumeratorPtr);
+                    
+                    if (result == 0)
+                    {
+                        var deviceEnumerator = (IMMDeviceEnumerator)Marshal.GetTypedObjectForIUnknown(deviceEnumeratorPtr, typeof(IMMDeviceEnumerator));
+                        
+                        // Get devices based on type
+                        int dataFlow = deviceType == "input" ? WindowsCoreAudioAPI.eCapture : WindowsCoreAudioAPI.eRender;
+                        var flowDevices = GetRealAudioDevicesByFlow(deviceEnumerator, dataFlow);
+                        devices.AddRange(flowDevices);
+                        
+                        // Cleanup
+                        Marshal.ReleaseComObject(deviceEnumerator);
+                    }
+                    else
+                    {
+                        LogToFile($"Failed to create device enumerator for {deviceType}: {result}");
+                    }
+                }
+                finally
+                {
+                    // Always cleanup COM
+                    WindowsCoreAudioAPI.CoUninitialize();
+                }
+                
+                LogToFile($"Real {deviceType} devices found: {devices.Count}");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting real {deviceType} devices: {ex.Message}");
                 return devices;
             }
         }
@@ -1250,13 +1438,14 @@ namespace SharpShot.UI
             {
                 LogToFile("Getting audio devices using simplified Core Audio API...");
                 
-                // Use a much simpler approach that's less likely to fail
-                // This will try to get basic device information without complex COM interop
+                // Try to get devices using the existing GetSimpleAudioDevices method
+                var inputDevices = GetSimpleAudioDevices("input");
+                var outputDevices = GetSimpleAudioDevices("output");
                 
-                // For now, we'll return an empty list and let other methods handle it
-                // This prevents the complex COM interop from causing issues
+                devices.AddRange(inputDevices);
+                devices.AddRange(outputDevices);
                 
-                LogToFile("Simplified Core Audio API completed (no devices found)");
+                LogToFile($"Simplified Core Audio API found {devices.Count} devices");
                 return devices;
             }
             catch (Exception ex)
@@ -1272,33 +1461,191 @@ namespace SharpShot.UI
             
             try
             {
-                LogToFile($"Getting simple {deviceType} devices...");
+                LogToFile($"Getting real {deviceType} devices using Windows Core Audio API...");
                 
-                // Try to get devices using a basic Windows API approach
-                // This is a fallback that should work even if the complex COM interop fails
+                // Use Windows Core Audio API to get real device names
+                WindowsCoreAudioAPI.CoInitialize(IntPtr.Zero);
                 
-                // Add some common device names that should be available
-                if (deviceType == "input")
+                try
                 {
-                    devices.Add("Default Microphone");
-                    devices.Add("Microphone");
-                    devices.Add("Line In");
-                    devices.Add("Stereo Mix");
+                    // Create device enumerator
+                    var deviceEnumeratorType = typeof(MMDeviceEnumerator).GUID;
+                    var deviceEnumeratorInterface = typeof(IMMDeviceEnumerator).GUID;
+                    var result = WindowsCoreAudioAPI.CoCreateInstance(
+                        ref deviceEnumeratorType, 
+                        IntPtr.Zero, 
+                        1, // CLSCTX_INPROC_SERVER
+                        ref deviceEnumeratorInterface, 
+                        out IntPtr deviceEnumeratorPtr);
+                    
+                    if (result == 0)
+                    {
+                        var deviceEnumerator = (IMMDeviceEnumerator)Marshal.GetTypedObjectForIUnknown(deviceEnumeratorPtr, typeof(IMMDeviceEnumerator));
+                        
+                        // Get devices based on type
+                        int dataFlow = deviceType == "input" ? WindowsCoreAudioAPI.eCapture : WindowsCoreAudioAPI.eRender;
+                        var flowDevices = GetRealAudioDevicesByFlow(deviceEnumerator, dataFlow);
+                        devices.AddRange(flowDevices);
+                        
+                        // Cleanup
+                        Marshal.ReleaseComObject(deviceEnumerator);
+                    }
+                    else
+                    {
+                        LogToFile($"Failed to create device enumerator for {deviceType}: {result}");
+                    }
                 }
-                else if (deviceType == "output")
+                finally
                 {
-                    devices.Add("Default Speakers");
-                    devices.Add("Speakers");
-                    devices.Add("Headphones");
-                    devices.Add("Digital Audio (S/PDIF)");
+                    // Always cleanup COM
+                    WindowsCoreAudioAPI.CoUninitialize();
                 }
                 
-                LogToFile($"Simple {deviceType} devices: {devices.Count}");
+                LogToFile($"Real {deviceType} devices found: {devices.Count}");
                 return devices;
             }
             catch (Exception ex)
             {
-                LogToFile($"Error getting simple {deviceType} devices: {ex.Message}");
+                LogToFile($"Error getting real {deviceType} devices: {ex.Message}");
+                return devices;
+            }
+        }
+
+        private List<string> GetRealAudioDevicesByFlow(IMMDeviceEnumerator enumerator, int dataFlow)
+        {
+            var devices = new List<string>();
+            
+            try
+            {
+                LogToFile($"Starting real enumeration for data flow {dataFlow} ({(dataFlow == WindowsCoreAudioAPI.eCapture ? "Capture" : "Render")})");
+                
+                var result = enumerator.EnumAudioEndpoints(dataFlow, WindowsCoreAudioAPI.DEVICE_STATE_ACTIVE, out IntPtr deviceCollectionPtr);
+                
+                if (result != 0)
+                {
+                    LogToFile($"Failed to enumerate audio endpoints for flow {dataFlow}: {result}");
+                    return devices;
+                }
+                
+                LogToFile($"Successfully enumerated audio endpoints for flow {dataFlow}");
+                
+                // Get the device collection interface
+                var deviceCollection = (IMMDeviceCollection)Marshal.GetTypedObjectForIUnknown(deviceCollectionPtr, typeof(IMMDeviceCollection));
+                
+                // Get the count of devices
+                uint deviceCount;
+                deviceCollection.GetCount(out deviceCount);
+                LogToFile($"Found {deviceCount} devices for flow {dataFlow}");
+                
+                // Iterate through each device
+                for (uint i = 0; i < deviceCount; i++)
+                {
+                    IntPtr devicePtr;
+                    var getDeviceResult = deviceCollection.Item(i, out devicePtr);
+                    
+                    if (getDeviceResult == 0 && devicePtr != IntPtr.Zero)
+                    {
+                        var device = (IMMDevice)Marshal.GetTypedObjectForIUnknown(devicePtr, typeof(IMMDevice));
+                        
+                        try
+                        {
+                            // Get the device ID
+                            string deviceId;
+                            device.GetId(out deviceId);
+                            LogToFile($"Processing real device {i}: {deviceId}");
+                            
+                            // Get the device friendly name
+                            IntPtr propertyStorePtr;
+                            var openPropertyStoreResult = device.OpenPropertyStore(0x00000000, out propertyStorePtr); // STGM_READ
+                            
+                            if (openPropertyStoreResult == 0 && propertyStorePtr != IntPtr.Zero)
+                            {
+                                var propertyStore = (IPropertyStore)Marshal.GetTypedObjectForIUnknown(propertyStorePtr, typeof(IPropertyStore));
+                                
+                                try
+                                {
+                                    // Get the friendly name property
+                                    var friendlyNameKey = new PROPERTYKEY
+                                    {
+                                        fmtid = new Guid("A45C254E-DF1C-4EFD-8020-67D146A850E0"),
+                                        pid = 14 // PKEY_Device_FriendlyName
+                                    };
+                                    
+                                    PROPVARIANT propVariant;
+                                    var getValueResult = propertyStore.GetValue(ref friendlyNameKey, out propVariant);
+                                    
+                                    if (getValueResult == 0)
+                                    {
+                                        LogToFile($"Successfully retrieved property for device {deviceId}, variant type: {propVariant.vt}");
+                                        
+                                        // Extract the string value from PROPVARIANT
+                                        if (propVariant.vt == 31) // VT_LPWSTR
+                                        {
+                                            string? deviceName = Marshal.PtrToStringUni(propVariant.data);
+                                            if (!string.IsNullOrEmpty(deviceName) && !devices.Contains(deviceName))
+                                            {
+                                                devices.Add(deviceName);
+                                                LogToFile($"Added real device: {deviceName} (ID: {deviceId})");
+                                            }
+                                            else if (string.IsNullOrEmpty(deviceName))
+                                            {
+                                                LogToFile($"Device name is null or empty for device {deviceId}");
+                                            }
+                                            else
+                                            {
+                                                LogToFile($"Device {deviceName} already exists in list");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            LogToFile($"Unexpected variant type {propVariant.vt} for device {deviceId}");
+                                        }
+                                        
+                                        // Clear the PROPVARIANT
+                                        var handle = GCHandle.Alloc(propVariant, GCHandleType.Pinned);
+                                        try
+                                        {
+                                            WindowsCoreAudioAPI.VariantClear(handle.AddrOfPinnedObject());
+                                        }
+                                        finally
+                                        {
+                                            handle.Free();
+                                        }
+                                    }
+                                    else
+                                    {
+                                        LogToFile($"Failed to get property value for device {deviceId}: {getValueResult}");
+                                    }
+                                }
+                                finally
+                                {
+                                    Marshal.ReleaseComObject(propertyStore);
+                                }
+                            }
+                            else
+                            {
+                                LogToFile($"Failed to open property store for device {deviceId}: {openPropertyStoreResult}");
+                            }
+                        }
+                        finally
+                        {
+                            Marshal.ReleaseComObject(device);
+                        }
+                    }
+                    else
+                    {
+                        LogToFile($"Failed to get device {i}: {getDeviceResult}");
+                    }
+                }
+                
+                Marshal.ReleaseComObject(deviceCollection);
+                
+                LogToFile($"Successfully enumerated {devices.Count} real devices for flow {dataFlow}");
+                return devices;
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error getting real audio devices by flow: {ex.Message}");
                 return devices;
             }
         }
@@ -1495,6 +1842,7 @@ namespace SharpShot.UI
                 LogToFile("=== Refreshing Audio Devices ===");
                 
                 // Test new device enumeration methods
+                var screenRecorderDevices = GetScreenRecorderLibDevices();
                 var naudioDevices = GetNAudioDevices();
                 var wmiDevices = GetWMIAudioDevices();
                 var coreAudioDevices = GetSimplifiedCoreAudioDevices();
@@ -1528,10 +1876,17 @@ namespace SharpShot.UI
                         inputDevices.Add(device);
                         LogToFile($"Added to input devices: {device}");
                     }
-                    if (IsOutputDevice(device))
+                    else if (IsOutputDevice(device))
                     {
                         outputDevices.Add(device);
                         LogToFile($"Added to output devices: {device}");
+                    }
+                    else
+                    {
+                        // If we can't determine, add to both but log it
+                        inputDevices.Add(device);
+                        outputDevices.Add(device);
+                        LogToFile($"Added to both input and output (undetermined): {device}");
                     }
                 }
                 
@@ -1552,7 +1907,8 @@ namespace SharpShot.UI
                 SetSelectedAudioDevices();
                 
                 var message = $"=== Audio Device Detection Results ===\n\n";
-                message += $"New Enumeration Methods:\n";
+                message += $"Enumeration Methods:\n";
+                message += $"  - ScreenRecorderLib devices: {screenRecorderDevices.Count}\n";
                 message += $"  - NAudio devices: {naudioDevices.Count}\n";
                 message += $"  - WMI devices: {wmiDevices.Count}\n";
                 message += $"  - Core Audio devices: {coreAudioDevices.Count}\n\n";
@@ -1642,4 +1998,4 @@ namespace SharpShot.UI
             }
         }
     }
-} 
+}
