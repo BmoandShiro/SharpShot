@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -765,6 +766,14 @@ namespace SharpShot.UI
             return style;
         }
 
+
+
+
+
+
+
+
+
         private void UpdateThemeColors()
         {
             try
@@ -848,6 +857,35 @@ namespace SharpShot.UI
                 {
                     scrollBarBrush.Color = color;
                 }
+                
+                // Update ScrollBarTrackHoverBrush resource for track hover areas
+                var scrollBarTrackHoverBrush = this.Resources["ScrollBarTrackHoverBrush"] as System.Windows.Media.SolidColorBrush;
+                if (scrollBarTrackHoverBrush != null)
+                {
+                    // Create a semi-transparent version of the theme color for track hover
+                    // Use the same alpha value (21) as the X button hover for consistency
+                    var trackHoverColor = System.Windows.Media.Color.FromArgb(21, color.R, color.G, color.B); // 21 = 0x15
+                    scrollBarTrackHoverBrush.Color = trackHoverColor;
+                }
+                
+                // Update ScrollBarButtonHoverBrush resource for button hover areas
+                var scrollBarButtonHoverBrush = this.Resources["ScrollBarButtonHoverBrush"] as System.Windows.Media.SolidColorBrush;
+                if (scrollBarButtonHoverBrush != null)
+                {
+                    // Create a semi-transparent version of the theme color for button hover
+                    // Use the same alpha value (21) as the X button hover for consistency
+                    var buttonHoverColor = System.Windows.Media.Color.FromArgb(21, color.R, color.G, color.B); // 21 = 0x15
+                    scrollBarButtonHoverBrush.Color = buttonHoverColor;
+                }
+                
+                // Force the scrollbar to refresh by invalidating the visual tree
+                this.InvalidateVisual();
+                
+
+                
+
+                
+
                 
 
                 
