@@ -357,7 +357,11 @@ namespace SharpShot.UI
             // Load theme customization settings
             IconColorTextBox.Text = _originalSettings.IconColor;
             IconColorWheel.SetColor(_originalSettings.IconColor);
-            IconColorWheel.ColorChanged += (s, color) => IconColorTextBox.Text = color;
+            IconColorWheel.ColorChanged += (s, color) => 
+            {
+                IconColorTextBox.Text = color;
+                UpdateThemeColors();
+            };
             HoverOpacitySlider.Value = _originalSettings.HoverOpacity;
             DropShadowOpacitySlider.Value = _originalSettings.DropShadowOpacity;
             UpdateOpacityLabels();
@@ -862,9 +866,9 @@ namespace SharpShot.UI
                 var scrollBarTrackHoverBrush = this.Resources["ScrollBarTrackHoverBrush"] as System.Windows.Media.SolidColorBrush;
                 if (scrollBarTrackHoverBrush != null)
                 {
-                    // Create a semi-transparent version of the theme color for track hover
-                    // Use the same alpha value (21) as the X button hover for consistency
-                    var trackHoverColor = System.Windows.Media.Color.FromArgb(21, color.R, color.G, color.B); // 21 = 0x15
+                    // Create a more visible version of the theme color for track hover
+                    // Use a higher alpha value (64) to make it more visible against the dark background
+                    var trackHoverColor = System.Windows.Media.Color.FromArgb(64, color.R, color.G, color.B); // 64 = 0x40
                     scrollBarTrackHoverBrush.Color = trackHoverColor;
                 }
                 
@@ -929,13 +933,21 @@ namespace SharpShot.UI
                 if (!string.IsNullOrEmpty(text) && text.StartsWith("#"))
                 {
                     // Temporarily remove the event handler to avoid infinite loop
-                    IconColorWheel.ColorChanged -= (s, color) => IconColorTextBox.Text = color;
+                    IconColorWheel.ColorChanged -= (s, color) => 
+                    {
+                        IconColorTextBox.Text = color;
+                        UpdateThemeColors();
+                    };
                     
                     // Update the color wheel
                     IconColorWheel.SetColor(text);
                     
                     // Re-add the event handler
-                    IconColorWheel.ColorChanged += (s, color) => IconColorTextBox.Text = color;
+                    IconColorWheel.ColorChanged += (s, color) => 
+                    {
+                        IconColorTextBox.Text = color;
+                        UpdateThemeColors();
+                    };
                 }
             }
             catch
