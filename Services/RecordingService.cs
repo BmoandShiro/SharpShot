@@ -11,6 +11,7 @@ namespace SharpShot.Services
     public class RecordingService
     {
         private readonly SettingsService _settingsService;
+        private readonly OBSRecordingService? _obsRecordingService;
         private string? _currentRecordingPath;
         private Recorder? _recorder;
         private bool _isRecording = false;
@@ -22,6 +23,18 @@ namespace SharpShot.Services
         public RecordingService(SettingsService settingsService)
         {
             _settingsService = settingsService;
+            
+            // Initialize OBS recording service
+            try
+            {
+                _obsRecordingService = new OBSRecordingService(settingsService);
+                _obsRecordingService.RecordingStateChanged += OnOBSRecordingStateChanged;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize OBS recording service: {ex.Message}");
+                _obsRecordingService = null;
+            }
         }
 
         public async Task StartRecordingAsync(System.Drawing.Rectangle? region = null)
@@ -40,13 +53,18 @@ namespace SharpShot.Services
                 _currentRecordingPath = Path.Combine(settings.SavePath, fileName);
 
                 // Choose recording engine based on settings
-                if (settings.RecordingEngine == "FFmpeg")
+                switch (settings.RecordingEngine)
                 {
-                    await StartFFmpegRecordingAsync(region);
-                }
-                else
-                {
-                    await StartScreenRecorderLibRecordingAsync(region);
+                    case "OBS":
+                        await StartOBSRecordingAsync(region);
+                        break;
+                    case "FFmpeg":
+                        await StartFFmpegRecordingAsync(region);
+                        break;
+                    case "ScreenRecorderLib":
+                    default:
+                        await StartScreenRecorderLibRecordingAsync(region);
+                        break;
                 }
             }
             catch (Exception ex)
@@ -54,6 +72,30 @@ namespace SharpShot.Services
                 System.Diagnostics.Debug.WriteLine($"Error starting recording: {ex.Message}");
                 _isRecording = false;
                 RecordingStateChanged?.Invoke(this, false);
+            }
+        }
+
+        private async Task StartOBSRecordingAsync(System.Drawing.Rectangle? region = null)
+        {
+            if (_obsRecordingService == null)
+            {
+                throw new Exception("OBS recording service is not available. Please ensure OBS is installed.");
+            }
+
+            try
+            {
+                LogToFile("Starting OBS recording...");
+                await _obsRecordingService.StartRecordingAsync(region);
+                
+                _isRecording = true;
+                RecordingStateChanged?.Invoke(this, true);
+                
+                LogToFile("OBS recording started successfully");
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error starting OBS recording: {ex.Message}");
+                throw;
             }
         }
 
@@ -254,32 +296,40 @@ namespace SharpShot.Services
             return "ffmpeg.exe"; // Assume it's in PATH
         }
 
-        public Task StopRecordingAsync()
+        public async Task StopRecordingAsync()
         {
             if (!_isRecording)
             {
                 System.Diagnostics.Debug.WriteLine("No recording in progress");
-                return Task.CompletedTask;
+                return;
             }
 
             try
             {
                 var settings = _settingsService.CurrentSettings;
                 
-                if (settings.RecordingEngine == "FFmpeg")
+                switch (settings.RecordingEngine)
                 {
-                    // For FFmpeg, we need to stop the process
-                    // This is a simplified approach - in a real implementation,
-                    // you'd want to properly manage the FFmpeg process
-                    System.Diagnostics.Debug.WriteLine("Stopping FFmpeg recording");
-                }
-                else
-                {
-                    // Stop ScreenRecorderLib recording
-                    if (_recorder != null)
-                    {
-                        _recorder.Stop();
-                    }
+                    case "OBS":
+                        if (_obsRecordingService != null)
+                        {
+                            await _obsRecordingService.StopRecordingAsync();
+                        }
+                        break;
+                    case "FFmpeg":
+                        // For FFmpeg, we need to stop the process
+                        // This is a simplified approach - in a real implementation,
+                        // you'd want to properly manage the FFmpeg process
+                        System.Diagnostics.Debug.WriteLine("Stopping FFmpeg recording");
+                        break;
+                    case "ScreenRecorderLib":
+                    default:
+                        // Stop ScreenRecorderLib recording
+                        if (_recorder != null)
+                        {
+                            _recorder.Stop();
+                        }
+                        break;
                 }
                 
                 _isRecording = false;
@@ -290,8 +340,6 @@ namespace SharpShot.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Error stopping recording: {ex.Message}");
             }
-            
-            return Task.CompletedTask;
         }
 
         private void ConfigureAudioRecording(Settings settings)
@@ -356,6 +404,13 @@ namespace SharpShot.Services
             RecordingTimeUpdated?.Invoke(this, TimeSpan.Zero);
         }
 
+        // OBS event handlers
+        private void OnOBSRecordingStateChanged(object? sender, bool isRecording)
+        {
+            _isRecording = isRecording;
+            RecordingStateChanged?.Invoke(this, isRecording);
+        }
+
         public bool IsRecording => _isRecording;
 
         // Methods that MainWindow expects
@@ -372,6 +427,15 @@ namespace SharpShot.Services
         public string? GetCurrentRecordingPath()
         {
             return _currentRecordingPath;
+        }
+
+        // Cleanup method for OBS
+        public async Task DisconnectOBSAsync()
+        {
+            if (_obsRecordingService != null)
+            {
+                await _obsRecordingService.DisconnectAsync();
+            }
         }
 
         private void LogToFile(string message)

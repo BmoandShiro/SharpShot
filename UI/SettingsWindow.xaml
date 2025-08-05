@@ -358,6 +358,7 @@
                           Margin="0,0,0,10"
                           SelectionChanged="RecordingEngineComboBox_SelectionChanged">
                     <ComboBoxItem Content="ScreenRecorderLib"/>
+                    <ComboBoxItem Content="OBS"/>
                     <ComboBoxItem Content="FFmpeg"/>
                 </ComboBox>
 

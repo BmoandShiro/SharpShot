@@ -568,7 +568,18 @@ namespace SharpShot.UI
                 
                 if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
                 {
-                    _originalSettings.RecordingEngine = recordingEngineItem.Content?.ToString() ?? "ScreenRecorderLib";
+                    var engine = recordingEngineItem.Content?.ToString() ?? "ScreenRecorderLib";
+                    _originalSettings.RecordingEngine = engine;
+                    
+                    // Show OBS-specific settings if OBS is selected
+                    if (engine == "OBS")
+                    {
+                        ShowOBSSettings();
+                    }
+                    else
+                    {
+                        HideOBSSettings();
+                    }
                 }
                 
                 if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem audioModeItem)
@@ -1123,31 +1134,48 @@ namespace SharpShot.UI
         {
             var deviceLower = deviceName.ToLower();
             
-            // Primary input device keywords
-            var primaryInputKeywords = new[] { 
-                "microphone", "mic", "input", "capture", "line in", "aux in", "stereo mix"
+            // Strong input device indicators (high confidence)
+            var strongInputKeywords = new[] { 
+                "microphone", "mic", "input", "capture", "line in", "aux in", "stereo mix",
+                "what u hear", "cable input", "vb-audio", "system audio", "loopback"
             };
             
-            // Check for primary input indicators
-            foreach (var keyword in primaryInputKeywords)
+            // Check for strong input indicators
+            foreach (var keyword in strongInputKeywords)
             {
                 if (deviceLower.Contains(keyword))
                 {
+                    LogToFile($"Device '{deviceName}' classified as INPUT (strong indicator: {keyword})");
                     return true;
                 }
             }
             
             // Check for output device indicators that would make this NOT an input
-            var outputKeywords = new[] { "speakers", "headphones", "earphones", "monitor", "display", "output" };
+            var outputKeywords = new[] { 
+                "speakers", "headphones", "earphones", "monitor", "display", "output",
+                "audio out", "playback", "render", "sink"
+            };
             foreach (var keyword in outputKeywords)
             {
                 if (deviceLower.Contains(keyword))
                 {
+                    LogToFile($"Device '{deviceName}' classified as NOT INPUT (output indicator: {keyword})");
                     return false; // This is likely an output device
                 }
             }
             
-            // Default to false for input - be more conservative
+            // Check for ambiguous terms that could be either
+            var ambiguousKeywords = new[] { "audio", "sound", "realtek", "intel", "amd", "nvidia" };
+            foreach (var keyword in ambiguousKeywords)
+            {
+                if (deviceLower.Contains(keyword))
+                {
+                    LogToFile($"Device '{deviceName}' has ambiguous keyword '{keyword}' - defaulting to NOT INPUT");
+                    return false; // Default to not input for ambiguous terms
+                }
+            }
+            
+            LogToFile($"Device '{deviceName}' classified as NOT INPUT (no clear indicators)");
             return false;
         }
 
@@ -1155,31 +1183,48 @@ namespace SharpShot.UI
         {
             var deviceLower = deviceName.ToLower();
             
-            // Primary output device keywords
-            var primaryOutputKeywords = new[] { 
-                "speakers", "headphones", "earphones", "monitor", "display", "output"
+            // Strong output device indicators (high confidence)
+            var strongOutputKeywords = new[] { 
+                "speakers", "headphones", "earphones", "monitor", "display", "output",
+                "audio out", "playback", "render", "sink", "stereo", "surround"
             };
             
-            // Check for primary output indicators
-            foreach (var keyword in primaryOutputKeywords)
+            // Check for strong output indicators
+            foreach (var keyword in strongOutputKeywords)
             {
                 if (deviceLower.Contains(keyword))
                 {
+                    LogToFile($"Device '{deviceName}' classified as OUTPUT (strong indicator: {keyword})");
                     return true;
                 }
             }
             
             // Check for input device indicators that would make this NOT an output
-            var inputKeywords = new[] { "microphone", "mic", "input", "capture", "line in", "aux in" };
+            var inputKeywords = new[] { 
+                "microphone", "mic", "input", "capture", "line in", "aux in",
+                "what u hear", "cable input", "vb-audio", "system audio", "loopback"
+            };
             foreach (var keyword in inputKeywords)
             {
                 if (deviceLower.Contains(keyword))
                 {
+                    LogToFile($"Device '{deviceName}' classified as NOT OUTPUT (input indicator: {keyword})");
                     return false; // This is likely an input device
                 }
             }
             
-            // Default to false for output - be more conservative
+            // Check for ambiguous terms that could be either
+            var ambiguousKeywords = new[] { "audio", "sound", "realtek", "intel", "amd", "nvidia" };
+            foreach (var keyword in ambiguousKeywords)
+            {
+                if (deviceLower.Contains(keyword))
+                {
+                    LogToFile($"Device '{deviceName}' has ambiguous keyword '{keyword}' - defaulting to NOT OUTPUT");
+                    return false; // Default to not output for ambiguous terms
+                }
+            }
+            
+            LogToFile($"Device '{deviceName}' classified as NOT OUTPUT (no clear indicators)");
             return false;
         }
 
@@ -1996,6 +2041,58 @@ namespace SharpShot.UI
             {
                 // Ignore logging errors
             }
+        }
+
+        private async void ShowOBSSettings()
+        {
+            try
+            {
+                LogToFile("OBS recording engine selected - checking OBS status");
+                
+                var isInstalled = await SharpShot.Utils.OBSDetection.IsOBSInstalledAsync();
+                var isRunning = await SharpShot.Utils.OBSDetection.IsOBSRunningAsync();
+                var webSocketTest = await SharpShot.Utils.OBSDetection.TestOBSWebSocketAsync();
+                var version = await SharpShot.Utils.OBSDetection.GetOBSVersionAsync();
+                
+                var message = $"OBS Status Check:\n\n";
+                message += $"Installed: {(isInstalled ? "Yes" : "No")}\n";
+                message += $"Running: {(isRunning ? "Yes" : "No")}\n";
+                message += $"WebSocket Accessible: {(webSocketTest ? "Yes" : "No")}\n";
+                message += $"Version: {version}\n\n";
+                
+                if (!isInstalled)
+                {
+                    message += "OBS Studio is not installed. Please install OBS Studio to use this recording engine.\n\n";
+                    message += SharpShot.Utils.OBSDetection.GetOBSInstallationInstructions();
+                }
+                else if (!isRunning)
+                {
+                    message += "OBS Studio is not running. SharpShot will attempt to start OBS automatically when recording begins.";
+                }
+                else if (!webSocketTest)
+                {
+                    message += "OBS WebSocket server is not accessible. Please enable WebSocket server in OBS Studio:\n";
+                    message += "1. Open OBS Studio\n";
+                    message += "2. Go to Tools > WebSocket Server Settings\n";
+                    message += "3. Enable WebSocket server and set port to 4444\n";
+                    message += "4. Click OK to save settings";
+                }
+                else
+                {
+                    message += "OBS Studio is ready for recording!";
+                }
+                
+                MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error checking OBS status: {ex.Message}");
+            }
+        }
+
+        private void HideOBSSettings()
+        {
+            LogToFile("OBS recording engine deselected - hiding OBS-specific settings");
         }
     }
 }
