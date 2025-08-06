@@ -27,4 +27,6 @@
     <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
+  <!-- OBS Studio Bundling removed to prevent infinite loop -->
+
 </Project> 

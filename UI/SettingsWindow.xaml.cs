@@ -2062,12 +2062,31 @@ namespace SharpShot.UI
                 
                 if (!isInstalled)
                 {
-                    message += "OBS Studio is not installed. Please install OBS Studio to use this recording engine.\n\n";
-                    message += SharpShot.Utils.OBSDetection.GetOBSInstallationInstructions();
+                    message += "OBS Studio is not installed.\n\n";
+                    message += "Would you like SharpShot to automatically download and install OBS Studio?\n\n";
+                    message += "This will:\n";
+                    message += "• Download OBS Studio (~100MB)\n";
+                    message += "• Install it to your system\n";
+                    message += "• Configure WebSocket server automatically\n";
+                    message += "• Enable enhanced audio recording\n\n";
+                    message += "Benefits of OBS Integration:\n";
+                    message += "• Superior audio recording quality\n";
+                    message += "• Advanced audio mixing capabilities\n";
+                    message += "• Professional-grade audio filters\n";
+                    message += "• Better device management\n";
+                    message += "• Real-time audio monitoring";
+                    
+                    var result = MessageBox.Show(message, "Install OBS Studio", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        await InstallOBSAsync();
+                    }
                 }
                 else if (!isRunning)
                 {
                     message += "OBS Studio is not running. SharpShot will attempt to start OBS automatically when recording begins.";
+                    MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else if (!webSocketTest)
                 {
@@ -2076,17 +2095,57 @@ namespace SharpShot.UI
                     message += "2. Go to Tools > WebSocket Server Settings\n";
                     message += "3. Enable WebSocket server and set port to 4444\n";
                     message += "4. Click OK to save settings";
+                    MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
                     message += "OBS Studio is ready for recording!";
+                    MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
-                
-                MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 LogToFile($"Error checking OBS status: {ex.Message}");
+            }
+        }
+
+        private async Task InstallOBSAsync()
+        {
+            try
+            {
+                LogToFile("Starting automatic OBS installation...");
+                
+                var bundlingService = new SharpShot.Services.OBSBundlingService();
+                var success = await bundlingService.InstallOBSAsync();
+                
+                if (success)
+                {
+                    MessageBox.Show(
+                        "OBS Studio has been successfully installed and configured!\n\n" +
+                        "You can now use OBS recording engine for enhanced audio recording.",
+                        "Installation Complete",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        "Failed to install OBS Studio automatically.\n\n" +
+                        "Please install OBS Studio manually from https://obsproject.com/",
+                        "Installation Failed",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error during OBS installation: {ex.Message}");
+                MessageBox.Show(
+                    $"Error installing OBS Studio: {ex.Message}\n\n" +
+                    "Please install OBS Studio manually from https://obsproject.com/",
+                    "Installation Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 

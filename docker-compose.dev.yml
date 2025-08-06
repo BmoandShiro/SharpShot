@@ -7,6 +7,8 @@ services:
     volumes:
       # Mount source code for live development
       - .:/app
+      # Mount OBS Studio from host to container
+      - ./OBS-Studio:/app/OBS-Studio:ro
       # Mount .NET cache for faster builds
       - dotnet-cache:/root/.nuget
     environment:

@@ -22,6 +22,16 @@ namespace SharpShot.Utils
 
         public static string FindOBSPath()
         {
+            // First check bundled OBS installation
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var bundledPath = Path.Combine(appDataPath, "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe");
+            
+            if (File.Exists(bundledPath))
+            {
+                return bundledPath;
+            }
+
+            // Fallback to system installation
             var possiblePaths = new[]
             {
                 "obs64.exe",

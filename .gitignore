@@ -35,4 +35,11 @@ logs/
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+# OBS Studio (bundled with application)
+OBS-Studio/
+
+# SharpShot release distributions
+SharpShot*.zip
+SharpShot*.exe 

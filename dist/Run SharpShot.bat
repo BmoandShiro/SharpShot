@@ -1,0 +1,3 @@
+@echo off
+echo Starting SharpShot with bundled OBS Studio...
+start "" "SharpShot.exe"
