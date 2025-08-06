@@ -24,7 +24,7 @@ namespace SharpShot.Services
         private Process? _obsProcess;
         private string _obsWebSocketPassword = "sharpshot123";
         
-        private string GetWebSocketUrl() => $"ws://localhost:4455?password={_obsWebSocketPassword}";
+        private string GetWebSocketUrl() => $"ws://localhost:4455";
 
         // Events that MainWindow expects
         public event EventHandler<bool>? RecordingStateChanged;
@@ -459,12 +459,23 @@ namespace SharpShot.Services
             {
                 LogToFile("Testing WebSocket connection to OBS...");
                 
-                // Try to connect to OBS WebSocket server
-                using var tcpClient = new System.Net.Sockets.TcpClient();
-                await tcpClient.ConnectAsync("localhost", 4455);
+                // Try to establish a proper WebSocket connection
+                using var webSocket = new ClientWebSocket();
+                var uri = new Uri($"ws://localhost:4455");
                 
-                LogToFile("WebSocket server is accessible");
-                return true;
+                LogToFile($"Attempting to connect to: {uri}");
+                await webSocket.ConnectAsync(uri, CancellationToken.None);
+                
+                if (webSocket.State == WebSocketState.Open)
+                {
+                    LogToFile("WebSocket connection established successfully");
+                    return true;
+                }
+                else
+                {
+                    LogToFile($"WebSocket connection failed - state: {webSocket.State}");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
@@ -479,10 +490,20 @@ namespace SharpShot.Services
                 
                 try
                 {
-                    using var tcpClient2 = new System.Net.Sockets.TcpClient();
-                    await tcpClient2.ConnectAsync("localhost", 4455);
-                    LogToFile("WebSocket server is now accessible after restart");
-                    return true;
+                    using var webSocket2 = new ClientWebSocket();
+                    var uri = new Uri($"ws://localhost:4455");
+                    await webSocket2.ConnectAsync(uri, CancellationToken.None);
+                    
+                    if (webSocket2.State == WebSocketState.Open)
+                    {
+                        LogToFile("WebSocket server is now accessible after restart");
+                        return true;
+                    }
+                    else
+                    {
+                        LogToFile($"WebSocket connection still failed after restart - state: {webSocket2.State}");
+                        return false;
+                    }
                 }
                 catch (Exception ex2)
                 {
@@ -498,23 +519,59 @@ namespace SharpShot.Services
             {
                 LogToFile("Attempting to start OBS recording via WebSocket API...");
                 
-                // Test WebSocket connection first
-                if (!await TestWebSocketConnectionAsync())
-                {
-                    LogToFile("WebSocket connection failed - cannot start recording via API");
-                    return false;
-                }
-
                 // Set recording path
                 var settings = _settingsService.CurrentSettings;
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
                 var fileName = $"recording_{timestamp}.mp4";
                 _currentRecordingPath = Path.Combine(settings.SavePath, fileName);
                 
-                // Create request to start recording using OBS WebSocket v5 API format
+                // Use WebSocket client to send the request
+                using var webSocket = new ClientWebSocket();
+                var uri = new Uri($"ws://localhost:4455");
+                
+                LogToFile($"Connecting to WebSocket: {uri}");
+                await webSocket.ConnectAsync(uri, CancellationToken.None);
+                
+                if (webSocket.State != WebSocketState.Open)
+                {
+                    LogToFile($"WebSocket connection failed - state: {webSocket.State}");
+                    return false;
+                }
+                
+                LogToFile("WebSocket connected successfully");
+                
+                // First, receive the Hello message from OBS
+                var helloBuffer = new byte[4096];
+                var helloResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(helloBuffer), CancellationToken.None);
+                var helloJson = Encoding.UTF8.GetString(helloBuffer, 0, helloResult.Count);
+                LogToFile($"Received Hello message: {helloJson}");
+                
+                // Send Identify message (authentication)
+                var identifyRequest = new
+                {
+                    op = 1, // Identify
+                    d = new
+                    {
+                        rpcVersion = 1
+                    }
+                };
+                
+                var identifyJson = JsonSerializer.Serialize(identifyRequest);
+                LogToFile($"Sending Identify: {identifyJson}");
+                
+                var identifyBuffer = Encoding.UTF8.GetBytes(identifyJson);
+                await webSocket.SendAsync(new ArraySegment<byte>(identifyBuffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                
+                // Receive Identified message
+                var identifiedBuffer = new byte[4096];
+                var identifiedResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(identifiedBuffer), CancellationToken.None);
+                var identifiedJson = Encoding.UTF8.GetString(identifiedBuffer, 0, identifiedResult.Count);
+                LogToFile($"Received Identified message: {identifiedJson}");
+                
+                // Now send the StartRecord request
                 var request = new
                 {
-                    op = 6, // RequestType
+                    op = 6, // Request
                     d = new
                     {
                         requestType = "StartRecord",
@@ -523,10 +580,7 @@ namespace SharpShot.Services
                 };
                 
                 var json = JsonSerializer.Serialize(request);
-                
-                // Use WebSocket client to send the request
-                using var webSocket = new ClientWebSocket();
-                await webSocket.ConnectAsync(new Uri($"ws://localhost:4455?password={_obsWebSocketPassword}"), CancellationToken.None);
+                LogToFile($"Sending StartRecord request: {json}");
                 
                 var buffer = Encoding.UTF8.GetBytes(json);
                 await webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
@@ -536,9 +590,9 @@ namespace SharpShot.Services
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(responseBuffer), CancellationToken.None);
                 var responseJson = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
                 
-                LogToFile($"WebSocket response: {responseJson}");
+                LogToFile($"WebSocket StartRecord response: {responseJson}");
                 
-                if (result.MessageType == WebSocketMessageType.Text)
+                if (result.MessageType == WebSocketMessageType.Text && responseJson.Contains("requestStatus"))
                 {
                     LogToFile("OBS recording started successfully via WebSocket API");
                     return true;
@@ -552,6 +606,7 @@ namespace SharpShot.Services
             catch (Exception ex)
             {
                 LogToFile($"Error starting OBS recording via WebSocket: {ex.Message}");
+                LogToFile($"WebSocket error stack trace: {ex.StackTrace}");
                 return false;
             }
         }
@@ -626,17 +681,53 @@ namespace SharpShot.Services
             {
                 LogToFile("Attempting to stop OBS recording via WebSocket API...");
                 
-                // Test WebSocket connection first
-                if (!await TestWebSocketConnectionAsync())
+                // Use WebSocket client to send the request
+                using var webSocket = new ClientWebSocket();
+                var uri = new Uri($"ws://localhost:4455");
+                
+                LogToFile($"Connecting to WebSocket: {uri}");
+                await webSocket.ConnectAsync(uri, CancellationToken.None);
+                
+                if (webSocket.State != WebSocketState.Open)
                 {
-                    LogToFile("WebSocket connection failed - cannot stop recording via API");
+                    LogToFile($"WebSocket connection failed - state: {webSocket.State}");
                     return false;
                 }
-
-                // Create request to stop recording using OBS WebSocket v5 API format
+                
+                LogToFile("WebSocket connected successfully");
+                
+                // First, receive the Hello message from OBS
+                var helloBuffer = new byte[4096];
+                var helloResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(helloBuffer), CancellationToken.None);
+                var helloJson = Encoding.UTF8.GetString(helloBuffer, 0, helloResult.Count);
+                LogToFile($"Received Hello message: {helloJson}");
+                
+                // Send Identify message (authentication)
+                var identifyRequest = new
+                {
+                    op = 1, // Identify
+                    d = new
+                    {
+                        rpcVersion = 1
+                    }
+                };
+                
+                var identifyJson = JsonSerializer.Serialize(identifyRequest);
+                LogToFile($"Sending Identify: {identifyJson}");
+                
+                var identifyBuffer = Encoding.UTF8.GetBytes(identifyJson);
+                await webSocket.SendAsync(new ArraySegment<byte>(identifyBuffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                
+                // Receive Identified message
+                var identifiedBuffer = new byte[4096];
+                var identifiedResult = await webSocket.ReceiveAsync(new ArraySegment<byte>(identifiedBuffer), CancellationToken.None);
+                var identifiedJson = Encoding.UTF8.GetString(identifiedBuffer, 0, identifiedResult.Count);
+                LogToFile($"Received Identified message: {identifiedJson}");
+                
+                // Now send the StopRecord request
                 var request = new
                 {
-                    op = 6, // RequestType
+                    op = 6, // Request
                     d = new
                     {
                         requestType = "StopRecord",
@@ -645,25 +736,33 @@ namespace SharpShot.Services
                 };
                 
                 var json = JsonSerializer.Serialize(request);
-                var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                LogToFile($"Sending StopRecord request: {json}");
                 
-                // Use HTTP API instead of WebSocket for simplicity
-                var response = await _httpClient.PostAsync("http://localhost:4455/api/requests", content);
+                var buffer = Encoding.UTF8.GetBytes(json);
+                await webSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
                 
-                if (response.IsSuccessStatusCode)
+                // Wait for response
+                var responseBuffer = new byte[4096];
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(responseBuffer), CancellationToken.None);
+                var responseJson = Encoding.UTF8.GetString(responseBuffer, 0, result.Count);
+                
+                LogToFile($"WebSocket StopRecord response: {responseJson}");
+                
+                if (result.MessageType == WebSocketMessageType.Text && responseJson.Contains("requestStatus"))
                 {
                     LogToFile("OBS recording stopped successfully via WebSocket API");
                     return true;
                 }
                 else
                 {
-                    LogToFile($"Failed to stop OBS recording via API: {response.StatusCode}");
+                    LogToFile("Failed to stop OBS recording via WebSocket API");
                     return false;
                 }
             }
             catch (Exception ex)
             {
                 LogToFile($"Error stopping OBS recording via WebSocket: {ex.Message}");
+                LogToFile($"WebSocket error stack trace: {ex.StackTrace}");
                 return false;
             }
         }

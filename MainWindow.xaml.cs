@@ -956,6 +956,13 @@ namespace SharpShot
                 if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
                     cancelRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
                 
+                // Update recording control icons
+                if (StopRecordButton.Content is System.Windows.Shapes.Path stopRecordPath)
+                    stopRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (PauseRecordButton.Content is System.Windows.Shapes.Path pauseRecordPath)
+                    pauseRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
                 // Update capture option icons
                 if (CancelButton.Content is System.Windows.Shapes.Path cancelPath)
                     cancelPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
