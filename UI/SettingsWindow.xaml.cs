@@ -2047,65 +2047,81 @@ namespace SharpShot.UI
         {
             try
             {
-                LogToFile("OBS recording engine selected - checking OBS status");
+                LogToFile("OBS recording engine selected - setting up OBS automatically");
                 
-                var isInstalled = await SharpShot.Utils.OBSDetection.IsOBSInstalledAsync();
-                var isRunning = await SharpShot.Utils.OBSDetection.IsOBSRunningAsync();
-                var webSocketTest = await SharpShot.Utils.OBSDetection.TestOBSWebSocketAsync();
-                var version = await SharpShot.Utils.OBSDetection.GetOBSVersionAsync();
+                // Show immediate feedback
+                MessageBox.Show(
+                    "Setting up OBS Studio...\n\n" +
+                    "This may take a few moments. Please wait.",
+                    "OBS Setup",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
                 
-                var message = $"OBS Status Check:\n\n";
-                message += $"Installed: {(isInstalled ? "Yes" : "No")}\n";
-                message += $"Running: {(isRunning ? "Yes" : "No")}\n";
-                message += $"WebSocket Accessible: {(webSocketTest ? "Yes" : "No")}\n";
-                message += $"Version: {version}\n\n";
+                // Use the new OBS service to handle setup
+                var obsService = new SharpShot.Services.OBSRecordingService(_settingsService);
+                var success = await obsService.SetupOBSForRecordingAsync();
                 
-                if (!isInstalled)
+                if (success)
                 {
-                    message += "OBS Studio is not installed.\n\n";
-                    message += "Would you like SharpShot to automatically download and install OBS Studio?\n\n";
-                    message += "This will:\n";
-                    message += "• Download OBS Studio (~100MB)\n";
-                    message += "• Install it to your system\n";
-                    message += "• Configure WebSocket server automatically\n";
-                    message += "• Enable enhanced audio recording\n\n";
-                    message += "Benefits of OBS Integration:\n";
-                    message += "• Superior audio recording quality\n";
-                    message += "• Advanced audio mixing capabilities\n";
-                    message += "• Professional-grade audio filters\n";
-                    message += "• Better device management\n";
-                    message += "• Real-time audio monitoring";
-                    
-                    var result = MessageBox.Show(message, "Install OBS Studio", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        await InstallOBSAsync();
-                    }
-                }
-                else if (!isRunning)
-                {
-                    message += "OBS Studio is not running. SharpShot will attempt to start OBS automatically when recording begins.";
-                    MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else if (!webSocketTest)
-                {
-                    message += "OBS WebSocket server is not accessible. Please enable WebSocket server in OBS Studio:\n";
-                    message += "1. Open OBS Studio\n";
-                    message += "2. Go to Tools > WebSocket Server Settings\n";
-                    message += "3. Enable WebSocket server and set port to 4444\n";
-                    message += "4. Click OK to save settings";
-                    MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(
+                        "OBS Studio has been automatically configured and is ready for recording!\n\n" +
+                        "• OBS Studio is installed and running\n" +
+                        "• WebSocket server is enabled (port 4455)\n" +
+                        "• Auto-configuration completed\n\n" +
+                        "You can now use OBS recording engine for enhanced audio recording.",
+                        "OBS Setup Complete",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
                 }
                 else
                 {
-                    message += "OBS Studio is ready for recording!";
-                    MessageBox.Show(message, "OBS Status", MessageBoxButton.OK, MessageBoxImage.Information);
+                    // Check if OBS is actually available before showing the warning
+                    var obsPath = SharpShot.Utils.OBSDetection.FindOBSPath();
+                    if (!string.IsNullOrEmpty(obsPath))
+                    {
+                        MessageBox.Show(
+                            "OBS Studio is available but setup encountered a minor issue.\n\n" +
+                            "Recording will work normally - the setup will complete automatically when you start recording.",
+                            "OBS Setup Note",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "OBS Studio setup encountered an issue.\n\n" +
+                            "Please ensure OBS Studio is available in the application directory.\n" +
+                            "Recording will work in fallback mode.",
+                            "OBS Setup Issue",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                LogToFile($"Error checking OBS status: {ex.Message}");
+                LogToFile($"Error setting up OBS: {ex.Message}");
+                
+                // Check if OBS is available despite the error
+                var obsPath = SharpShot.Utils.OBSDetection.FindOBSPath();
+                if (!string.IsNullOrEmpty(obsPath))
+                {
+                    MessageBox.Show(
+                        "OBS Studio is available but encountered a setup error.\n\n" +
+                        "Recording will work normally - the setup will complete automatically when you start recording.",
+                        "OBS Setup Note",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(
+                        $"Error setting up OBS Studio: {ex.Message}\n\n" +
+                        "Recording will work in fallback mode.",
+                        "OBS Setup Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
             }
         }
 

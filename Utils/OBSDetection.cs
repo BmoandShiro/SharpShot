@@ -22,24 +22,23 @@ namespace SharpShot.Utils
 
         public static string FindOBSPath()
         {
-            // First check bundled OBS installation
-            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var bundledPath = Path.Combine(appDataPath, "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe");
-            
-            if (File.Exists(bundledPath))
-            {
-                return bundledPath;
-            }
-
-            // Fallback to system installation
+            // Check multiple possible locations for OBS (same as OBSRecordingService)
             var possiblePaths = new[]
             {
-                "obs64.exe",
-                "obs32.exe",
+                // Current directory (for Docker mounted OBS)
+                Path.Combine(Directory.GetCurrentDirectory(), "OBS-Studio", "bin", "64bit", "obs64.exe"),
+                // App base directory
+                Path.Combine(AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
+                // Parent of app base directory
+                Path.Combine(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
+                // User app data (extracted bundle)
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe"),
+                // System installations
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio", "bin", "32bit", "obs32.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio", "bin", "32bit", "obs32.exe")
+                // Direct executable names
+                "obs64.exe",
+                "obs32.exe"
             };
 
             foreach (var path in possiblePaths)
@@ -47,6 +46,25 @@ namespace SharpShot.Utils
                 if (File.Exists(path))
                 {
                     return path;
+                }
+            }
+
+            // Check if OBS is already running and get its path
+            var obsProcesses = Process.GetProcessesByName("obs64");
+            if (obsProcesses.Length > 0)
+            {
+                try
+                {
+                    var obsProcess = obsProcesses[0];
+                    var obsPath = obsProcess.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(obsPath) && File.Exists(obsPath))
+                    {
+                        return obsPath;
+                    }
+                }
+                catch
+                {
+                    // Ignore errors getting process path
                 }
             }
 
@@ -111,7 +129,8 @@ namespace SharpShot.Utils
                 using var httpClient = new System.Net.Http.HttpClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(5);
                 
-                var response = await httpClient.GetAsync("http://localhost:4444/api/version");
+                // Try the correct port (4455) that OBSRecordingService uses
+                var response = await httpClient.GetAsync("http://localhost:4455/api/version");
                 return response.IsSuccessStatusCode;
             }
             catch
