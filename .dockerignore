@@ -1,12 +1,40 @@
-# Exclude unnecessary files from Docker build context
+# Ignore build outputs
 bin/
 obj/
-.git/
-.gitignore
-README.md
-*.md
+*.exe
+*.dll
+*.pdb
+
+# Ignore NuGet packages and cache
+packages/
+*.nupkg
+
+# Ignore Visual Studio files
 .vs/
 *.user
 *.suo
-*.cache
-*.log 
+
+# Ignore Git files
+.git/
+.gitignore
+
+# Ignore Docker files
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Ignore OS files
+Thumbs.db
+.DS_Store
+
+# Ignore IDE files
+*.swp
+*.swo
+*~
+
+# Ignore logs
+*.log
+
+# Ignore temporary files
+tmp/
+temp/
