@@ -197,6 +197,11 @@ namespace SharpShot
             await StartFullScreenRecording();
         }
 
+        private async void OBSRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            await OpenOBSStudio();
+        }
+
         private void CancelRecordButton_Click(object sender, RoutedEventArgs e)
         {
             ShowNormalButtons();
@@ -284,6 +289,7 @@ namespace SharpShot
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
+                OBSRecordButton.Visibility = Visibility.Visible;
                 
                 // Show separator before cancel button
                 RecordingSelectionSeparator2.Visibility = Visibility.Visible;
@@ -311,6 +317,7 @@ namespace SharpShot
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
                 
@@ -552,6 +559,7 @@ namespace SharpShot
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
 
                 // Hide separator
@@ -776,6 +784,32 @@ namespace SharpShot
             return Task.CompletedTask;
         }
 
+        private async Task OpenOBSStudio()
+        {
+            try
+            {
+                ShowNotification("Opening OBS Studio...");
+                
+                // Use the recording service to setup and open OBS
+                var success = await _recordingService.SetupOBSForRecordingAsync();
+                if (success)
+                {
+                    ShowNotification("OBS Studio opened successfully!");
+                    // Return to normal buttons after opening OBS
+                    ShowNormalButtons();
+                }
+                else
+                {
+                    ShowNotification("Failed to open OBS Studio. Make sure it's installed.", isError: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Opening OBS Studio failed: {ex.Message}");
+                ShowNotification($"Failed to open OBS Studio: {ex.Message}", isError: true);
+            }
+        }
+
         private void OnRecordingStateChanged(object? sender, bool isRecording)
         {
             Dispatcher.Invoke(() =>
@@ -952,6 +986,9 @@ namespace SharpShot
                 
                 if (FullScreenRecordButton.Content is System.Windows.Shapes.Path fullScreenRecordPath)
                     fullScreenRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                
+                if (OBSRecordButton.Content is System.Windows.Shapes.Path obsRecordPath)
+                    obsRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
                 
                 if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
                     cancelRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));

@@ -44,6 +44,7 @@
         <Geometry x:Key="FullScreenRecordIcon">M4 4H60V60H4V4ZM8 8H56V56H8V8ZM32 24C36.4183 24 40 27.5817 40 32C40 36.4183 36.4183 40 32 40C27.5817 40 24 36.4183 24 32C24 27.5817 27.5817 24 32 24Z</Geometry>
         <Geometry x:Key="StopIcon">M4 4H28V28H4V4ZM8 8H24V24H8V8Z</Geometry>
         <Geometry x:Key="CancelIcon">M1 1L11 11M11 1L1 11</Geometry>
+        <Geometry x:Key="OBSIcon">M1 8 C1 5.2 3.2 3 6 3 C8.8 3 11 5.2 11 8 L11 16 C11 18.8 8.8 21 6 21 C3.2 21 1 18.8 1 16 L1 8 Z M3 8 L3 16 C3 17.7 4.3 19 6 19 C7.7 19 9 17.7 9 16 L9 8 C9 6.3 7.7 5 6 5 C4.3 5 3 6.3 3 8 Z M13 4 L13 20 L15 20 L15 4 L19 4 C20.1 4 21 4.9 21 6 C21 6.6 20.6 7.1 20.1 7.3 C20.6 7.5 21 8 21 8.5 C21 9.6 20.1 10.5 19 10.5 L15 10.5 L15 13 L19 13 C20.1 13 21 13.9 21 15 C21 16.1 20.1 17 19 17 L15 17 L15 20 L13 20 L13 4 Z M15 6 L15 8.5 L19 8.5 C19 8.5 19 7.3 19 6 L15 6 Z M15 15 L15 17 L19 17 C19 17 19 15.9 19 15 L15 15 Z M23 8 C23 5.8 24.8 4 27 4 C29.2 4 31 5.8 31 8 C31 8.7 30.8 9.3 30.4 9.8 C30.8 10.3 31 10.9 31 11.6 C31 12.3 30.8 12.9 30.4 13.4 C30.8 13.9 31 14.5 31 15.2 C31 17.4 29.2 19.2 27 19.2 C24.8 19.2 23 17.4 23 15.2 C23 14.5 23.2 13.9 23.6 13.4 C23.2 12.9 23 12.3 23 11.6 C23 10.9 23.2 10.3 23.6 9.8 C23.2 9.3 23 8.7 23 8 Z M25 8 C25 8.6 25.4 9 26 9 C26.6 9 27 8.6 27 8 C27 7.4 26.6 7 26 7 C25.4 7 25 7.4 25 8 Z M25 15.2 C25 15.8 25.4 16.2 26 16.2 C26.6 16.2 27 15.8 27 15.2 C27 14.6 26.6 14.2 26 14.2 C25.4 14.2 25 14.6 25 15.2 Z</Geometry>
     </Window.Resources>
 
     <Border Background="#802A2A2A" 
@@ -235,6 +236,20 @@
                           Fill="Transparent"
                           Stretch="Uniform"
                            Width="28" Height="28"/>
+                </Button>
+
+                <!-- OBS Record Button (Hidden by default) -->
+                <Button x:Name="OBSRecordButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="OBSRecordButton_Click"
+                        ToolTip="Open OBS Studio"
+                        Visibility="Collapsed">
+                    <Path Data="{StaticResource OBSIcon}" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="28" Height="28"/>
                 </Button>
 
                 <!-- Separator for Cancel Button -->

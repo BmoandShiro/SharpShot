@@ -438,6 +438,16 @@ namespace SharpShot.Services
             }
         }
 
+        // Method to setup OBS for recording (used by the OBS button)
+        public async Task<bool> SetupOBSForRecordingAsync()
+        {
+            if (_obsRecordingService != null)
+            {
+                return await _obsRecordingService.SetupOBSForRecordingAsync();
+            }
+            return false;
+        }
+
         private void LogToFile(string message)
         {
             try
