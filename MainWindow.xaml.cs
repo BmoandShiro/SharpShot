@@ -219,6 +219,7 @@ namespace SharpShot
             {
                 System.Diagnostics.Debug.WriteLine($"Stop recording failed: {ex.Message}");
                 ShowNotification("Stop recording failed!", isError: true);
+                ShowNormalButtons();
             }
         }
 
@@ -784,38 +785,48 @@ namespace SharpShot
             return Task.CompletedTask;
         }
 
+        private string? _originalRecordingEngine = null; // Track original engine
+        
         private async Task OpenOBSStudio()
         {
             try
             {
-                ShowNotification("Setting up OBS Studio recording...");
-                
-                // Step 1: Set recording engine to OBS (like settings window does)
-                var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                // Step 1: Store original recording engine and temporarily set to OBS
+                _originalRecordingEngine = _settingsService.CurrentSettings.RecordingEngine;
                 _settingsService.CurrentSettings.RecordingEngine = "OBS";
                 
                 // Step 2: Setup OBS (like settings window does when OBS is selected)
                 var success = await _recordingService.SetupOBSForRecordingAsync();
                 if (success)
                 {
-                    ShowNotification("OBS configured! Starting full screen recording...");
+                    // Step 3: Start OBS recording directly without showing recording controls
+                    // Since OBS has its own GUI controls, we don't need our Stop/Cancel buttons
+                    await _recordingService.StartRecordingAsync();
                     
-                    // Step 3: Start full screen recording (like Record Full Screen button does)
-                    await StartFullScreenRecording();
+                    // Return to normal buttons immediately - user controls recording through OBS GUI
+                    ShowNormalButtons();
                 }
                 else
                 {
                     // Restore original recording engine if setup failed
-                    _settingsService.CurrentSettings.RecordingEngine = originalEngine;
-                    ShowNotification("Failed to setup OBS Studio. Make sure it's installed.", isError: true);
+                    RestoreOriginalRecordingEngine();
                     ShowNormalButtons();
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"OBS Studio setup and recording failed: {ex.Message}");
-                ShowNotification($"Failed to start OBS recording: {ex.Message}", isError: true);
+                RestoreOriginalRecordingEngine();
                 ShowNormalButtons();
+            }
+        }
+        
+        private void RestoreOriginalRecordingEngine()
+        {
+            if (_originalRecordingEngine != null)
+            {
+                _settingsService.CurrentSettings.RecordingEngine = _originalRecordingEngine;
+                _originalRecordingEngine = null;
             }
         }
 
@@ -835,6 +846,10 @@ namespace SharpShot
                     {
                         _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath() ?? string.Empty;
                     }
+                    
+                    // If we were using OBS temporarily, restore original engine
+                    // (This handles cases where OBS recording ends from within OBS GUI)
+                    RestoreOriginalRecordingEngine();
                     
                     // Return to main home page when recording stops
                     ShowNormalButtons();
