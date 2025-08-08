@@ -43,15 +43,9 @@ namespace SharpShot.Services
                     return false;
                 }
 
-                // Configure OBS WebSocket server
-                if (!await ConfigureOBSWebSocketAsync())
-                {
-                    LogToFile("Failed to configure OBS WebSocket");
-                    return false;
-                }
-
-                LogToFile("Bundled OBS installation completed successfully");
-                return true;
+                        // OBS is now ready for use
+        LogToFile("OBS installation completed successfully");
+        return true;
             }
             catch (Exception ex)
             {
@@ -230,56 +224,7 @@ namespace SharpShot.Services
             }
         }
 
-        private async Task<bool> ConfigureOBSWebSocketAsync()
-        {
-            try
-            {
-                LogToFile("Configuring OBS WebSocket server...");
 
-                // Find OBS executable
-                var obsPath = Path.Combine(_obsInstallPath, "bin", "64bit", "obs64.exe");
-                if (!File.Exists(obsPath))
-                {
-                    LogToFile("OBS executable not found for configuration");
-                    return false;
-                }
-
-                // Start OBS to create configuration files
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = obsPath,
-                        Arguments = "--minimize-to-tray --websocket_port 4444",
-                        UseShellExecute = true,
-                        CreateNoWindow = false
-                    }
-                };
-
-                process.Start();
-                
-                // Wait a bit for OBS to start and create config files
-                await Task.Delay(5000);
-
-                // Stop OBS
-                try
-                {
-                    process.Kill();
-                }
-                catch
-                {
-                    // Ignore if already closed
-                }
-
-                LogToFile("OBS WebSocket configuration completed");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                LogToFile($"Error configuring OBS WebSocket: {ex.Message}");
-                return false;
-            }
-        }
 
         public string GetOBSInstallPath()
         {

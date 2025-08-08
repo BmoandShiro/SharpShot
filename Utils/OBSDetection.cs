@@ -122,22 +122,7 @@ namespace SharpShot.Utils
             }
         }
 
-        public static async Task<bool> TestOBSWebSocketAsync()
-        {
-            try
-            {
-                using var httpClient = new System.Net.Http.HttpClient();
-                httpClient.Timeout = TimeSpan.FromSeconds(5);
-                
-                // Try the correct port (4455) that OBSRecordingService uses
-                var response = await httpClient.GetAsync("http://localhost:4455/api/version");
-                return response.IsSuccessStatusCode;
-            }
-            catch
-            {
-                return false;
-            }
-        }
+
 
         public static string GetOBSInstallationInstructions()
         {
@@ -145,11 +130,7 @@ namespace SharpShot.Utils
 
 1. Download OBS Studio from: https://obsproject.com/
 2. Install OBS Studio with default settings
-3. Open OBS Studio and go to Tools > WebSocket Server Settings
-4. Enable WebSocket server and set port to 4444
-5. Set a password (optional) or leave blank for no password
-6. Click OK to save settings
-7. Restart SharpShot
+3. OBS will be automatically started when needed for recording
 
 OBS Integration Benefits:
 - Superior audio recording quality
@@ -158,7 +139,7 @@ OBS Integration Benefits:
 - Better device management
 - Real-time audio monitoring
 
-Note: OBS must be running for the integration to work.";
+Note: OBS will be started automatically when recording begins.";
         }
     }
 } 

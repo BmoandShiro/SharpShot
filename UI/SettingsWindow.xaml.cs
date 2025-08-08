@@ -2066,7 +2066,6 @@ namespace SharpShot.UI
                     MessageBox.Show(
                         "OBS Studio has been automatically configured and is ready for recording!\n\n" +
                         "• OBS Studio is installed and running\n" +
-                        "• WebSocket server is enabled (port 4455)\n" +
                         "• Auto-configuration completed\n\n" +
                         "You can now use OBS recording engine for enhanced audio recording.",
                         "OBS Setup Complete",

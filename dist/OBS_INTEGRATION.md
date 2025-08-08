@@ -31,13 +31,10 @@ SharpShot now supports OBS Studio as a recording engine option, providing superi
 2. Install with default settings
 3. Launch OBS Studio at least once to create configuration files
 
-### 2. Configure OBS WebSocket Server
+### 2. OBS Studio Setup
 1. Open OBS Studio
-2. Go to **Tools** > **WebSocket Server Settings**
-3. Check **Enable WebSocket server**
-4. Set **Server Port** to `4444`
-5. Set **Server Password** (optional - leave blank for no password)
-6. Click **OK** to save settings
+2. Configure your recording settings as needed
+3. OBS will be automatically started when recording begins
 
 ### 3. Configure SharpShot
 1. Open SharpShot Settings
@@ -57,13 +54,12 @@ SharpShot now supports OBS Studio as a recording engine option, providing superi
 4. SharpShot will automatically:
    - Check if OBS is running
    - Start OBS if needed
-   - Connect to OBS WebSocket
    - Configure recording settings
-   - Start the recording
+   - Start the recording via command line
 
 ### Stopping a Recording
 1. Use your hotkey or UI to stop recording
-2. SharpShot will automatically stop the OBS recording
+2. SharpShot will automatically stop the OBS recording via command line
 3. The video file will be saved to your configured save path
 
 ## Troubleshooting
@@ -73,11 +69,10 @@ SharpShot now supports OBS Studio as a recording engine option, providing superi
 - Check that the installation completed successfully
 - Try reinstalling OBS Studio
 
-### WebSocket Connection Failed
-- Verify OBS WebSocket server is enabled
-- Check that port 4444 is not blocked by firewall
-- Ensure OBS Studio is running
-- Try restarting OBS Studio
+### Recording Issues
+- Verify OBS Studio is properly installed
+- Check that OBS can be started manually
+- Ensure sufficient disk space for recordings
 
 ### Recording Quality Issues
 - Check OBS Studio settings for video quality
@@ -91,16 +86,16 @@ SharpShot now supports OBS Studio as a recording engine option, providing superi
 
 ## Technical Details
 
-### WebSocket API
-SharpShot communicates with OBS using the WebSocket API on port 4444. The integration supports:
-- Starting/stopping recordings
-- Setting recording paths
+### Command Line Integration
+SharpShot communicates with OBS using command line arguments. The integration supports:
+- Starting/stopping recordings via `--startrecording` and `--stoprecording`
+- Automatic OBS process management
 - Basic status monitoring
 
 ### Automatic OBS Management
 - **Auto-start**: SharpShot can automatically start OBS if not running
 - **Auto-configuration**: Recording settings are automatically configured
-- **Connection management**: Automatic WebSocket connection handling
+- **Process management**: Automatic OBS process handling
 
 ### Logging
 OBS integration logs are saved to `obs_debug.log` in the SharpShot directory. This file contains:
@@ -134,7 +129,7 @@ Planned improvements for OBS integration:
 For issues with OBS integration:
 1. Check the `obs_debug.log` file for error messages
 2. Verify OBS Studio is properly configured
-3. Test OBS WebSocket connection manually
-4. Ensure all audio devices are working in OBS Studio
+3. Ensure all audio devices are working in OBS Studio
+4. Test OBS Studio manually to ensure it works correctly
 
 For general SharpShot support, refer to the main README.md file. 
