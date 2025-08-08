@@ -788,25 +788,34 @@ namespace SharpShot
         {
             try
             {
-                ShowNotification("Opening OBS Studio...");
+                ShowNotification("Setting up OBS Studio recording...");
                 
-                // Use the recording service to setup and open OBS
+                // Step 1: Set recording engine to OBS (like settings window does)
+                var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                _settingsService.CurrentSettings.RecordingEngine = "OBS";
+                
+                // Step 2: Setup OBS (like settings window does when OBS is selected)
                 var success = await _recordingService.SetupOBSForRecordingAsync();
                 if (success)
                 {
-                    ShowNotification("OBS Studio opened successfully!");
-                    // Return to normal buttons after opening OBS
-                    ShowNormalButtons();
+                    ShowNotification("OBS configured! Starting full screen recording...");
+                    
+                    // Step 3: Start full screen recording (like Record Full Screen button does)
+                    await StartFullScreenRecording();
                 }
                 else
                 {
-                    ShowNotification("Failed to open OBS Studio. Make sure it's installed.", isError: true);
+                    // Restore original recording engine if setup failed
+                    _settingsService.CurrentSettings.RecordingEngine = originalEngine;
+                    ShowNotification("Failed to setup OBS Studio. Make sure it's installed.", isError: true);
+                    ShowNormalButtons();
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Opening OBS Studio failed: {ex.Message}");
-                ShowNotification($"Failed to open OBS Studio: {ex.Message}", isError: true);
+                System.Diagnostics.Debug.WriteLine($"OBS Studio setup and recording failed: {ex.Message}");
+                ShowNotification($"Failed to start OBS recording: {ex.Message}", isError: true);
+                ShowNormalButtons();
             }
         }
 

@@ -242,7 +242,7 @@
                 <Button x:Name="OBSRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
-                        ToolTip="Open OBS Studio"
+                        ToolTip="Setup OBS and Record Full Screen"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource OBSIcon}" 
                           Stroke="#FFFF8C00" 
