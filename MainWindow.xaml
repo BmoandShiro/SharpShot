@@ -211,7 +211,7 @@
 
                 <!-- Region Recording Button (Hidden by default) -->
                 <Button x:Name="RegionRecordButton" 
-                        Style="{StaticResource IconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         Click="RegionRecordButton_Click"
                         ToolTip="Record Selected Region"
                         Visibility="Collapsed">
@@ -226,7 +226,7 @@
 
                 <!-- Full Screen Recording Button (Hidden by default) -->
                 <Button x:Name="FullScreenRecordButton" 
-                        Style="{StaticResource IconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         Click="FullScreenRecordButton_Click"
                         ToolTip="Record Full Screen"
                         Visibility="Collapsed">
@@ -240,7 +240,7 @@
 
                 <!-- OBS Record Button (Hidden by default) -->
                 <Button x:Name="OBSRecordButton" 
-                        Style="{StaticResource IconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
                         ToolTip="Open OBS Studio"
                         Visibility="Collapsed">
@@ -263,7 +263,7 @@
 
                 <!-- Cancel Recording Button (Hidden by default) -->
                 <Button x:Name="CancelRecordButton" 
-                        Style="{StaticResource IconButtonStyle}"
+                        Style="{StaticResource ToolbarButtonStyle}"
                         Click="CancelRecordButton_Click"
                         ToolTip="Cancel Recording"
                         Visibility="Collapsed">

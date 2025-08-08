@@ -1210,6 +1210,12 @@ namespace SharpShot
             if (SettingsButton != null) SettingsButton.Style = null;
             if (CloseButton != null) CloseButton.Style = null;
             
+            // Force recording selection buttons to refresh their styles
+            if (RegionRecordButton != null) RegionRecordButton.Style = null;
+            if (FullScreenRecordButton != null) FullScreenRecordButton.Style = null;
+            if (OBSRecordButton != null) OBSRecordButton.Style = null;
+            if (CancelRecordButton != null) CancelRecordButton.Style = null;
+            
             // Re-apply the style
             var buttonStyle = Application.Current.Resources["ToolbarButtonStyle"] as Style;
             if (buttonStyle != null)
@@ -1238,6 +1244,28 @@ namespace SharpShot
                 {
                     CloseButton.Style = buttonStyle;
                     CloseButton.Width = 60;
+                }
+                
+                // Re-apply style to recording selection buttons
+                if (RegionRecordButton != null) 
+                {
+                    RegionRecordButton.Style = buttonStyle;
+                    RegionRecordButton.Width = 60;
+                }
+                if (FullScreenRecordButton != null) 
+                {
+                    FullScreenRecordButton.Style = buttonStyle;
+                    FullScreenRecordButton.Width = 60;
+                }
+                if (OBSRecordButton != null) 
+                {
+                    OBSRecordButton.Style = buttonStyle;
+                    OBSRecordButton.Width = 60;
+                }
+                if (CancelRecordButton != null) 
+                {
+                    CancelRecordButton.Style = buttonStyle;
+                    CancelRecordButton.Width = 60;
                 }
             }
         }
