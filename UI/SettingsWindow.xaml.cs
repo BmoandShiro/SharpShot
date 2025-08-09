@@ -813,7 +813,7 @@ namespace SharpShot.UI
             return style;
         }
 
-        private Style CreateBrowseButtonStyle(System.Windows.Media.Color themeColor)
+        private Style CreateModernButtonStyle(System.Windows.Media.Color themeColor, double width = 100.0, double height = 36.0)
         {
             var style = new Style(typeof(Button));
             
@@ -826,8 +826,8 @@ namespace SharpShot.UI
             style.Setters.Add(new Setter(Button.FontSizeProperty, 14.0));
             style.Setters.Add(new Setter(Button.FontWeightProperty, FontWeights.SemiBold));
             style.Setters.Add(new Setter(Button.CursorProperty, Cursors.Hand));
-            style.Setters.Add(new Setter(Button.WidthProperty, 80.0));
-            style.Setters.Add(new Setter(Button.HeightProperty, 32.0));
+            style.Setters.Add(new Setter(Button.WidthProperty, width));
+            style.Setters.Add(new Setter(Button.HeightProperty, height));
             
             // Template
             var template = new ControlTemplate(typeof(Button));
@@ -917,16 +917,16 @@ namespace SharpShot.UI
                 if (CopyHotkeyTextBox != null)
                     CopyHotkeyTextBox.BorderBrush = brush;
                 
-                // Update button borders and text colors
+                // Update Cancel and Save buttons with dynamic hover effects
                 if (CancelButton != null)
                 {
-                    CancelButton.BorderBrush = brush;
+                    CancelButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
                     if (CancelButton.Content is TextBlock cancelText)
                         cancelText.Foreground = brush;
                 }
                 if (SaveButton != null)
                 {
-                    SaveButton.BorderBrush = brush;
+                    SaveButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
                     if (SaveButton.Content is TextBlock saveText)
                         saveText.Foreground = brush;
                 }
@@ -935,7 +935,7 @@ namespace SharpShot.UI
                 var browseButton = this.FindName("BrowseButton") as Button;
                 if (browseButton != null)
                 {
-                    browseButton.Style = CreateBrowseButtonStyle(color);
+                    browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
                     if (browseButton.Content is TextBlock browseText)
                         browseText.Foreground = brush;
                 }
