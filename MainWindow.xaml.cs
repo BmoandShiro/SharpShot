@@ -791,32 +791,21 @@ namespace SharpShot
         {
             try
             {
-                // Step 1: Store original recording engine and temporarily set to OBS
-                _originalRecordingEngine = _settingsService.CurrentSettings.RecordingEngine;
-                _settingsService.CurrentSettings.RecordingEngine = "OBS";
-                
-                // Step 2: Setup OBS (like settings window does when OBS is selected)
+                // Just launch OBS - no recording engine switching or recording needed
                 var success = await _recordingService.SetupOBSForRecordingAsync();
                 if (success)
                 {
-                    // Step 3: Start OBS recording directly without showing recording controls
-                    // Since OBS has its own GUI controls, we don't need our Stop/Cancel buttons
-                    await _recordingService.StartRecordingAsync();
-                    
-                    // Return to normal buttons immediately - user controls recording through OBS GUI
+                    // OBS launched successfully - user controls everything through OBS GUI
                     ShowNormalButtons();
                 }
                 else
                 {
-                    // Restore original recording engine if setup failed
-                    RestoreOriginalRecordingEngine();
                     ShowNormalButtons();
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"OBS Studio setup and recording failed: {ex.Message}");
-                RestoreOriginalRecordingEngine();
+                System.Diagnostics.Debug.WriteLine($"OBS launch failed: {ex.Message}");
                 ShowNormalButtons();
             }
         }

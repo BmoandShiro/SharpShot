@@ -35,6 +35,9 @@ namespace SharpShot.Services
             {
                 LogToFile("Checking if OBS is running...");
                 
+                // Always refresh our process tracking to handle cases where OBS was closed manually
+                RefreshOBSProcessTracking();
+                
                 // Check if OBS is already running
                 var obsProcesses = Process.GetProcessesByName("obs64");
                 if (obsProcesses.Length > 0)
@@ -55,22 +58,59 @@ namespace SharpShot.Services
                 return false;
             }
         }
+        
+        private void RefreshOBSProcessTracking()
+        {
+            try
+            {
+                // Check if our tracked process is still valid
+                if (_obsProcess != null)
+                {
+                    try
+                    {
+                        // Try to access the process - this will throw if the process is no longer running
+                        var _ = _obsProcess.ProcessName;
+                        if (_obsProcess.HasExited)
+                        {
+                            _obsProcess = null;
+                            _isConnected = false;
+                        }
+                    }
+                    catch
+                    {
+                        _obsProcess = null;
+                        _isConnected = false;
+                    }
+                }
+                
+                // If we don't have a valid process reference, try to find one
+                if (_obsProcess == null)
+                {
+                    var obsProcesses = Process.GetProcessesByName("obs64");
+                    if (obsProcesses.Length > 0)
+                    {
+                        _obsProcess = obsProcesses[0];
+                        _isConnected = true;
+                    }
+                    else
+                    {
+                        _isConnected = false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error refreshing OBS process tracking: {ex.Message}");
+                _obsProcess = null;
+                _isConnected = false;
+            }
+        }
 
         private async Task<bool> StartOBSAsync()
         {
             try
             {
                 LogToFile("Starting OBS...");
-                
-                // Always check if OBS is already running first
-                var obsProcesses = Process.GetProcessesByName("obs64");
-                if (obsProcesses.Length > 0)
-                {
-                    LogToFile("OBS is already running, using existing instance");
-                    _obsProcess = obsProcesses[0];
-                    _isConnected = true;
-                    return true;
-                }
                 
                 // Find OBS installation
                 var obsPath = FindOBSPath();
@@ -82,13 +122,13 @@ namespace SharpShot.Services
 
                 LogToFile($"Found OBS at: {obsPath}");
 
-                // Start OBS with minimal startup
+                // Start OBS with GUI visible (no minimize arguments so GUI shows up)
                 _obsProcess = new Process
                 {
                     StartInfo = new ProcessStartInfo
                     {
                         FileName = obsPath,
-                        Arguments = "--minimize-to-tray --startup_to_tray --disable-updater --disable-crash-handler",
+                        Arguments = "--disable-updater --disable-crash-handler",
                         UseShellExecute = true,
                         CreateNoWindow = false,
                         WorkingDirectory = Path.GetDirectoryName(obsPath)
@@ -103,8 +143,8 @@ namespace SharpShot.Services
                 await Task.Delay(5000); // Wait 5 seconds for OBS to start
                 
                 // Check if OBS started successfully
-                obsProcesses = Process.GetProcessesByName("obs64");
-                if (obsProcesses.Length > 0)
+                var startedObsProcesses = Process.GetProcessesByName("obs64");
+                if (startedObsProcesses.Length > 0)
                 {
                     LogToFile("OBS started successfully");
                     _isConnected = true;
@@ -179,52 +219,188 @@ namespace SharpShot.Services
             return string.Empty;
         }
 
-        // New method to handle "Save with OBS" scenario
-        public async Task<bool> SetupOBSForRecordingAsync()
+        // New method to handle "Save with OBS" scenario - just launch OBS
+        public Task<bool> SetupOBSForRecordingAsync()
         {
             try
             {
-                LogToFile("Setting up OBS for recording...");
+                LogToFile("Launching OBS...");
                 
-                // First, try to find OBS
+                // Find OBS installation
                 var obsPath = FindOBSPath();
                 if (string.IsNullOrEmpty(obsPath))
                 {
-                    LogToFile("OBS not found - cannot proceed");
-                    return false;
+                    LogToFile("OBS not found");
+                    return Task.FromResult(false);
                 }
 
-                LogToFile($"Found OBS at: {obsPath}");
-
-                // Try to start OBS if not running
-                var obsProcesses = Process.GetProcessesByName("obs64");
-                if (obsProcesses.Length == 0)
+                // Simply start OBS process
+                var process = new Process
                 {
-                    LogToFile("OBS not running - starting it...");
-                    var result = await StartOBSAsync();
-                    if (result)
+                    StartInfo = new ProcessStartInfo
                     {
-                        LogToFile("OBS setup completed successfully");
-                        return true;
+                        FileName = obsPath,
+                        Arguments = "--disable-updater --disable-crash-handler",
+                        UseShellExecute = true,
+                        CreateNoWindow = false,
+                        WorkingDirectory = Path.GetDirectoryName(obsPath)
                     }
-                    else
+                };
+
+                process.Start();
+                LogToFile("OBS launched successfully");
+                return Task.FromResult(true);
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error launching OBS: {ex.Message}");
+                return Task.FromResult(false);
+            }
+        }
+        
+        private async Task ForceKillAllOBSProcessesAsync()
+        {
+            try
+            {
+                LogToFile("Gracefully stopping and killing all OBS processes...");
+                
+                // First try graceful shutdown via command line
+                TryGracefulOBSShutdown();
+                
+                // Wait a bit for graceful shutdown
+                await Task.Delay(3000);
+                
+                // Check if any OBS processes remain after graceful shutdown
+                var processNames = new[] { "obs64", "obs32", "obs", "OBS" };
+                var allKilledProcesses = new List<int>();
+                
+                foreach (var processName in processNames)
+                {
+                    var obsProcesses = Process.GetProcessesByName(processName);
+                    
+                    if (obsProcesses.Length > 0)
                     {
-                        LogToFile("Failed to start OBS - but OBS is available");
-                        return true; // Return true even if OBS didn't start, since it's available
+                        LogToFile($"Found {obsProcesses.Length} {processName} process(es) still running after graceful shutdown, force terminating...");
+                        
+                        // Kill all processes of this name
+                        foreach (var process in obsProcesses)
+                        {
+                            try
+                            {
+                                if (!process.HasExited && !allKilledProcesses.Contains(process.Id))
+                                {
+                                    LogToFile($"Force terminating {processName} process ID: {process.Id}");
+                                    process.Kill();
+                                    allKilledProcesses.Add(process.Id);
+                                    
+                                    // Wait for the process to die
+                                    await process.WaitForExitAsync();
+                                    LogToFile($"Process {process.Id} terminated successfully");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                LogToFile($"Error killing {processName} process {process.Id}: {ex.Message}");
+                                // Try using taskkill as fallback
+                                try
+                                {
+                                    var taskKillProcess = new Process
+                                    {
+                                        StartInfo = new ProcessStartInfo
+                                        {
+                                            FileName = "taskkill",
+                                            Arguments = $"/F /PID {process.Id}",
+                                            UseShellExecute = false,
+                                            CreateNoWindow = true
+                                        }
+                                    };
+                                    taskKillProcess.Start();
+                                    await taskKillProcess.WaitForExitAsync();
+                                    LogToFile($"Force killed process {process.Id} using taskkill");
+                                }
+                                catch (Exception taskKillEx)
+                                {
+                                    LogToFile($"Taskkill also failed for process {process.Id}: {taskKillEx.Message}");
+                                }
+                            }
+                            finally
+                            {
+                                try { process.Dispose(); } catch { }
+                            }
+                        }
                     }
+                }
+                
+                // Clear our internal tracking
+                _obsProcess = null;
+                _isConnected = false;
+                
+                // Wait for system cleanup and verify no processes remain
+                await Task.Delay(2000);
+                
+                // Double-check that all OBS processes are gone
+                var remainingProcesses = 0;
+                foreach (var processName in processNames)
+                {
+                    var remaining = Process.GetProcessesByName(processName);
+                    remainingProcesses += remaining.Length;
+                    if (remaining.Length > 0)
+                    {
+                        LogToFile($"WARNING: {remaining.Length} {processName} process(es) still running after kill attempt");
+                    }
+                    foreach (var p in remaining) { try { p.Dispose(); } catch { } }
+                }
+                
+                if (remainingProcesses == 0)
+                {
+                    LogToFile("All OBS processes terminated successfully - verified clean");
                 }
                 else
                 {
-                    LogToFile("OBS is already running");
-                    return true;
+                    LogToFile($"WARNING: {remainingProcesses} OBS processes may still be running");
                 }
             }
             catch (Exception ex)
             {
-                LogToFile($"Error setting up OBS: {ex.Message}");
-                // Don't return false here - if OBS is found, we should still allow recording
+                LogToFile($"Error during graceful shutdown and force kill of OBS processes: {ex.Message}");
+                // Clear our tracking anyway
+                _obsProcess = null;
+                _isConnected = false;
+            }
+        }
+        
+        private void TryGracefulOBSShutdown()
+        {
+            try
+            {
+                LogToFile("Attempting graceful OBS shutdown...");
+                
                 var obsPath = FindOBSPath();
-                return !string.IsNullOrEmpty(obsPath);
+                if (string.IsNullOrEmpty(obsPath))
+                {
+                    LogToFile("OBS path not found for graceful shutdown");
+                    return;
+                }
+
+                // Try to send quit command to OBS
+                var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = obsPath,
+                        Arguments = "--quit",
+                        UseShellExecute = true,
+                        CreateNoWindow = false,
+                        WorkingDirectory = Path.GetDirectoryName(obsPath)
+                    }
+                };
+
+                process.Start();
+                LogToFile("Sent graceful shutdown command to OBS");
+            }
+            catch (Exception ex)
+            {
+                LogToFile($"Error during graceful OBS shutdown: {ex.Message}");
             }
         }
 
@@ -241,25 +417,16 @@ namespace SharpShot.Services
                     return false;
                 }
 
-                // Check if OBS is already running
+                // Since we're called after SetupOBSForRecordingAsync(), OBS should already be running
+                // Just verify it's still there and start recording
                 var obsProcesses = Process.GetProcessesByName("obs64");
                 if (obsProcesses.Length == 0)
                 {
-                    LogToFile("OBS not running - starting it first");
-                    var startProcess = new Process
-                    {
-                        StartInfo = new ProcessStartInfo
-                        {
-                            FileName = obsPath,
-                            Arguments = "--minimize-to-tray --startup_to_tray",
-                            UseShellExecute = true,
-                            CreateNoWindow = false,
-                            WorkingDirectory = Path.GetDirectoryName(obsPath)
-                        }
-                    };
-                    startProcess.Start();
-                    await Task.Delay(3000); // Wait for OBS to start
+                    LogToFile("WARNING: OBS not found when trying to start recording! It may have been killed or crashed.");
+                    return false;
                 }
+
+                LogToFile($"Found {obsProcesses.Length} OBS process(es), sending start recording command");
 
                 // Start recording via command line
                 var process = new Process
@@ -345,14 +512,6 @@ namespace SharpShot.Services
             try
             {
                 LogToFile("Starting OBS recording...");
-                LogToFile($"Current directory: {Directory.GetCurrentDirectory()}");
-                LogToFile($"App base directory: {AppContext.BaseDirectory}");
-                
-                // Ensure OBS is running
-                if (!await EnsureOBSRunningAsync())
-                {
-                    LogToFile("Failed to ensure OBS is running");
-                }
                 
                 // Generate recording path with timestamp
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
@@ -360,30 +519,17 @@ namespace SharpShot.Services
                 var savePath = _settingsService.CurrentSettings.SavePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "SharpShot");
                 _currentRecordingPath = Path.Combine(savePath, fileName);
                 
-                // Try to start recording via command line
+                // Simply try to start recording - OBS should already be running
                 if (await StartOBSRecordingViaCommandLineAsync())
                 {
                     _isRecording = true;
                     RecordingStateChanged?.Invoke(this, true);
-                    LogToFile("OBS recording started successfully via command line");
-                    LogToFile($"Recording path: {_currentRecordingPath}");
-                    return;
+                    LogToFile("OBS recording started successfully");
                 }
-                
-                // If command line fails, show user message
-                LogToFile("Command line recording failed - using fallback mode");
-                _isRecording = true;
-                RecordingStateChanged?.Invoke(this, true);
-                LogToFile("OBS recording started (fallback mode)");
-                
-                // Show user message about recording status
-                System.Windows.MessageBox.Show(
-                    "OBS Studio recording started in fallback mode.\n\n" +
-                    "The recording may not be saved to the expected location.\n" +
-                    "Check OBS Studio's recording folder for the video file.",
-                    "OBS Recording Started",
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Information);
+                else
+                {
+                    LogToFile("Failed to start OBS recording");
+                }
             }
             catch (Exception ex)
             {
