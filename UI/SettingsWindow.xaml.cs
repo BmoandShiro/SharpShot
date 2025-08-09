@@ -321,16 +321,16 @@ namespace SharpShot.UI
                 }
             }
             
-            // Set audio recording mode combo box
-            foreach (var item in AudioRecordingModeComboBox.Items)
-            {
-                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.AudioRecordingMode)
-                {
-                    AudioRecordingModeComboBox.SelectedItem = item;
-                    break;
-                }
-            }
+            // Audio recording mode combo box commented out
+            // foreach (var item in AudioRecordingModeComboBox.Items)
+            // {
+            //     if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+            //         comboItem.Content.ToString() == _originalSettings.AudioRecordingMode)
+            //     {
+            //         AudioRecordingModeComboBox.SelectedItem = item;
+            //         break;
+            //     }
+            // }
 
             // Load audio devices after UI is fully initialized
             Dispatcher.BeginInvoke(new Action(() =>
@@ -582,10 +582,14 @@ namespace SharpShot.UI
                     }
                 }
                 
-                if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem audioModeItem)
-                {
-                    _originalSettings.AudioRecordingMode = audioModeItem.Content?.ToString() ?? "No Audio";
-                }
+                // Audio recording mode combo box commented out
+                // if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem audioModeItem)
+                // {
+                //     _originalSettings.AudioRecordingMode = audioModeItem.Content?.ToString() ?? "No Audio";
+                // }
+                
+                // Default to "No Audio" since combo box is commented out
+                _originalSettings.AudioRecordingMode = "No Audio";
 
                 // Save selected audio devices
                 if (OutputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem outputAudioItem)
@@ -809,6 +813,63 @@ namespace SharpShot.UI
             return style;
         }
 
+        private Style CreateBrowseButtonStyle(System.Windows.Media.Color themeColor)
+        {
+            var style = new Style(typeof(Button));
+            
+            // Base properties similar to ModernButtonStyle but with dynamic colors
+            style.Setters.Add(new Setter(Button.BackgroundProperty, System.Windows.Media.Brushes.Transparent));
+            style.Setters.Add(new Setter(Button.BorderBrushProperty, new SolidColorBrush(themeColor)));
+            style.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1.5)));
+            style.Setters.Add(new Setter(Button.PaddingProperty, new Thickness(16, 10, 16, 10)));
+            style.Setters.Add(new Setter(Button.MarginProperty, new Thickness(4)));
+            style.Setters.Add(new Setter(Button.FontSizeProperty, 14.0));
+            style.Setters.Add(new Setter(Button.FontWeightProperty, FontWeights.SemiBold));
+            style.Setters.Add(new Setter(Button.CursorProperty, Cursors.Hand));
+            style.Setters.Add(new Setter(Button.WidthProperty, 80.0));
+            style.Setters.Add(new Setter(Button.HeightProperty, 32.0));
+            
+            // Template
+            var template = new ControlTemplate(typeof(Button));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
+            border.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Button.BorderBrushProperty));
+            border.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Button.BorderThicknessProperty));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+            
+            var contentPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentPresenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentPresenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            
+            border.AppendChild(contentPresenter);
+            template.VisualTree = border;
+            
+            // Hover trigger with dynamic theme color
+            var hoverTrigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
+            var hoverColor = System.Windows.Media.Color.FromArgb(21, themeColor.R, themeColor.G, themeColor.B); // 21 = 0x15
+            hoverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(hoverColor)));
+            
+            var dropShadow = new DropShadowEffect();
+            dropShadow.Color = themeColor;
+            dropShadow.BlurRadius = 12;
+            dropShadow.ShadowDepth = 0;
+            dropShadow.Opacity = 0.25;
+            hoverTrigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
+            
+            // Pressed trigger
+            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            var pressedColor = System.Windows.Media.Color.FromArgb(48, themeColor.R, themeColor.G, themeColor.B); // 48 = 0x30
+            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(pressedColor)));
+            pressedTrigger.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(2)));
+            
+            template.Triggers.Add(hoverTrigger);
+            template.Triggers.Add(pressedTrigger);
+            
+            style.Setters.Add(new Setter(Button.TemplateProperty, template));
+            
+            return style;
+        }
+
 
 
 
@@ -870,11 +931,11 @@ namespace SharpShot.UI
                         saveText.Foreground = brush;
                 }
                 
-                // Update Browse button (find it by name)
+                // Update Browse button with dynamic hover effects
                 var browseButton = this.FindName("BrowseButton") as Button;
                 if (browseButton != null)
                 {
-                    browseButton.BorderBrush = brush;
+                    browseButton.Style = CreateBrowseButtonStyle(color);
                     if (browseButton.Content is TextBlock browseText)
                         browseText.Foreground = brush;
                 }
@@ -1855,6 +1916,8 @@ namespace SharpShot.UI
             }
         }
 
+        // Audio recording mode combo box event handler commented out since combo box is disabled
+        /*
         private void AudioRecordingModeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
@@ -1882,6 +1945,7 @@ namespace SharpShot.UI
                 }
             }
         }
+        */
 
         private void RefreshAudioDevicesButton_Click(object sender, RoutedEventArgs e)
         {

@@ -104,12 +104,12 @@ namespace SharpShot.Services
 
 
 
-        private Task StartFFmpegRecordingAsync(System.Drawing.Rectangle? region = null)
+        private async Task StartFFmpegRecordingAsync(System.Drawing.Rectangle? region = null)
         {
             var settings = _settingsService.CurrentSettings;
             
             // Build FFmpeg command - pass the region directly and let BuildFFmpegCommand handle the logic
-            var ffmpegArgs = BuildFFmpegCommand(region, settings);
+            var ffmpegArgs = await BuildFFmpegCommand(region, settings);
             
             // Start FFmpeg process
             _ffmpegProcess = new System.Diagnostics.Process
@@ -161,10 +161,10 @@ namespace SharpShot.Services
                 }
             });
             
-            return Task.CompletedTask;
+            // Method is async so no explicit return needed
         }
 
-        private string BuildFFmpegCommand(System.Drawing.Rectangle? region, Settings settings)
+        private async Task<string> BuildFFmpegCommand(System.Drawing.Rectangle? region, Settings settings)
         {
             var inputArgs = "";
             
@@ -212,26 +212,18 @@ namespace SharpShot.Services
                 }
             }
             
-            // Add audio input based on settings
+            // Audio input disabled for now - always record video only to avoid DirectShow issues
             var audioInput = "";
-            switch (settings.AudioRecordingMode)
+            
+            // Log that audio is disabled
+            try
             {
-                case "System Audio Only":
-                    audioInput = " -f dshow -i audio=\"virtual-audio-capturer\"";
-                    break;
-                case "Microphone Only":
-                    if (!string.IsNullOrEmpty(settings.SelectedInputAudioDevice))
-                    {
-                        audioInput = $" -f dshow -i audio=\"{settings.SelectedInputAudioDevice}\"";
-                    }
-                    break;
-                case "System Audio + Microphone":
-                    audioInput = " -f dshow -i audio=\"virtual-audio-capturer\"";
-                    if (!string.IsNullOrEmpty(settings.SelectedInputAudioDevice))
-                    {
-                        audioInput += $" -f dshow -i audio=\"{settings.SelectedInputAudioDevice}\"";
-                    }
-                    break;
+                var audioLogPath = Path.Combine(Path.GetTempPath(), "sharpshot_audio_disabled.log");
+                await File.WriteAllTextAsync(audioLogPath, $"Audio recording disabled for simplified operation\nOriginal setting: {settings.AudioRecordingMode}\nTime: {DateTime.Now}");
+            }
+            catch
+            {
+                // Ignore logging errors - don't let them break recording
             }
             
             // Build output arguments with better encoding settings for maximum compatibility
@@ -240,11 +232,8 @@ namespace SharpShot.Services
             // Add key frame settings for better playback (framerate already set in input)
             outputArgs += " -g 60 -keyint_min 30";
             
-            // Add audio codec if audio is enabled
-            if (settings.AudioRecordingMode != "No Audio")
-            {
-                outputArgs += " -c:a aac -b:a 128k -ar 44100 -ac 2";
-            }
+            // Audio codec disabled - recording video only for now
+            // This avoids any audio-related FFmpeg issues
             
             // Add proper MP4 formatting and compatibility flags
             outputArgs += " -movflags +faststart -f mp4 -strict experimental";

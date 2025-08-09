@@ -362,6 +362,7 @@
                 </ComboBox>
 
                 <!-- Audio Recording Mode -->
+                <!-- Commented out - Audio recording disabled for now
                 <TextBlock Text="Audio Recording Mode:" 
                            Foreground="{StaticResource TextBrush}" 
                            FontWeight="SemiBold" 
@@ -375,6 +376,7 @@
                     <ComboBoxItem Content="Microphone Only"/>
                     <ComboBoxItem Content="System Audio + Microphone"/>
                 </ComboBox>
+                -->
 
                 <!-- Output Audio Device Selection -->
                 <StackPanel x:Name="OutputAudioDevicePanel" 
@@ -403,6 +405,7 @@
                 </StackPanel>
 
                 <!-- Refresh Audio Devices Button -->
+                <!-- Commented out - Audio recording disabled for now
                 <Button x:Name="RefreshAudioDevicesButton"
                         Style="{StaticResource ModernButtonStyle}"
                         Margin="0,0,0,15"
@@ -416,6 +419,7 @@
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                 </Button>
+                -->
                 <CheckBox x:Name="GlobalHotkeysCheckBox" 
                           Content="Enable Global Hotkeys" 
                           Style="{StaticResource DarkCheckBoxStyle}"
