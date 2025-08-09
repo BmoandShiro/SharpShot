@@ -13,7 +13,7 @@ namespace SharpShot.Services
         private readonly SettingsService _settingsService;
         private readonly OBSRecordingService? _obsRecordingService;
         private string? _currentRecordingPath;
-        private Recorder? _recorder;
+
         private Process? _ffmpegProcess; // Track FFmpeg process for stopping
         private bool _isRecording = false;
 
@@ -60,11 +60,8 @@ namespace SharpShot.Services
                         await StartOBSRecordingAsync(region);
                         break;
                     case "FFmpeg":
-                        await StartFFmpegRecordingAsync(region);
-                        break;
-                    case "ScreenRecorderLib":
                     default:
-                        await StartScreenRecorderLibRecordingAsync(region);
+                        await StartFFmpegRecordingAsync(region);
                         break;
                 }
             }
@@ -100,42 +97,14 @@ namespace SharpShot.Services
             }
         }
 
-        private Task StartScreenRecorderLibRecordingAsync(System.Drawing.Rectangle? region = null)
-        {
-            var settings = _settingsService.CurrentSettings;
-            
-            // Create recorder with basic configuration
-            _recorder = Recorder.CreateRecorder();
-            
-            // Configure audio recording based on settings
-            ConfigureAudioRecording(settings);
-            
-            // Set up event handlers
-            _recorder.OnRecordingComplete += OnRecordingComplete;
-            _recorder.OnRecordingFailed += OnRecordingFailed;
-            _recorder.OnStatusChanged += OnStatusChanged;
 
-            // Start recording
-            _recorder.Record(_currentRecordingPath);
-            
-            _isRecording = true;
-            RecordingStateChanged?.Invoke(this, true);
-
-            LogToFile($"Started ScreenRecorderLib recording to: {_currentRecordingPath}");
-            LogToFile($"Audio recording mode: {settings.AudioRecordingMode}");
-            
-            return Task.CompletedTask;
-        }
 
         private Task StartFFmpegRecordingAsync(System.Drawing.Rectangle? region = null)
         {
             var settings = _settingsService.CurrentSettings;
             
-            // Get bounds for recording
-            var bounds = region ?? GetBoundsForSelectedScreen();
-            
-            // Build FFmpeg command
-            var ffmpegArgs = BuildFFmpegCommand(bounds, settings);
+            // Build FFmpeg command - pass the region directly and let BuildFFmpegCommand handle the logic
+            var ffmpegArgs = BuildFFmpegCommand(region, settings);
             
             // Start FFmpeg process
             _ffmpegProcess = new System.Diagnostics.Process
@@ -152,6 +121,13 @@ namespace SharpShot.Services
                 }
             };
 
+            // Ensure directory exists
+            var directory = Path.GetDirectoryName(_currentRecordingPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            
             _ffmpegProcess.Start();
             
             _isRecording = true;
@@ -160,17 +136,60 @@ namespace SharpShot.Services
             System.Diagnostics.Debug.WriteLine($"Started FFmpeg recording to: {_currentRecordingPath}");
             System.Diagnostics.Debug.WriteLine($"FFmpeg command: {ffmpegArgs}");
             
+            // Log stderr output for debugging
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!_ffmpegProcess.StandardError.EndOfStream)
+                    {
+                        var line = await _ffmpegProcess.StandardError.ReadLineAsync();
+                        if (!string.IsNullOrEmpty(line))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"FFmpeg: {line}");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error reading FFmpeg stderr: {ex.Message}");
+                }
+            });
+            
             return Task.CompletedTask;
         }
 
-        private string BuildFFmpegCommand(System.Drawing.Rectangle bounds, Settings settings)
+        private string BuildFFmpegCommand(System.Drawing.Rectangle? region, Settings settings)
         {
-            var inputArgs = $"-f gdigrab -i desktop";
+            var inputArgs = "";
             
-            // Add region if specified
-            if (bounds != System.Drawing.Rectangle.Empty)
+            // Configure input based on whether we have a specific region or full screen
+            if (region.HasValue && region.Value != System.Drawing.Rectangle.Empty)
             {
-                inputArgs += $" -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {bounds.Width}x{bounds.Height}";
+                // For region recording, capture only the specified region
+                var bounds = region.Value;
+                inputArgs = $"-f gdigrab -i desktop -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {bounds.Width}x{bounds.Height} -probesize 10M -thread_queue_size 512";
+                System.Diagnostics.Debug.WriteLine($"Region recording: {bounds.X},{bounds.Y} {bounds.Width}x{bounds.Height}");
+            }
+            else
+            {
+                // For full screen recording, respect the selected monitor setting
+                var screenBounds = GetBoundsForSelectedScreen();
+                System.Diagnostics.Debug.WriteLine($"Full screen recording on: {settings.SelectedScreen}");
+                System.Diagnostics.Debug.WriteLine($"Screen bounds: {screenBounds.X},{screenBounds.Y} {screenBounds.Width}x{screenBounds.Height}");
+                
+                if (settings.SelectedScreen == "All Screens" || settings.SelectedScreen == "All Monitors")
+                {
+                    // Capture entire virtual desktop (all monitors)
+                    inputArgs = $"-f gdigrab -i desktop -probesize 10M -thread_queue_size 512";
+                    System.Diagnostics.Debug.WriteLine("Recording all screens - no offset/size specified");
+                }
+                else
+                {
+                    // Capture specific monitor
+                    inputArgs = $"-f gdigrab -i desktop -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -probesize 10M -thread_queue_size 512";
+                    System.Diagnostics.Debug.WriteLine($"Recording specific screen with offset: {screenBounds.X},{screenBounds.Y} size: {screenBounds.Width}x{screenBounds.Height}");
+                }
             }
             
             // Add audio input based on settings
@@ -195,14 +214,20 @@ namespace SharpShot.Services
                     break;
             }
             
-            // Build output arguments
-            var outputArgs = $"-c:v libx264 -preset ultrafast -crf 18";
+            // Build output arguments with better encoding settings for maximum compatibility
+            var outputArgs = $"-c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -profile:v baseline -level 3.0";
+            
+            // Add frame rate and key frame settings for better playback
+            outputArgs += " -r 30 -g 60 -keyint_min 30";
             
             // Add audio codec if audio is enabled
             if (settings.AudioRecordingMode != "No Audio")
             {
-                outputArgs += " -c:a aac -b:a 128k";
+                outputArgs += " -c:a aac -b:a 128k -ar 44100 -ac 2";
             }
+            
+            // Add proper MP4 formatting and compatibility flags
+            outputArgs += " -movflags +faststart -f mp4 -strict experimental";
             
             outputArgs += $" \"{_currentRecordingPath}\"";
             
@@ -226,7 +251,8 @@ namespace SharpShot.Services
             
             switch (selectedScreen)
             {
-                case "All Monitors":
+                case "All Screens":
+                case "All Monitors": // Backward compatibility
                     return GetVirtualDesktopBounds();
                     
                 case "Primary Monitor":
@@ -327,9 +353,10 @@ namespace SharpShot.Services
                                 // Try to gracefully stop FFmpeg by sending 'q' command
                                 _ffmpegProcess.StandardInput.WriteLine("q");
                                 _ffmpegProcess.StandardInput.Flush();
+                                _ffmpegProcess.StandardInput.Close(); // Close input to signal end
                                 
-                                // Wait a bit for graceful shutdown
-                                if (!_ffmpegProcess.WaitForExit(3000))
+                                // Wait longer for graceful shutdown and file finalization
+                                if (!_ffmpegProcess.WaitForExit(5000))
                                 {
                                     // If graceful shutdown failed, force kill
                                     _ffmpegProcess.Kill();
@@ -356,13 +383,8 @@ namespace SharpShot.Services
                             }
                         }
                         break;
-                    case "ScreenRecorderLib":
                     default:
-                        // Stop ScreenRecorderLib recording
-                        if (_recorder != null)
-                        {
-                            _recorder.Stop();
-                        }
+                        // Default to FFmpeg stop logic (already handled above)
                         break;
                 }
                 
@@ -376,67 +398,7 @@ namespace SharpShot.Services
             }
         }
 
-        private void ConfigureAudioRecording(Settings settings)
-        {
-            if (_recorder == null) return;
 
-            LogToFile($"Configuring audio recording for engine: {settings.RecordingEngine}");
-            LogToFile($"Audio recording mode: {settings.AudioRecordingMode}");
-
-            // Configure audio recording based on mode
-            switch (settings.AudioRecordingMode)
-            {
-                case "System Audio Only":
-                    LogToFile("Configuring system audio only recording");
-                    // ScreenRecorderLib can capture system audio directly
-                    // The library handles this automatically when no microphone is specified
-                    break;
-                    
-                case "Microphone Only":
-                    LogToFile("Configuring microphone only recording");
-                    // ScreenRecorderLib can capture microphone audio
-                    // The library handles this automatically when no system audio is specified
-                    break;
-                    
-                case "System Audio + Microphone":
-                    LogToFile("Configuring system audio + microphone recording");
-                    // ScreenRecorderLib can capture both system audio and microphone
-                    // The library handles mixing automatically
-                    break;
-                    
-                case "No Audio":
-                default:
-                    LogToFile("Configuring no audio recording");
-                    // No audio configuration needed
-                    break;
-            }
-
-            // Note: ScreenRecorderLib handles audio device selection automatically
-            // based on the recording mode. The library uses WASAPI internally
-            // and can capture both system audio and microphone input.
-            LogToFile("Audio configuration completed");
-        }
-
-        private void OnRecordingComplete(object? sender, RecordingCompleteEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine($"Recording completed: {e.FilePath}");
-            _isRecording = false;
-            RecordingStateChanged?.Invoke(this, false);
-        }
-
-        private void OnRecordingFailed(object? sender, RecordingFailedEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine($"Recording failed: {e.Error}");
-            _isRecording = false;
-            RecordingStateChanged?.Invoke(this, false);
-        }
-
-        private void OnStatusChanged(object? sender, RecordingStatusEventArgs e)
-        {
-            System.Diagnostics.Debug.WriteLine($"Recording status: {e.Status}");
-            // Update recording time if needed
-            RecordingTimeUpdated?.Invoke(this, TimeSpan.Zero);
-        }
 
         // OBS event handlers
         private void OnOBSRecordingStateChanged(object? sender, bool isRecording)

@@ -568,7 +568,7 @@ namespace SharpShot.UI
                 
                 if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
                 {
-                    var engine = recordingEngineItem.Content?.ToString() ?? "ScreenRecorderLib";
+                    var engine = recordingEngineItem.Content?.ToString() ?? "FFmpeg";
                     _originalSettings.RecordingEngine = engine;
                     
                     // Show OBS-specific settings if OBS is selected
@@ -716,6 +716,9 @@ namespace SharpShot.UI
             
             // Get all screens
             var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Add "All Screens" option first
+            ScreenComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "All Screens" });
             
             // Add primary monitor option
             ScreenComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Primary Monitor" });

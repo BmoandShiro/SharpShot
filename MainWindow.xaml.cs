@@ -211,19 +211,11 @@ namespace SharpShot
         {
             try
             {
-                // Force FFmpeg for stop recording since OBS is handled in its GUI
-                var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
-                _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                                        // Ensure FFmpeg is selected for stop recording since OBS is handled in its GUI
+                        _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                        _settingsService.SaveSettings();
                 
-                try
-                {
-                    await _recordingService.StopRecording();
-                }
-                finally
-                {
-                    // Restore original recording engine
-                    _settingsService.CurrentSettings.RecordingEngine = originalEngine;
-                }
+                await _recordingService.StopRecording();
                 
                 // Return to main home page after stopping
                 ShowNormalButtons();
@@ -752,19 +744,11 @@ namespace SharpShot
                 {
                     try
                     {
-                        // Force FFmpeg for region recording
-                        var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                        // Ensure FFmpeg is selected for region recording
                         _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                        _settingsService.SaveSettings();
                         
-                        try
-                        {
-                            await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
-                        }
-                        finally
-                        {
-                            // Restore original recording engine
-                            _settingsService.CurrentSettings.RecordingEngine = originalEngine;
-                        }
+                        await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
                     }
                     catch (Exception ex)
                     {
@@ -797,19 +781,11 @@ namespace SharpShot
             {
                 try
                 {
-                    // Force FFmpeg for full screen recording
-                    var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                    // Ensure FFmpeg is selected for full screen recording
                     _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                    _settingsService.SaveSettings();
                     
-                    try
-                    {
-                        await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
-                    }
-                    finally
-                    {
-                        // Restore original recording engine
-                        _settingsService.CurrentSettings.RecordingEngine = originalEngine;
-                    }
+                    await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
                 }
                 catch (Exception ex)
                 {

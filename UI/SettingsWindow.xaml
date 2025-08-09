@@ -340,7 +340,7 @@
                 <ComboBox x:Name="ScreenComboBox" 
                           Style="{StaticResource DarkComboBoxStyle}"
                           Margin="0,0,0,15">
-                    <ComboBoxItem Content="All Monitors"/>
+                    <ComboBoxItem Content="All Screens"/>
                     <ComboBoxItem Content="Primary Monitor"/>
                     <ComboBoxItem Content="Monitor 1"/>
                     <ComboBoxItem Content="Monitor 2"/>
@@ -357,9 +357,8 @@
                           Style="{StaticResource DarkComboBoxStyle}"
                           Margin="0,0,0,10"
                           SelectionChanged="RecordingEngineComboBox_SelectionChanged">
-                    <ComboBoxItem Content="ScreenRecorderLib"/>
-                    <ComboBoxItem Content="OBS"/>
                     <ComboBoxItem Content="FFmpeg"/>
+                    <ComboBoxItem Content="OBS"/>
                 </ComboBox>
 
                 <!-- Audio Recording Mode -->

@@ -32,7 +32,7 @@ namespace SharpShot.Models
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
             AudioRecordingMode = "No Audio";
-            RecordingEngine = "ScreenRecorderLib";
+            RecordingEngine = "FFmpeg";
             SelectedOutputAudioDevice = string.Empty;
             SelectedInputAudioDevice = string.Empty;
             EnableGlobalHotkeys = false;
