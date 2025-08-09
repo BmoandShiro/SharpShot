@@ -168,7 +168,7 @@ namespace SharpShot.Services
             {
                 // For region recording, capture only the specified region
                 var bounds = region.Value;
-                inputArgs = $"-f gdigrab -i desktop -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {bounds.Width}x{bounds.Height} -probesize 10M -thread_queue_size 512";
+                inputArgs = $"-f gdigrab -framerate 30 -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {bounds.Width}x{bounds.Height} -i desktop -probesize 10M -thread_queue_size 512";
                 System.Diagnostics.Debug.WriteLine($"Region recording: {bounds.X},{bounds.Y} {bounds.Width}x{bounds.Height}");
             }
             else
@@ -181,13 +181,13 @@ namespace SharpShot.Services
                 if (settings.SelectedScreen == "All Screens" || settings.SelectedScreen == "All Monitors")
                 {
                     // Capture entire virtual desktop (all monitors)
-                    inputArgs = $"-f gdigrab -i desktop -probesize 10M -thread_queue_size 512";
+                    inputArgs = $"-f gdigrab -framerate 30 -i desktop -probesize 10M -thread_queue_size 512";
                     System.Diagnostics.Debug.WriteLine("Recording all screens - no offset/size specified");
                 }
                 else
                 {
-                    // Capture specific monitor
-                    inputArgs = $"-f gdigrab -i desktop -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -probesize 10M -thread_queue_size 512";
+                    // Capture specific monitor - offset parameters MUST come before -i desktop
+                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size 512";
                     System.Diagnostics.Debug.WriteLine($"Recording specific screen with offset: {screenBounds.X},{screenBounds.Y} size: {screenBounds.Width}x{screenBounds.Height}");
                 }
             }
@@ -217,8 +217,8 @@ namespace SharpShot.Services
             // Build output arguments with better encoding settings for maximum compatibility
             var outputArgs = $"-c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -profile:v baseline -level 3.0";
             
-            // Add frame rate and key frame settings for better playback
-            outputArgs += " -r 30 -g 60 -keyint_min 30";
+            // Add key frame settings for better playback (framerate already set in input)
+            outputArgs += " -g 60 -keyint_min 30";
             
             // Add audio codec if audio is enabled
             if (settings.AudioRecordingMode != "No Audio")
@@ -239,41 +239,83 @@ namespace SharpShot.Services
             var selectedScreen = _settingsService.CurrentSettings.SelectedScreen;
             var allScreens = System.Windows.Forms.Screen.AllScreens;
             
+            System.Diagnostics.Debug.WriteLine("=== GetBoundsForSelectedScreen Debug ===");
+            System.Diagnostics.Debug.WriteLine($"Selected screen from settings: '{selectedScreen}'");
+            System.Diagnostics.Debug.WriteLine($"Total screens detected: {allScreens.Length}");
+            
+            for (int i = 0; i < allScreens.Length; i++)
+            {
+                var screen = allScreens[i];
+                System.Diagnostics.Debug.WriteLine($"Screen {i + 1}: Bounds={screen.Bounds}, Primary={screen.Primary}, DeviceName={screen.DeviceName}");
+            }
+            
             if (allScreens.Length == 0)
             {
+                System.Diagnostics.Debug.WriteLine("No screens detected, using fallback");
                 var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
                 if (primaryScreen == null)
                 {
+                    System.Diagnostics.Debug.WriteLine("No primary screen, using default 1920x1080");
                     return new System.Drawing.Rectangle(0, 0, 1920, 1080);
                 }
+                System.Diagnostics.Debug.WriteLine($"Using primary screen fallback: {primaryScreen.Bounds}");
                 return primaryScreen.Bounds;
             }
+            
+            System.Drawing.Rectangle result;
             
             switch (selectedScreen)
             {
                 case "All Screens":
                 case "All Monitors": // Backward compatibility
-                    return GetVirtualDesktopBounds();
+                    System.Diagnostics.Debug.WriteLine("Using All Screens mode");
+                    result = GetVirtualDesktopBounds();
+                    break;
                     
                 case "Primary Monitor":
+                    System.Diagnostics.Debug.WriteLine("Using Primary Monitor mode");
                     var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
                     if (primaryScreen == null)
                     {
-                        return new System.Drawing.Rectangle(0, 0, 1920, 1080);
+                        System.Diagnostics.Debug.WriteLine("Primary screen is null, using default");
+                        result = new System.Drawing.Rectangle(0, 0, 1920, 1080);
                     }
-                    return primaryScreen.Bounds;
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Primary screen bounds: {primaryScreen.Bounds}");
+                        result = primaryScreen.Bounds;
+                    }
+                    break;
                     
                 default:
+                    System.Diagnostics.Debug.WriteLine($"Checking if '{selectedScreen}' is a monitor number");
                     if (selectedScreen.StartsWith("Monitor "))
                     {
                         var monitorNumber = selectedScreen.Replace("Monitor ", "").Replace(" (Primary)", "");
+                        System.Diagnostics.Debug.WriteLine($"Extracted monitor number: '{monitorNumber}'");
                         if (int.TryParse(monitorNumber, out int index) && index > 0 && index <= allScreens.Length)
                         {
-                            return allScreens[index - 1].Bounds;
+                            var targetScreen = allScreens[index - 1];
+                            System.Diagnostics.Debug.WriteLine($"Using Monitor {index} with bounds: {targetScreen.Bounds}");
+                            result = targetScreen.Bounds;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Invalid monitor number, using virtual desktop");
+                            result = GetVirtualDesktopBounds();
                         }
                     }
-                    return GetVirtualDesktopBounds();
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Unknown screen selection '{selectedScreen}', using virtual desktop");
+                        result = GetVirtualDesktopBounds();
+                    }
+                    break;
             }
+            
+            System.Diagnostics.Debug.WriteLine($"Final screen bounds: {result}");
+            System.Diagnostics.Debug.WriteLine("=== End GetBoundsForSelectedScreen Debug ===");
+            return result;
         }
 
         private System.Drawing.Rectangle GetVirtualDesktopBounds()
