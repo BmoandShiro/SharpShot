@@ -17,6 +17,7 @@ namespace SharpShot.UI
         private bool _isSelecting;
         public Rectangle? SelectedRegion { get; private set; }
         public Bitmap? CapturedBitmap { get; private set; }
+        public bool EditorActionCompleted { get; private set; } = false;
         private Rectangle _virtualDesktopBounds;
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
@@ -269,16 +270,47 @@ namespace SharpShot.UI
                     // Store the bitmap for later use - create a deep copy to avoid disposal issues
                     CapturedBitmap = new Bitmap(bitmap);
                     System.Diagnostics.Debug.WriteLine($"Captured region: {actualWidth}x{actualHeight} at ({actualX},{actualY})");
+                    
+                    // Launch the screenshot editor
+                    LaunchEditor(CapturedBitmap);
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
                               MessageBoxButton.OK, MessageBoxImage.Error);
+                Close();
             }
-            finally
+        }
+
+        private void LaunchEditor(Bitmap bitmap)
+        {
+            try
             {
-                // Magnifier will be stopped when window closes
+                // Hide this window
+                Visibility = Visibility.Hidden;
+                
+                // Launch the screenshot editor
+                var editor = new ScreenshotEditorWindow(bitmap, _screenshotService, _settingsService);
+                var result = editor.ShowDialog();
+                
+                // Update our captured bitmap with the edited result if available
+                if (editor.FinalBitmap != null)
+                {
+                    CapturedBitmap?.Dispose();
+                    CapturedBitmap = editor.FinalBitmap;
+                }
+                
+                // Track if user completed an action in the editor
+                EditorActionCompleted = editor.ImageSaved || editor.ImageCopied;
+                
+                // Close this window
+                Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to launch editor: {ex.Message}", "Error", 
+                              MessageBoxButton.OK, MessageBoxImage.Error);
                 Close();
             }
         }

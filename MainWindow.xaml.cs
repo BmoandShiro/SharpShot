@@ -471,7 +471,12 @@ namespace SharpShot
                 {
                     _lastCapturedBitmap = regionWindow.CapturedBitmap;
                     System.Diagnostics.Debug.WriteLine($"Region captured successfully: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
-                    ShowCaptureOptions();
+                    
+                    // Only show capture options if the user didn't already save/copy in the editor
+                    if (!IsEditorActionCompleted(regionWindow))
+                    {
+                        ShowCaptureOptions();
+                    }
                 }
                 else
                 {
@@ -487,6 +492,11 @@ namespace SharpShot
                 ShowNotification("Region capture failed!", isError: true);
                 Visibility = Visibility.Visible;
             }
+        }
+
+        private bool IsEditorActionCompleted(UI.RegionSelectionWindow regionWindow)
+        {
+            return regionWindow.EditorActionCompleted;
         }
 
         private void ShowCaptureOptions()
