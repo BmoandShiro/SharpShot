@@ -14,6 +14,7 @@ namespace SharpShot.Services
         private readonly OBSRecordingService? _obsRecordingService;
         private string? _currentRecordingPath;
         private Recorder? _recorder;
+        private Process? _ffmpegProcess; // Track FFmpeg process for stopping
         private bool _isRecording = false;
 
         // Events that MainWindow expects
@@ -137,20 +138,21 @@ namespace SharpShot.Services
             var ffmpegArgs = BuildFFmpegCommand(bounds, settings);
             
             // Start FFmpeg process
-            var process = new System.Diagnostics.Process
+            _ffmpegProcess = new System.Diagnostics.Process
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = GetFFmpegPath(),
                     Arguments = ffmpegArgs,
                     UseShellExecute = false,
+                    RedirectStandardInput = true,  // Enable input redirection for 'q' command
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 }
             };
 
-            process.Start();
+            _ffmpegProcess.Start();
             
             _isRecording = true;
             RecordingStateChanged?.Invoke(this, true);
@@ -317,10 +319,42 @@ namespace SharpShot.Services
                         }
                         break;
                     case "FFmpeg":
-                        // For FFmpeg, we need to stop the process
-                        // This is a simplified approach - in a real implementation,
-                        // you'd want to properly manage the FFmpeg process
-                        System.Diagnostics.Debug.WriteLine("Stopping FFmpeg recording");
+                        // Stop FFmpeg process by sending 'q' command or killing the process
+                        if (_ffmpegProcess != null && !_ffmpegProcess.HasExited)
+                        {
+                            try
+                            {
+                                // Try to gracefully stop FFmpeg by sending 'q' command
+                                _ffmpegProcess.StandardInput.WriteLine("q");
+                                _ffmpegProcess.StandardInput.Flush();
+                                
+                                // Wait a bit for graceful shutdown
+                                if (!_ffmpegProcess.WaitForExit(3000))
+                                {
+                                    // If graceful shutdown failed, force kill
+                                    _ffmpegProcess.Kill();
+                                }
+                                
+                                System.Diagnostics.Debug.WriteLine("Stopped FFmpeg recording");
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error stopping FFmpeg gracefully, force killing: {ex.Message}");
+                                try
+                                {
+                                    _ffmpegProcess.Kill();
+                                }
+                                catch (Exception killEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Error force killing FFmpeg: {killEx.Message}");
+                                }
+                            }
+                            finally
+                            {
+                                _ffmpegProcess.Dispose();
+                                _ffmpegProcess = null;
+                            }
+                        }
                         break;
                     case "ScreenRecorderLib":
                     default:

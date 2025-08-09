@@ -213,7 +213,7 @@
                 <Button x:Name="RegionRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="RegionRecordButton_Click"
-                        ToolTip="Record Selected Region"
+                        ToolTip="Record Selected Region (FFmpeg)"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource RegionIcon}" 
                           Stroke="#FFFF8C00" 
@@ -228,7 +228,7 @@
                 <Button x:Name="FullScreenRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="FullScreenRecordButton_Click"
-                        ToolTip="Record Full Screen"
+                        ToolTip="Record Full Screen (FFmpeg)"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource FullScreenRecordIcon}" 
                           Stroke="#FFFF8C00" 
@@ -242,7 +242,7 @@
                 <Button x:Name="OBSRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
-                        ToolTip="Setup OBS and Record Full Screen"
+                        ToolTip="Launch OBS Studio"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource OBSIcon}" 
                           Stroke="#FFFF8C00" 
@@ -282,7 +282,7 @@
                 <Button x:Name="StopRecordButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="StopRecordButton_Click"
-                        ToolTip="Stop Recording"
+                        ToolTip="Stop Recording (FFmpeg)"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource StopIcon}" 
                           Stroke="#FFFF8C00" 

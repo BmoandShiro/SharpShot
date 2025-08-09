@@ -211,7 +211,20 @@ namespace SharpShot
         {
             try
             {
-                await _recordingService.StopRecording();
+                // Force FFmpeg for stop recording since OBS is handled in its GUI
+                var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                
+                try
+                {
+                    await _recordingService.StopRecording();
+                }
+                finally
+                {
+                    // Restore original recording engine
+                    _settingsService.CurrentSettings.RecordingEngine = originalEngine;
+                }
+                
                 // Return to main home page after stopping
                 ShowNormalButtons();
             }
@@ -739,7 +752,19 @@ namespace SharpShot
                 {
                     try
                     {
-                        await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
+                        // Force FFmpeg for region recording
+                        var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                        _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                        
+                        try
+                        {
+                            await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
+                        }
+                        finally
+                        {
+                            // Restore original recording engine
+                            _settingsService.CurrentSettings.RecordingEngine = originalEngine;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -772,7 +797,19 @@ namespace SharpShot
             {
                 try
                 {
-                    await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                    // Force FFmpeg for full screen recording
+                    var originalEngine = _settingsService.CurrentSettings.RecordingEngine;
+                    _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                    
+                    try
+                    {
+                        await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                    }
+                    finally
+                    {
+                        // Restore original recording engine
+                        _settingsService.CurrentSettings.RecordingEngine = originalEngine;
+                    }
                 }
                 catch (Exception ex)
                 {
