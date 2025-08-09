@@ -48,10 +48,15 @@ namespace SharpShot.Services
 
             try
             {
+                System.Diagnostics.Debug.WriteLine($"=== StartRecordingAsync called ===");
+                System.Diagnostics.Debug.WriteLine($"Region parameter: {(region.HasValue ? region.Value.ToString() : "null")}");
+                
                 var settings = _settingsService.CurrentSettings;
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
                 var fileName = $"recording_{timestamp}.mp4";
                 _currentRecordingPath = Path.Combine(settings.SavePath, fileName);
+                
+                System.Diagnostics.Debug.WriteLine($"Recording engine: {settings.RecordingEngine}");
 
                 // Choose recording engine based on settings
                 switch (settings.RecordingEngine)
@@ -168,8 +173,23 @@ namespace SharpShot.Services
             {
                 // For region recording, capture only the specified region
                 var bounds = region.Value;
-                inputArgs = $"-f gdigrab -framerate 30 -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {bounds.Width}x{bounds.Height} -i desktop -probesize 10M -thread_queue_size 512";
-                System.Diagnostics.Debug.WriteLine($"Region recording: {bounds.X},{bounds.Y} {bounds.Width}x{bounds.Height}");
+                
+                // Ensure bounds are valid and positive
+                if (bounds.Width <= 0 || bounds.Height <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Invalid region bounds: {bounds}, falling back to full screen");
+                    var screenBounds = GetBoundsForSelectedScreen();
+                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size 512";
+                }
+                else
+                {
+                    // For GDI capture, ensure even dimensions for better compatibility
+                    var adjustedWidth = bounds.Width % 2 == 0 ? bounds.Width : bounds.Width - 1;
+                    var adjustedHeight = bounds.Height % 2 == 0 ? bounds.Height : bounds.Height - 1;
+                    
+                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {adjustedWidth}x{adjustedHeight} -i desktop -probesize 10M -thread_queue_size 512";
+                    System.Diagnostics.Debug.WriteLine($"Region recording: {bounds.X},{bounds.Y} {adjustedWidth}x{adjustedHeight} (original: {bounds.Width}x{bounds.Height})");
+                }
             }
             else
             {
