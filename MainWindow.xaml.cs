@@ -745,7 +745,7 @@ namespace SharpShot
                 private Task StartRegionRecording()
         {
             // Show region selection window for recording (without hiding main window)
-            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true);
             regionWindow.ShowDialog();
             
             // Check if a region was selected
