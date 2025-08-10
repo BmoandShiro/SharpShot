@@ -390,6 +390,31 @@
                                    VerticalAlignment="Center"
                                    MinWidth="35"/>
                     </Grid>
+                    
+                    <TextBlock Text="Mosaic Level" 
+                               Foreground="{DynamicResource AccentBrush}" 
+                               FontWeight="Bold" 
+                               FontSize="12"
+                               Margin="0,0,0,5"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Slider x:Name="MosaicSlider" 
+                                Grid.Column="0"
+                                Minimum="2" 
+                                Maximum="100" 
+                                Value="10" 
+                                ValueChanged="MosaicSlider_ValueChanged"/>
+                        <TextBlock Grid.Column="1" 
+                                   x:Name="MosaicValue"
+                                   Text="10"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center"
+                                   MinWidth="35"/>
+                    </Grid>
                 </StackPanel>
 
                 <!-- Highlighter opacity slider (only visible for highlighter tool) -->

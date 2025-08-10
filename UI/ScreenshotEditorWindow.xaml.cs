@@ -30,6 +30,7 @@ namespace SharpShot.UI
         private double _currentBlurStrength = 8.0;
         private double _currentHighlighterOpacity = 0.5;
         private double _currentFontSize = 16.0; // New field for font size
+        private int _currentMosaicLevel = 10; // New field for mosaic level
         
         // Drawing state
         private bool _isDrawing = false;
@@ -291,6 +292,25 @@ namespace SharpShot.UI
             return bitmapDecoder.Frames[0];
         }
 
+        private void UpdateImageDisplay(Bitmap bitmap)
+        {
+            try
+            {
+                // Convert bitmap to BitmapSource for display
+                var bitmapSource = ConvertBitmapToBitmapSource(bitmap);
+                
+                // Update the image source
+                Dispatcher.Invoke(() =>
+                {
+                    ScreenshotImage.Source = bitmapSource;
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update image display: {ex.Message}");
+            }
+        }
+
         #region Tool Selection Events
 
         private void BlurButton_Click(object sender, RoutedEventArgs e)
@@ -494,6 +514,13 @@ namespace SharpShot.UI
         {
             var brush = new SolidColorBrush(_currentColor);
             
+            // Special handling for blur tool - apply effect directly to bitmap
+            if (_currentTool == EditingTool.Blur)
+            {
+                ApplyBlurEffect(start, end);
+                return null; // No overlay element needed for blur
+            }
+            
             return _currentTool switch
             {
                 EditingTool.Rectangle => CreateRectangleElement(start, end, brush),
@@ -501,7 +528,6 @@ namespace SharpShot.UI
                 EditingTool.Line => CreateLineElement(start, end, brush),
                 EditingTool.Arrow => CreateArrowElement(start, end, brush),
                 EditingTool.Highlight => CreateHighlightElement(start, end),
-                EditingTool.Blur => CreateBlurElement(start, end),
                 _ => null
             };
         }
@@ -860,6 +886,15 @@ namespace SharpShot.UI
             }
         }
 
+        private void MosaicSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            _currentMosaicLevel = (int)e.NewValue;
+            if (MosaicValue != null)
+            {
+                MosaicValue.Text = $"{(int)e.NewValue}";
+            }
+        }
+
         #endregion
 
         #region Undo/Redo
@@ -1036,6 +1071,218 @@ namespace SharpShot.UI
             {
                 RedoButton_Click(this, new RoutedEventArgs());
             }
+        }
+
+        private void ApplyBlurEffect(Point start, Point end)
+        {
+            try
+            {
+                // Always work with a copy of the original bitmap to avoid compounding effects
+                var workingBitmap = new Bitmap(_originalBitmap);
+                
+                // Calculate the area to apply the effect
+                var left = Math.Max(0, (int)Math.Min(start.X, end.X));
+                var right = Math.Min(workingBitmap.Width - 1, (int)Math.Max(start.X, end.X));
+                var top = Math.Max(0, (int)Math.Min(start.Y, end.Y));
+                var bottom = Math.Min(workingBitmap.Height - 1, (int)Math.Max(start.Y, end.Y));
+                
+                if (_currentMosaicLevel > 1)
+                {
+                    // Apply mosaic effect
+                    ApplyMosaicEffect(workingBitmap, left, top, right, bottom);
+                }
+                else
+                {
+                    // Apply Gaussian blur effect
+                    ApplyGaussianBlur(workingBitmap, left, top, right, bottom);
+                }
+                
+                // Update the display
+                UpdateImageDisplay(workingBitmap);
+                
+                // Clean up
+                workingBitmap.Dispose();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply blur effect: {ex.Message}");
+            }
+        }
+        
+        private void ApplyGaussianBlur(Bitmap bitmap, int left, int top, int right, int bottom)
+        {
+            // Calculate Gaussian blur parameters based on strength slider
+            var blurStrength = _currentBlurStrength;
+            var sigma = 0.15 + (blurStrength / 20.0) * 6.0; // Map 1-20 to 0.15-6.0
+            var kernelSize = 2 * (int)Math.Ceiling(3 * sigma) + 1;
+            
+            // Ensure kernel size is reasonable
+            kernelSize = Math.Max(3, Math.Min(kernelSize, 21));
+            
+            // Create Gaussian kernel
+            var kernel = CreateGaussianKernel(kernelSize, sigma);
+            
+            // Apply separable convolution (horizontal then vertical)
+            var tempBitmap = new Bitmap(bitmap);
+            
+            // Horizontal pass
+            for (int y = top; y <= bottom; y++)
+            {
+                for (int x = left; x <= right; x++)
+                {
+                    var blurredColor = ApplyConvolution(bitmap, x, y, kernel, true);
+                    tempBitmap.SetPixel(x, y, blurredColor);
+                }
+            }
+            
+            // Vertical pass
+            for (int y = top; y <= bottom; y++)
+            {
+                for (int x = left; x <= right; x++)
+                {
+                    var blurredColor = ApplyConvolution(tempBitmap, x, y, kernel, false);
+                    bitmap.SetPixel(x, y, blurredColor);
+                }
+            }
+            
+            tempBitmap.Dispose();
+        }
+        
+        private void ApplyMosaicEffect(Bitmap bitmap, int left, int top, int right, int bottom)
+        {
+            // Calculate block size based on mosaic level
+            // Map 2-100 to block sizes that provide good visual effect
+            // Lower values (2-20) = small blocks (subtle pixelation)
+            // Higher values (21-100) = larger blocks (heavy pixelation)
+            var blockSize = _currentMosaicLevel <= 20 ? _currentMosaicLevel : 
+                           Math.Max(20, (_currentMosaicLevel - 20) * 2 + 20);
+            
+            // Ensure minimum block size for visibility
+            blockSize = Math.Max(2, blockSize);
+            
+            // Process the area in blocks
+            for (int blockY = top; blockY <= bottom; blockY += blockSize)
+            {
+                for (int blockX = left; blockX <= right; blockX += blockSize)
+                {
+                    // Calculate block boundaries
+                    var blockEndX = Math.Min(blockX + blockSize - 1, right);
+                    var blockEndY = Math.Min(blockY + blockSize - 1, bottom);
+                    
+                    // Calculate average color for this block
+                    var avgColor = CalculateAverageColor(bitmap, blockX, blockY, blockEndX, blockEndY);
+                    
+                    // Fill the entire block with the average color
+                    for (int y = blockY; y <= blockEndY; y++)
+                    {
+                        for (int x = blockX; x <= blockEndX; x++)
+                        {
+                            bitmap.SetPixel(x, y, avgColor);
+                        }
+                    }
+                }
+            }
+        }
+        
+        private System.Drawing.Color CalculateAverageColor(Bitmap bitmap, int startX, int startY, int endX, int endY)
+        {
+            long totalR = 0, totalG = 0, totalB = 0;
+            int pixelCount = 0;
+            
+            for (int y = startY; y <= endY; y++)
+            {
+                for (int x = startX; x <= endX; x++)
+                {
+                    if (x >= 0 && x < bitmap.Width && y >= 0 && y < bitmap.Height)
+                    {
+                        var pixel = bitmap.GetPixel(x, y);
+                        totalR += pixel.R;
+                        totalG += pixel.G;
+                        totalB += pixel.B;
+                        pixelCount++;
+                    }
+                }
+            }
+            
+            if (pixelCount == 0) return System.Drawing.Color.Gray;
+            
+            return System.Drawing.Color.FromArgb(
+                (int)(totalR / pixelCount),
+                (int)(totalG / pixelCount),
+                (int)(totalB / pixelCount)
+            );
+        }
+        
+        private double[,] CreateGaussianKernel(int size, double sigma)
+        {
+            var kernel = new double[size, size];
+            var center = size / 2;
+            var sum = 0.0;
+            
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    var x = i - center;
+                    var y = j - center;
+                    var exponent = -(x * x + y * y) / (2 * sigma * sigma);
+                    kernel[i, j] = Math.Exp(exponent) / (2 * Math.PI * sigma * sigma);
+                    sum += kernel[i, j];
+                }
+            }
+            
+            // Normalize kernel
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    kernel[i, j] /= sum;
+                }
+            }
+            
+            return kernel;
+        }
+        
+        private System.Drawing.Color ApplyConvolution(Bitmap bitmap, int x, int y, double[,] kernel, bool horizontal)
+        {
+            var kernelSize = kernel.GetLength(0);
+            var center = kernelSize / 2;
+            var sumR = 0.0;
+            var sumG = 0.0;
+            var sumB = 0.0;
+            
+            for (int i = 0; i < kernelSize; i++)
+            {
+                int sampleX, sampleY;
+                
+                if (horizontal)
+                {
+                    sampleX = x + i - center;
+                    sampleY = y;
+                }
+                else
+                {
+                    sampleX = x;
+                    sampleY = y + i - center;
+                }
+                
+                // Handle boundary conditions
+                if (sampleX < 0) sampleX = 0;
+                if (sampleX >= bitmap.Width) sampleX = bitmap.Width - 1;
+                if (sampleY < 0) sampleY = 0;
+                if (sampleY >= bitmap.Height) sampleY = bitmap.Height - 1;
+                
+                var pixel = bitmap.GetPixel(sampleX, sampleY);
+                sumR += pixel.R * kernel[i, horizontal ? center : i];
+                sumG += pixel.G * kernel[horizontal ? center : i, i];
+                sumB += pixel.B * kernel[i, horizontal ? center : i];
+            }
+            
+            return System.Drawing.Color.FromArgb(
+                Math.Max(0, Math.Min(255, (int)sumR)),
+                Math.Max(0, Math.Min(255, (int)sumG)),
+                Math.Max(0, Math.Min(255, (int)sumB))
+            );
         }
     }
 }
