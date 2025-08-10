@@ -938,55 +938,40 @@ namespace SharpShot.UI
 
         private Bitmap RenderToBitmap()
         {
-            var width = _originalBitmap.Width;
-            var height = _originalBitmap.Height;
-            
-            // Create a render target bitmap for the entire editor area
-            var renderTarget = new RenderTargetBitmap(
-                width, height, 96, 96, PixelFormats.Pbgra32);
-            
-            // Create a visual containing the screenshot and overlay
-            var visual = new DrawingVisual();
-            using (var context = visual.RenderOpen())
+            try
             {
-                // Draw the original screenshot
-                var imageSource = ConvertBitmapToBitmapSource(_originalBitmap);
-                context.DrawImage(imageSource, new Rect(0, 0, width, height));
+                // Get the current window position and size
+                var windowLeft = (int)Left;
+                var windowTop = (int)Top;
+                var windowWidth = (int)Width;
+                var windowHeight = (int)Height;
                 
-                // Render all overlay elements
-                foreach (UIElement element in OverlayCanvas.Children)
-                {
-                    var elementBounds = new Rect(
-                        Canvas.GetLeft(element),
-                        Canvas.GetTop(element),
-                        element.RenderSize.Width,
-                        element.RenderSize.Height);
-                    
-                    // Create a render target for this element
-                    var elementRender = new RenderTargetBitmap(
-                        (int)Math.Ceiling(element.RenderSize.Width),
-                        (int)Math.Ceiling(element.RenderSize.Height),
-                        96, 96, PixelFormats.Pbgra32);
-                    
-                    elementRender.Render(element);
-                    
-                    // Draw the element at its position
-                    context.DrawImage(elementRender, elementBounds);
-                }
+                // Calculate the actual screenshot area (accounting for window borders and title bar)
+                // The image is displayed in the ImageControl, so we need to find its screen coordinates
+                var imageControl = ScreenshotImage;
+                var imagePoint = imageControl.PointToScreen(new Point(0, 0));
+                
+                var screenshotX = (int)imagePoint.X;
+                var screenshotY = (int)imagePoint.Y;
+                var screenshotWidth = (int)imageControl.ActualWidth;
+                var screenshotHeight = (int)imageControl.ActualHeight;
+                
+                // Take a new screenshot of the same area
+                using var newBitmap = new Bitmap(screenshotWidth, screenshotHeight);
+                using var graphics = Graphics.FromImage(newBitmap);
+                
+                // Copy from screen at the calculated coordinates
+                graphics.CopyFromScreen(screenshotX, screenshotY, 0, 0, new System.Drawing.Size(screenshotWidth, screenshotHeight));
+                
+                // Return a copy of the bitmap
+                return new Bitmap(newBitmap);
             }
-            
-            // Render the visual to bitmap
-            renderTarget.Render(visual);
-            
-            // Convert RenderTargetBitmap to System.Drawing.Bitmap
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(renderTarget));
-            
-            using var stream = new MemoryStream();
-            encoder.Save(stream);
-            stream.Position = 0;
-            
-            return new Bitmap(stream);
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to capture new screenshot: {ex.Message}");
+                // Fallback to original bitmap if screenshot fails
+                return new Bitmap(_originalBitmap);
+            }
         }
 
         private void CloseEditorButton_Click(object sender, RoutedEventArgs e)
