@@ -1000,51 +1000,55 @@ namespace SharpShot
         {
             try
             {
+                // Update the global AccentBrush resource so all XAML elements using {DynamicResource AccentBrush} update automatically
+                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                Application.Current.Resources["AccentBrush"] = brush;
+                
                 // Update all icon paths to use the new color
                 if (RegionButton.Content is System.Windows.Shapes.Path regionPath)
-                    regionPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    regionPath.Stroke = brush;
                 
                 if (ScreenshotButton.Content is System.Windows.Shapes.Path screenshotPath)
-                    screenshotPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    screenshotPath.Stroke = brush;
                 
                 if (RecordingButton.Content is System.Windows.Shapes.Path recordingPath)
-                    recordingPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    recordingPath.Stroke = brush;
                 
                 if (SettingsButton.Content is System.Windows.Shapes.Path settingsPath)
-                    settingsPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    settingsPath.Stroke = brush;
                 
                 if (CloseButton.Content is System.Windows.Shapes.Path closePath)
-                    closePath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    closePath.Stroke = brush;
                 
                 // Update recording selection icons
                 if (RegionRecordButton.Content is System.Windows.Shapes.Path regionRecordPath)
-                    regionRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    regionRecordPath.Stroke = brush;
                 
                 if (FullScreenRecordButton.Content is System.Windows.Shapes.Path fullScreenRecordPath)
-                    fullScreenRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    fullScreenRecordPath.Stroke = brush;
                 
                 if (OBSRecordButton.Content is System.Windows.Shapes.Path obsRecordPath)
-                    obsRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    obsRecordPath.Stroke = brush;
                 
                 if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
-                    cancelRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    cancelRecordPath.Stroke = brush;
                 
                 // Update recording control icons
                 if (StopRecordButton.Content is System.Windows.Shapes.Path stopRecordPath)
-                    stopRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    stopRecordPath.Stroke = brush;
                 
                 if (PauseRecordButton.Content is System.Windows.Shapes.Path pauseRecordPath)
-                    pauseRecordPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    pauseRecordPath.Stroke = brush;
                 
                 // Update capture option icons
                 if (CancelButton.Content is System.Windows.Shapes.Path cancelPath)
-                    cancelPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    cancelPath.Stroke = brush;
                 
                 if (CopyButton.Content is System.Windows.Shapes.Path copyPath)
-                    copyPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    copyPath.Stroke = brush;
                 
                 if (SaveButton.Content is System.Windows.Shapes.Path savePath)
-                    savePath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    savePath.Stroke = brush;
                 
                 // Update separator colors
                 UpdateSeparatorColors(color);
@@ -1072,18 +1076,20 @@ namespace SharpShot
                     fullOpacityColor = "#FF" + color.Substring(1); // Add full opacity
                 }
                 
+                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                
                 // Update named separators directly
                 if (MainToolbarSeparator1 != null)
-                    MainToolbarSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                    MainToolbarSeparator1.Fill = brush;
                 
                 if (MainToolbarSeparator2 != null)
-                    MainToolbarSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                    MainToolbarSeparator2.Fill = brush;
                 
                 if (RecordingSelectionSeparator2 != null)
-                    RecordingSelectionSeparator2.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                    RecordingSelectionSeparator2.Fill = brush;
                 
                 if (CaptureCompletionSeparator1 != null)
-                    CaptureCompletionSeparator1.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                    CaptureCompletionSeparator1.Fill = brush;
                 
                 // Find all Rectangle elements in the main StackPanel that are separators (fallback)
                 var mainStackPanel = this.FindName("MainToolbarStackPanel") as StackPanel;
@@ -1093,7 +1099,7 @@ namespace SharpShot
                     {
                         if (child is System.Windows.Shapes.Rectangle rectangle && rectangle.Width == 1)
                         {
-                            rectangle.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                            rectangle.Fill = brush;
                         }
                     }
                 }

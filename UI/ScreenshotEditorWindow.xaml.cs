@@ -71,6 +71,14 @@ namespace SharpShot.UI
             InitializeEditor();
         }
 
+        /// <summary>
+        /// Public method to refresh the theme when settings change
+        /// </summary>
+        public void RefreshTheme()
+        {
+            ApplyThemeSettings();
+        }
+
         private void InitializeEditor()
         {
             // Convert bitmap to BitmapSource and display
@@ -95,10 +103,185 @@ namespace SharpShot.UI
                 }
             }
             
+            // Apply theme settings to all overlay edit menu icons
+            ApplyThemeSettings();
+            
             // Take initial snapshot for undo
             SaveStateForUndo();
         }
 
+        private void ApplyThemeSettings()
+        {
+            try
+            {
+                if (_settingsService?.CurrentSettings?.IconColor == null) return;
+                
+                var themeColor = _settingsService.CurrentSettings.IconColor;
+                if (string.IsNullOrEmpty(themeColor)) return;
+                
+                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(themeColor));
+                
+                // Update the global AccentBrush resource so all XAML elements using {DynamicResource AccentBrush} update automatically
+                Application.Current.Resources["AccentBrush"] = brush;
+                
+                // Update all overlay edit menu icons to use the theme color
+                UpdateIconColor(BlurButton, brush);
+                UpdateIconColor(ArrowButton, brush);
+                UpdateIconColor(RectangleButton, brush);
+                UpdateIconColor(CircleButton, brush);
+                UpdateIconColor(LineButton, brush);
+                UpdateIconColor(PenButton, brush);
+                UpdateIconColor(TextButton, brush);
+                UpdateIconColor(HighlightButton, brush);
+                UpdateIconColor(UndoButton, brush);
+                UpdateIconColor(RedoButton, brush);
+                UpdateIconColor(CopyFinalButton, brush);
+                UpdateIconColor(SaveFinalButton, brush);
+                UpdateIconColor(CloseEditorButton, brush);
+                
+                // Update separator colors
+                UpdateSeparatorColors(brush);
+                
+                // Update button style colors for hover/pressed states
+                UpdateButtonStyleColors(brush);
+                
+                // Update the current color for new drawings
+                _currentColor = brush.Color;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply theme settings: {ex.Message}");
+            }
+        }
+        
+        private void UpdateIconColor(Button button, SolidColorBrush brush)
+        {
+            try
+            {
+                if (button.Content is System.Windows.Shapes.Path path)
+                {
+                    path.Stroke = brush;
+                    path.Fill = brush;
+                }
+                else if (button.Content is Ellipse ellipse)
+                {
+                    ellipse.Fill = brush;
+                    ellipse.Stroke = brush;
+                }
+                else if (button.Content is Rectangle rect)
+                {
+                    rect.Stroke = brush;
+                }
+                else if (button.Content is Line line)
+                {
+                    line.Stroke = brush;
+                }
+                else if (button.Content is TextBlock textBlock)
+                {
+                    textBlock.Foreground = brush;
+                }
+                else if (button.Content is StackPanel stackPanel)
+                {
+                    // Handle buttons with text and icons (Copy, Save)
+                    foreach (var child in stackPanel.Children)
+                    {
+                        if (child is System.Windows.Shapes.Path pathChild)
+                        {
+                            pathChild.Stroke = brush;
+                            pathChild.Fill = brush;
+                        }
+                        else if (child is TextBlock textChild)
+                        {
+                            textChild.Foreground = brush;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update icon color for button {button.Name}: {ex.Message}");
+            }
+        }
+        
+        private void UpdateSeparatorColors(SolidColorBrush brush)
+        {
+            try
+            {
+                // Find all separator rectangles in the toolbar
+                var toolbar = CloseEditorButton.Parent as StackPanel;
+                if (toolbar != null)
+                {
+                    foreach (var child in toolbar.Children)
+                    {
+                        if (child is Rectangle rect && rect.Name == "")
+                        {
+                            rect.Fill = brush;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update separator colors: {ex.Message}");
+            }
+                }
+        
+        private void UpdateButtonStyleColors(SolidColorBrush brush)
+        {
+            try
+            {
+                // Update the button style colors for hover/pressed states
+                // We need to update the style dynamically since XAML doesn't support Opacity on Setters
+                var buttonStyle = this.Resources["EditToolButtonStyle"] as Style;
+                if (buttonStyle != null)
+                {
+                    // Create new colors with transparency for hover states
+                    var hoverColor = System.Windows.Media.Color.FromArgb(25, brush.Color.R, brush.Color.G, brush.Color.B);
+                    var pressedColor = System.Windows.Media.Color.FromArgb(51, brush.Color.R, brush.Color.G, brush.Color.B);
+                    var selectedColor = System.Windows.Media.Color.FromArgb(64, brush.Color.R, brush.Color.G, brush.Color.B);
+                    
+                    // Update the style triggers
+                    foreach (var trigger in buttonStyle.Triggers)
+                    {
+                        if (trigger is Trigger mouseOverTrigger && mouseOverTrigger.Property.Name == "IsMouseOver")
+                        {
+                            foreach (var setter in mouseOverTrigger.Setters)
+                            {
+                                if (setter is Setter setterObj && setterObj.Property.Name == "Background")
+                                {
+                                    setterObj.Value = new SolidColorBrush(hoverColor);
+                                }
+                            }
+                        }
+                        else if (trigger is Trigger pressedTrigger && pressedTrigger.Property.Name == "IsPressed")
+                        {
+                            foreach (var setter in pressedTrigger.Setters)
+                            {
+                                if (setter is Setter setterObj && setterObj.Property.Name == "Background")
+                                {
+                                    setterObj.Value = new SolidColorBrush(pressedColor);
+                                }
+                            }
+                        }
+                        else if (trigger is DataTrigger selectedTrigger && selectedTrigger.Binding is System.Windows.Data.Binding binding && binding.Path.Path == "IsSelected")
+                        {
+                            foreach (var setter in selectedTrigger.Setters)
+                            {
+                                if (setter is Setter setterObj && setterObj.Property.Name == "Background")
+                                {
+                                    setterObj.Value = new SolidColorBrush(selectedColor);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update button style colors: {ex.Message}");
+            }
+        }
+        
         private void CenterImageOnScreen()
         {
             var screenWidth = SystemParameters.PrimaryScreenWidth;

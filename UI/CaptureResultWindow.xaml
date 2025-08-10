@@ -46,14 +46,14 @@
                     ToolTip="Save File">
                 <StackPanel Orientation="Horizontal">
                     <Path Data="M3 17.25V21h18v-3.75M6 9v6m0 0l4-4m-4 4l-4-4m8 4V9" 
-                          Stroke="#FFFF8C00" 
+                          Stroke="{DynamicResource AccentBrush}" 
                           StrokeThickness="2" 
                           Fill="Transparent"
                           Stretch="Uniform"
                           Width="16" Height="16"
                           Margin="0,0,8,0"/>
                     <TextBlock Text="Save" 
-                               Foreground="#FFFF8C00" 
+                               Foreground="{DynamicResource AccentBrush}" 
                                FontSize="14" 
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>
@@ -68,14 +68,14 @@
                     ToolTip="Copy to Clipboard">
                 <StackPanel Orientation="Horizontal">
                     <Path Data="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2z" 
-                          Stroke="#FFFF8C00" 
+                          Stroke="{DynamicResource AccentBrush}" 
                           StrokeThickness="2" 
                           Fill="Transparent"
                           Stretch="Uniform"
                           Width="16" Height="16"
                           Margin="0,0,8,0"/>
                     <TextBlock Text="Copy" 
-                               Foreground="#FFFF8C00" 
+                               Foreground="{DynamicResource AccentBrush}" 
                                FontSize="14" 
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"/>

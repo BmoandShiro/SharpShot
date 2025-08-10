@@ -13,7 +13,7 @@
     
     <Border Background="#FF1A1A1A" 
             CornerRadius="8" 
-            BorderBrush="#FFFF8C00" 
+            BorderBrush="{DynamicResource AccentBrush}" 
             BorderThickness="2"
             Effect="{x:Null}">
         
@@ -33,21 +33,21 @@
                 <!-- Horizontal line -->
                 <Line x:Name="HorizontalLine"
                       X1="0" Y1="100" X2="200" Y2="100"
-                      Stroke="#FFFF8C00"
+                      Stroke="{DynamicResource AccentBrush}"
                       StrokeThickness="1"
                       Opacity="0.8"/>
                 
                 <!-- Vertical line -->
                 <Line x:Name="VerticalLine"
                       X1="100" Y1="0" X2="100" Y2="200"
-                      Stroke="#FFFF8C00"
+                      Stroke="{DynamicResource AccentBrush}"
                       StrokeThickness="1"
                       Opacity="0.8"/>
                 
                 <!-- Center dot -->
                 <Ellipse x:Name="CenterDot"
                          Width="4" Height="4"
-                         Fill="#FFFF8C00"
+                         Fill="{DynamicResource AccentBrush}"
                          Canvas.Left="98" Canvas.Top="98"/>
             </Canvas>
             
@@ -60,7 +60,7 @@
                     Padding="4,2">
                 <TextBlock x:Name="ZoomLevelText"
                            Text="2x"
-                           Foreground="#FFFF8C00"
+                           Foreground="{DynamicResource AccentBrush}"
                            FontSize="10"
                            FontWeight="Bold"/>
             </Border>
