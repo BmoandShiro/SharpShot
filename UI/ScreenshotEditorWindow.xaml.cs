@@ -29,6 +29,7 @@ namespace SharpShot.UI
         private double _currentStrokeWidth = 2.0;
         private double _currentBlurStrength = 8.0;
         private double _currentHighlighterOpacity = 0.5;
+        private double _currentFontSize = 16.0; // New field for font size
         
         // Drawing state
         private bool _isDrawing = false;
@@ -355,6 +356,11 @@ namespace SharpShot.UI
                 EditingTool.Text => Cursors.IBeam,
                 _ => Cursors.Cross
             };
+
+            // Show/hide tool-specific panels
+            BlurStrengthPanel.Visibility = _currentTool == EditingTool.Blur ? Visibility.Visible : Visibility.Collapsed;
+            HighlighterOpacityPanel.Visibility = _currentTool == EditingTool.Highlight ? Visibility.Visible : Visibility.Collapsed;
+            FontSizePanel.Visibility = _currentTool == EditingTool.Text ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void ResetToolButtonStates()
@@ -405,6 +411,7 @@ namespace SharpShot.UI
             // Show/hide tool-specific panels
             BlurStrengthPanel.Visibility = _currentTool == EditingTool.Blur ? Visibility.Visible : Visibility.Collapsed;
             HighlighterOpacityPanel.Visibility = _currentTool == EditingTool.Highlight ? Visibility.Visible : Visibility.Collapsed;
+            FontSizePanel.Visibility = _currentTool == EditingTool.Text ? Visibility.Visible : Visibility.Collapsed;
         }
 
         #endregion
@@ -779,7 +786,7 @@ namespace SharpShot.UI
                 BorderBrush = System.Windows.Media.Brushes.Transparent,
                 BorderThickness = new Thickness(0),
                 Foreground = new SolidColorBrush(_currentColor),
-                FontSize = 16,
+                FontSize = _currentFontSize,
                 MinWidth = 100,
                 Text = "Text"
             };
@@ -836,10 +843,20 @@ namespace SharpShot.UI
 
         private void HighlighterOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            _currentHighlighterOpacity = e.NewValue;
             if (HighlighterOpacityValue != null)
             {
-                HighlighterOpacityValue.Text = $"{(int)(e.NewValue * 100)}%";
+                _currentHighlighterOpacity = e.NewValue;
+                var percentage = (int)(e.NewValue * 100);
+                HighlighterOpacityValue.Text = $"{percentage}%";
+            }
+        }
+
+        private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (FontSizeValue != null)
+            {
+                _currentFontSize = e.NewValue;
+                FontSizeValue.Text = $"{e.NewValue:F0}px";
             }
         }
 

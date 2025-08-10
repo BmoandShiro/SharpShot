@@ -336,6 +336,34 @@
                                MinWidth="30"/>
                 </Grid>
 
+                <!-- Font size slider (only visible for text tool) -->
+                <StackPanel x:Name="FontSizePanel" Visibility="Collapsed">
+                    <TextBlock Text="Font Size" 
+                               Foreground="{DynamicResource AccentBrush}" 
+                               FontWeight="Bold" 
+                               FontSize="12"
+                               Margin="0,0,0,5"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Slider x:Name="FontSizeSlider" 
+                                Grid.Column="0"
+                                Minimum="8" 
+                                Maximum="72" 
+                                Value="16" 
+                                ValueChanged="FontSizeSlider_ValueChanged"/>
+                        <TextBlock Grid.Column="1" 
+                                   x:Name="FontSizeValue"
+                                   Text="16px"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   Margin="10,0,0,0"
+                                   VerticalAlignment="Center"
+                                   MinWidth="35"/>
+                    </Grid>
+                </StackPanel>
+
                 <!-- Blur strength slider (only visible for blur tool) -->
                 <StackPanel x:Name="BlurStrengthPanel" Visibility="Collapsed">
                     <TextBlock Text="Blur Strength" 
