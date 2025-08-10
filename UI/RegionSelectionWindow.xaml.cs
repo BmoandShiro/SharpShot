@@ -21,12 +21,14 @@ namespace SharpShot.UI
         private Rectangle _virtualDesktopBounds;
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
+        private readonly bool _isRecordingMode; // New field to distinguish between screenshot and recording modes
 
-        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null)
+        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false)
         {
             InitializeComponent();
             _screenshotService = screenshotService;
             _settingsService = settingsService;
+            _isRecordingMode = isRecordingMode; // Store the mode
             
             // Calculate virtual desktop bounds (all monitors combined)
             _virtualDesktopBounds = GetVirtualDesktopBounds();
@@ -204,7 +206,19 @@ namespace SharpShot.UI
                 var screenY = (int)(Top + y);
                 
                 SelectedRegion = new Rectangle(screenX, screenY, (int)width, (int)height);
-                CaptureRegion();
+                
+                // If in recording mode, just close the window with the selected region
+                // If in screenshot mode, capture the region and launch editor
+                if (_isRecordingMode)
+                {
+                    // For recording, just close the window - the calling code will handle the recording
+                    Close();
+                }
+                else
+                {
+                    // For screenshot capture, proceed with normal behavior
+                    CaptureRegion();
+                }
             }
             else
             {

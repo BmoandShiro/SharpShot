@@ -339,9 +339,6 @@ namespace SharpShot
                 
                 // Show recording timer
                 RecordingTimer.Visibility = Visibility.Visible;
-                
-                // Apply theme-aware styling to the recording control buttons
-                UpdatePostCaptureButtonStyles();
             });
         }
 
@@ -372,9 +369,6 @@ namespace SharpShot
                 // Set video-specific tooltips
                 CopyButton.ToolTip = "Copy Video (Not supported)";
                 SaveButton.ToolTip = "Save Video";
-                
-                // Apply theme-aware styling to the buttons
-                UpdatePostCaptureButtonStyles();
             });
         }
 
@@ -469,7 +463,7 @@ namespace SharpShot
                 await Task.Delay(100);
                 
                 // Show region selection window
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false);
                 regionWindow.ShowDialog();
                 
                 // Check if a region was captured
@@ -546,9 +540,6 @@ namespace SharpShot
                     CopyButton.ToolTip = "Copy Screenshot to Clipboard";
                     SaveButton.ToolTip = "Save Screenshot";
                 }
-                
-                // Apply theme-aware styling to the buttons
-                UpdatePostCaptureButtonStyles();
             });
         }
 
@@ -745,7 +736,7 @@ namespace SharpShot
                 private Task StartRegionRecording()
         {
             // Show region selection window for recording (without hiding main window)
-            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true);
             regionWindow.ShowDialog();
             
             // Check if a region was selected
@@ -985,9 +976,6 @@ namespace SharpShot
                     // Apply drop shadow opacity
                     var dropShadowOpacity = _settingsService.CurrentSettings.DropShadowOpacity;
                     UpdateDropShadowOpacity(dropShadowOpacity);
-                    
-                    // Update post-capture button styles with new theme
-                    UpdatePostCaptureButtonStyles();
                 });
             }
             catch (Exception ex)
@@ -1322,49 +1310,6 @@ namespace SharpShot
                     CancelRecordButton.Width = 60;
                 }
             }
-        }
-
-        private void UpdatePostCaptureButtonStyles()
-        {
-            if (_settingsService?.CurrentSettings?.IconColor != null)
-            {
-                var iconColorStr = _settingsService.CurrentSettings.IconColor;
-                if (System.Windows.Media.ColorConverter.ConvertFromString(iconColorStr) is System.Windows.Media.Color themeColor)
-                {
-                    var themeBrush = new System.Windows.Media.SolidColorBrush(themeColor);
-                    var hoverBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(32, themeColor.R, themeColor.G, themeColor.B));
-
-                    // Create dynamic styles for post-capture menu buttons
-                    CopyButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                    SaveButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                    CancelButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                    
-                    // Also apply theme-aware styling to recording control buttons
-                    StopRecordButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                    PauseRecordButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                }
-            }
-        }
-
-        private Style CreateThemeAwareButtonStyle(System.Windows.Media.Color themeColor, System.Windows.Media.Brush hoverBrush)
-        {
-            var iconButtonStyle = this.Resources["IconButtonStyle"] as Style;
-            var style = new Style(typeof(Button), iconButtonStyle);
-            
-            // Override the hover effect to use theme color
-            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, hoverBrush));
-            hoverTrigger.Setters.Add(new Setter(EffectProperty, new DropShadowEffect
-            {
-                Color = themeColor,
-                BlurRadius = 10,
-                ShadowDepth = 0,
-                Opacity = 0.15
-            }));
-            
-            style.Triggers.Add(hoverTrigger);
-            
-            return style;
         }
 
         #region Windows Message Handling
