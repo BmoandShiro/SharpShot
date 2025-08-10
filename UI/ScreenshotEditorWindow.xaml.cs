@@ -147,6 +147,9 @@ namespace SharpShot.UI
                 
                 // Update the current color for new drawings
                 _currentColor = brush.Color;
+                
+                // Refresh tool button states to use new theme color
+                ResetToolButtonStates();
             }
             catch (Exception ex)
             {
@@ -230,51 +233,27 @@ namespace SharpShot.UI
         {
             try
             {
-                // Update the button style colors for hover/pressed states
-                // We need to update the style dynamically since XAML doesn't support Opacity on Setters
-                var buttonStyle = this.Resources["EditToolButtonStyle"] as Style;
-                if (buttonStyle != null)
-                {
-                    // Create new colors with transparency for hover states
-                    var hoverColor = System.Windows.Media.Color.FromArgb(25, brush.Color.R, brush.Color.G, brush.Color.B);
-                    var pressedColor = System.Windows.Media.Color.FromArgb(51, brush.Color.R, brush.Color.G, brush.Color.B);
-                    var selectedColor = System.Windows.Media.Color.FromArgb(64, brush.Color.R, brush.Color.G, brush.Color.B);
-                    
-                    // Update the style triggers
-                    foreach (var trigger in buttonStyle.Triggers)
-                    {
-                        if (trigger is Trigger mouseOverTrigger && mouseOverTrigger.Property.Name == "IsMouseOver")
-                        {
-                            foreach (var setter in mouseOverTrigger.Setters)
-                            {
-                                if (setter is Setter setterObj && setterObj.Property.Name == "Background")
-                                {
-                                    setterObj.Value = new SolidColorBrush(hoverColor);
-                                }
-                            }
-                        }
-                        else if (trigger is Trigger pressedTrigger && pressedTrigger.Property.Name == "IsPressed")
-                        {
-                            foreach (var setter in pressedTrigger.Setters)
-                            {
-                                if (setter is Setter setterObj && setterObj.Property.Name == "Background")
-                                {
-                                    setterObj.Value = new SolidColorBrush(pressedColor);
-                                }
-                            }
-                        }
-                        else if (trigger is DataTrigger selectedTrigger && selectedTrigger.Binding is System.Windows.Data.Binding binding && binding.Path.Path == "IsSelected")
-                        {
-                            foreach (var setter in selectedTrigger.Setters)
-                            {
-                                if (setter is Setter setterObj && setterObj.Property.Name == "Background")
-                                {
-                                    setterObj.Value = new SolidColorBrush(selectedColor);
-                                }
-                            }
-                        }
-                    }
-                }
+                // Apply the same theme-aware styling pattern used in MainWindow
+                // Create dynamic styles for all the editor buttons
+                var themeColor = brush.Color;
+                var hoverBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(32, themeColor.R, themeColor.G, themeColor.B));
+                
+                // Apply theme-aware styling to all editor buttons
+                UndoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                RedoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                CopyFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                SaveFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                CloseEditorButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                
+                // Also apply to tool buttons
+                BlurButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                ArrowButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                RectangleButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                CircleButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                LineButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                PenButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                TextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                HighlightButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
             }
             catch (Exception ex)
             {
@@ -390,8 +369,21 @@ namespace SharpShot.UI
             TextButton.Background = System.Windows.Media.Brushes.Transparent;
             HighlightButton.Background = System.Windows.Media.Brushes.Transparent;
             
-            // Highlight current tool
-            var selectedBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(64, 255, 140, 0));
+            // Highlight current tool using theme color
+            var selectedBrush = System.Windows.Media.Brushes.Transparent;
+            if (_settingsService?.CurrentSettings?.IconColor != null)
+            {
+                var themeColorStr = _settingsService.CurrentSettings.IconColor;
+                if (System.Windows.Media.ColorConverter.ConvertFromString(themeColorStr) is System.Windows.Media.Color themeColor)
+                {
+                    selectedBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(64, themeColor.R, themeColor.G, themeColor.B));
+                }
+            }
+            else
+            {
+                // Fallback to default orange if no theme color
+                selectedBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(64, 255, 140, 0));
+            }
             
             switch (_currentTool)
             {
@@ -1000,6 +992,28 @@ namespace SharpShot.UI
         private void CloseEditorButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private Style CreateThemeAwareButtonStyle(System.Windows.Media.Color themeColor, System.Windows.Media.Brush hoverBrush)
+        {
+            // Get the base EditToolButtonStyle and create a new style based on it
+            var baseStyle = this.Resources["EditToolButtonStyle"] as Style;
+            var style = new Style(typeof(Button), baseStyle);
+            
+            // Override the hover effect to use theme color
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, hoverBrush));
+            hoverTrigger.Setters.Add(new Setter(EffectProperty, new DropShadowEffect
+            {
+                Color = themeColor,
+                BlurRadius = 10,
+                ShadowDepth = 0,
+                Opacity = 0.15
+            }));
+            
+            style.Triggers.Add(hoverTrigger);
+            
+            return style;
         }
 
         #endregion
