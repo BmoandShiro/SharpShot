@@ -337,6 +337,9 @@ namespace SharpShot
                 StopRecordButton.Visibility = Visibility.Visible;
                 PauseRecordButton.Visibility = Visibility.Visible; // This is now the cancel button
                 
+                // Apply theme-aware styling to recording control buttons
+                UpdatePostCaptureButtonStyles();
+                
                 // Show recording timer
                 RecordingTimer.Visibility = Visibility.Visible;
             });
@@ -404,6 +407,10 @@ namespace SharpShot
                     CopyButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                     SaveButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                     CancelButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                    
+                    // Also apply theme-aware styling to recording control buttons
+                    StopRecordButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                    PauseRecordButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 }
             }
         }
