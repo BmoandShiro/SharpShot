@@ -41,9 +41,11 @@ namespace SharpShot.UI
         private Polyline? _currentPolyline;
         private readonly List<Point> _currentStroke = new();
         
-        // Undo/Redo stacks
+        // Undo/Redo stacks for both UI elements and bitmap states
         private readonly Stack<List<UIElement>> _undoStack = new();
+        private readonly Stack<Bitmap> _bitmapUndoStack = new();
         private readonly Stack<List<UIElement>> _redoStack = new();
+        private readonly Stack<Bitmap> _bitmapRedoStack = new();
         
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
@@ -82,9 +84,8 @@ namespace SharpShot.UI
 
         private void InitializeEditor()
         {
-            // Convert bitmap to BitmapSource and display
-            var bitmapSource = ConvertBitmapToBitmapSource(_originalBitmap);
-            ScreenshotImage.Source = bitmapSource;
+            // Set initial image
+            ScreenshotImage.Source = ConvertBitmapToBitmapSource(_originalBitmap);
             
             // Center the image on screen
             CenterImageOnScreen();
@@ -107,7 +108,7 @@ namespace SharpShot.UI
             // Apply theme settings to all overlay edit menu icons
             ApplyThemeSettings();
             
-            // Take initial snapshot for undo
+            // Save initial state for undo/redo
             SaveStateForUndo();
         }
 
@@ -498,14 +499,32 @@ namespace SharpShot.UI
                 return;
             }
             
-            // Finalize the drawing element
+            // Remove the preview element
             if (_currentDrawingElement != null)
             {
-                // Element is already added, just finalize it
-                SaveStateForUndo();
+                OverlayCanvas.Children.Remove(_currentDrawingElement);
+                _currentDrawingElement = null;
             }
             
-            _currentDrawingElement = null;
+            // Apply blur effect if it's the blur tool
+            if (_currentTool == EditingTool.Blur)
+            {
+                ApplyBlurEffect(_startPoint, _endPoint);
+            }
+            else
+            {
+                // Create and add the final element for other tools
+                var finalElement = CreateDrawingElement(_startPoint, _endPoint);
+                if (finalElement != null)
+                {
+                    OverlayCanvas.Children.Add(finalElement);
+                    SaveStateForUndo();
+                }
+            }
+            
+            // Reset drawing state
+            _startPoint = new Point();
+            _endPoint = new Point();
             OverlayCanvas.ReleaseMouseCapture();
         }
 
@@ -513,11 +532,10 @@ namespace SharpShot.UI
         {
             var brush = new SolidColorBrush(_currentColor);
             
-            // Special handling for blur tool - apply effect directly to bitmap
+            // Special handling for blur tool - create preview overlay instead of applying effect immediately
             if (_currentTool == EditingTool.Blur)
             {
-                ApplyBlurEffect(start, end);
-                return null; // No overlay element needed for blur
+                return CreateBlurPreviewElement(start, end);
             }
             
             return _currentTool switch
@@ -665,6 +683,25 @@ namespace SharpShot.UI
             return highlight;
         }
 
+        private UIElement? CreateBlurPreviewElement(Point start, Point end)
+        {
+            var rect = new Rectangle
+            {
+                Stroke = new SolidColorBrush(_currentColor),
+                StrokeThickness = _currentStrokeWidth,
+                StrokeDashArray = new DoubleCollection { 5, 2 }, // Dashed border for preview
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round
+            };
+
+            Canvas.SetLeft(rect, Math.Min(start.X, end.X));
+            Canvas.SetTop(rect, Math.Min(start.Y, end.Y));
+            rect.Width = Math.Abs(end.X - start.X);
+            rect.Height = Math.Abs(end.Y - start.Y);
+
+            return rect;
+        }
+
         private void StartPenDrawing(Point startPoint)
         {
             _currentStroke.Clear();
@@ -793,34 +830,60 @@ namespace SharpShot.UI
 
         private void SaveStateForUndo()
         {
-            var currentState = new List<UIElement>();
-            foreach (UIElement element in OverlayCanvas.Children)
-            {
-                currentState.Add(element);
-            }
+            // Save current UI state
+            var currentState = OverlayCanvas.Children.Cast<UIElement>().ToList();
             _undoStack.Push(currentState);
-            _redoStack.Clear(); // Clear redo stack when new action is performed
+            
+            // Save current bitmap state (either the working bitmap or original)
+            var currentBitmap = FinalBitmap ?? _originalBitmap;
+            _bitmapUndoStack.Push(new Bitmap(currentBitmap));
+            
+            // Clear redo stacks when new action is performed
+            _redoStack.Clear();
+            _bitmapRedoStack.Clear();
         }
 
         private void UndoButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_undoStack.Count > 1) // Keep at least the initial state
+            if (_undoStack.Count > 0 && _bitmapUndoStack.Count > 0)
             {
-                var currentState = _undoStack.Pop();
-                _redoStack.Push(currentState);
+                // Save current state to redo stack
+                var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
+                var currentBitmap = FinalBitmap ?? _originalBitmap;
+                _redoStack.Push(currentUIState);
+                _bitmapRedoStack.Push(new Bitmap(currentBitmap));
                 
-                var previousState = _undoStack.Peek();
-                RestoreState(previousState);
+                // Restore previous state
+                var previousUIState = _undoStack.Pop();
+                var previousBitmap = _bitmapUndoStack.Pop();
+                
+                // Restore UI elements
+                RestoreState(previousUIState);
+                
+                // Restore bitmap
+                RestoreBitmapState(previousBitmap);
             }
         }
 
         private void RedoButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_redoStack.Count > 0)
+            if (_redoStack.Count > 0 && _bitmapRedoStack.Count > 0)
             {
-                var redoState = _redoStack.Pop();
-                _undoStack.Push(redoState);
-                RestoreState(redoState);
+                // Save current state to undo stack
+                var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
+                var currentBitmap = FinalBitmap ?? _originalBitmap;
+                _undoStack.Push(currentUIState);
+                _bitmapUndoStack.Push(new Bitmap(currentBitmap));
+                
+                // Restore next state
+                var nextUIState = _redoStack.Pop();
+                var nextBitmap = _bitmapRedoStack.Pop();
+                
+                // Restore UI elements
+                RestoreState(nextUIState);
+                
+                // Restore bitmap
+                RestoreBitmapState(nextBitmap);
             }
         }
 
@@ -830,6 +893,22 @@ namespace SharpShot.UI
             foreach (var element in state)
             {
                 OverlayCanvas.Children.Add(element);
+            }
+        }
+
+        private void RestoreBitmapState(Bitmap bitmap)
+        {
+            try
+            {
+                // Update the display with the restored bitmap
+                UpdateImageDisplay(bitmap);
+                
+                // Update the FinalBitmap reference
+                FinalBitmap = bitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to restore bitmap state: {ex.Message}");
             }
         }
 
@@ -969,8 +1048,11 @@ namespace SharpShot.UI
         {
             try
             {
-                // Create a copy of the original bitmap to work with
-                var workingBitmap = new Bitmap(_originalBitmap);
+                // Save current state for undo
+                SaveStateForUndo();
+                
+                // Create a copy of the current bitmap to work with
+                var workingBitmap = new Bitmap(FinalBitmap ?? _originalBitmap);
                 
                 // Get the area to apply the effect to
                 var left = Math.Max(0, (int)Math.Min(start.X, end.X));
@@ -978,7 +1060,7 @@ namespace SharpShot.UI
                 var right = Math.Min(workingBitmap.Width - 1, (int)Math.Max(start.X, end.X));
                 var bottom = Math.Min(workingBitmap.Height - 1, (int)Math.Max(start.Y, end.Y));
                 
-                // Apply mosaic effect instead of Gaussian blur
+                // Apply mosaic effect
                 ApplyMosaicEffect(workingBitmap, left, top, right, bottom);
                 
                 // Update the display
