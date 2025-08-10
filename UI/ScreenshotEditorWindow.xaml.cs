@@ -40,6 +40,9 @@ namespace SharpShot.UI
         // Pen drawing state
         private Polyline? _currentPolyline;
         private readonly List<Point> _currentStroke = new();
+
+        // Preview bitmap for real-time mosaic effect
+        private Bitmap? _previewBitmap;
         
         // Undo/Redo stacks for both UI elements and bitmap states
         private readonly Stack<List<UIElement>> _undoStack = new();
@@ -509,7 +512,8 @@ namespace SharpShot.UI
             // Apply blur effect if it's the blur tool
             if (_currentTool == EditingTool.Blur)
             {
-                ApplyBlurEffect(_startPoint, _endPoint);
+                // Finalize the mosaic effect using the preview bitmap
+                FinalizeMosaicEffect();
             }
             else
             {
@@ -685,21 +689,11 @@ namespace SharpShot.UI
 
         private UIElement? CreateBlurPreviewElement(Point start, Point end)
         {
-            var rect = new Rectangle
-            {
-                Stroke = new SolidColorBrush(_currentColor),
-                StrokeThickness = _currentStrokeWidth,
-                StrokeDashArray = new DoubleCollection { 5, 2 }, // Dashed border for preview
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round
-            };
-
-            Canvas.SetLeft(rect, Math.Min(start.X, end.X));
-            Canvas.SetTop(rect, Math.Min(start.Y, end.Y));
-            rect.Width = Math.Abs(end.X - start.X);
-            rect.Height = Math.Abs(end.Y - start.Y);
-
-            return rect;
+            // Apply mosaic effect to a temporary bitmap for real-time preview
+            ApplyMosaicPreviewEffect(start, end);
+            
+            // Return null since we're applying the effect directly to the bitmap
+            return null;
         }
 
         private void StartPenDrawing(Point startPoint)
@@ -1140,6 +1134,77 @@ namespace SharpShot.UI
                 totalG / pixelCount,
                 totalB / pixelCount
             );
+        }
+
+        private void ApplyMosaicPreviewEffect(Point start, Point end)
+        {
+            try
+            {
+                // If we have a preview bitmap, dispose it first
+                if (_previewBitmap != null)
+                {
+                    _previewBitmap.Dispose();
+                }
+                
+                // Create a new preview bitmap from the current state
+                var previewBitmap = new Bitmap(FinalBitmap ?? _originalBitmap);
+                
+                // Get the area to apply the effect to
+                var left = Math.Max(0, (int)Math.Min(start.X, end.X));
+                var top = Math.Max(0, (int)Math.Min(start.Y, end.Y));
+                var right = Math.Min(previewBitmap.Width - 1, (int)Math.Max(start.X, end.X));
+                var bottom = Math.Min(previewBitmap.Height - 1, (int)Math.Max(start.Y, end.Y));
+                
+                // Apply mosaic effect to the preview bitmap
+                ApplyMosaicEffect(previewBitmap, left, top, right, bottom);
+                
+                // Update the display with the preview
+                UpdateImageDisplay(previewBitmap);
+                
+                // Store the preview bitmap temporarily
+                _previewBitmap = previewBitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply mosaic preview effect: {ex.Message}");
+            }
+        }
+
+        private void FinalizeMosaicEffect()
+        {
+            if (_previewBitmap == null) return;
+
+            try
+            {
+                // Save current state for undo
+                SaveStateForUndo();
+
+                // Create a copy of the current bitmap to work with
+                var workingBitmap = new Bitmap(FinalBitmap ?? _originalBitmap);
+
+                // Get the area to apply the effect to
+                var left = Math.Max(0, (int)Math.Min(_startPoint.X, _endPoint.X));
+                var top = Math.Max(0, (int)Math.Min(_startPoint.Y, _endPoint.Y));
+                var right = Math.Min(workingBitmap.Width - 1, (int)Math.Max(_startPoint.X, _endPoint.X));
+                var bottom = Math.Min(workingBitmap.Height - 1, (int)Math.Max(_startPoint.Y, _endPoint.Y));
+
+                // Apply mosaic effect to the working bitmap using the preview bitmap's pixel data
+                ApplyMosaicEffect(workingBitmap, left, top, right, bottom);
+
+                // Update the display
+                UpdateImageDisplay(workingBitmap);
+
+                // Store the modified bitmap
+                FinalBitmap = workingBitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to finalize mosaic effect: {ex.Message}");
+            }
+            finally
+            {
+                _previewBitmap = null; // Clear the preview bitmap after finalization
+            }
         }
     }
 }
