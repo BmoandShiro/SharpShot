@@ -297,8 +297,9 @@ namespace SharpShot
                 FullScreenRecordButton.Visibility = Visibility.Visible;
                 OBSRecordButton.Visibility = Visibility.Visible;
                 
-                // Show separator before cancel button
+                // Show separators between recording selection buttons for proper spacing
                 RecordingSelectionSeparator2.Visibility = Visibility.Visible;
+                RecordingSelectionSeparator3.Visibility = Visibility.Visible;
                 
                 // Show cancel button on the far right
                 CancelRecordButton.Visibility = Visibility.Visible;
@@ -325,7 +326,10 @@ namespace SharpShot
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
+                
+                // Hide recording selection separators
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
                 
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
@@ -354,8 +358,9 @@ namespace SharpShot
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
 
-                // Hide separator
+                // Hide separators
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
 
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
@@ -587,8 +592,9 @@ namespace SharpShot
                 OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
 
-                // Hide separator
+                // Hide recording selection separators
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -1099,6 +1105,9 @@ namespace SharpShot
                 
                 if (RecordingSelectionSeparator2 != null)
                     RecordingSelectionSeparator2.Fill = brush;
+                
+                if (RecordingSelectionSeparator3 != null)
+                    RecordingSelectionSeparator3.Fill = brush;
                 
                 if (CaptureCompletionSeparator1 != null)
                     CaptureCompletionSeparator1.Fill = brush;

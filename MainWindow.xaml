@@ -214,6 +214,7 @@
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="RegionRecordButton_Click"
                         ToolTip="Record Selected Region (FFmpeg)"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource RegionIcon}" 
                           Stroke="#FFFF8C00" 
@@ -229,6 +230,7 @@
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="FullScreenRecordButton_Click"
                         ToolTip="Record Full Screen (FFmpeg)"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource FullScreenRecordIcon}" 
                           Stroke="#FFFF8C00" 
@@ -238,11 +240,21 @@
                            Width="28" Height="28"/>
                 </Button>
 
+                <!-- Separator between Full Screen and OBS Recording -->
+                <Rectangle x:Name="RecordingSelectionSeparator2"
+                           Width="1" 
+                           Height="25" 
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
+
                 <!-- OBS Record Button (Hidden by default) -->
                 <Button x:Name="OBSRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
                         ToolTip="Launch OBS Studio"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource OBSIcon}" 
                           Stroke="#FFFF8C00" 
@@ -256,7 +268,7 @@
                 </Button>
 
                 <!-- Separator for Cancel Button -->
-                <Rectangle x:Name="RecordingSelectionSeparator2"
+                <Rectangle x:Name="RecordingSelectionSeparator3"
                            Width="1" 
                            Height="25" 
                            Fill="#FFFF8C00" 
@@ -269,6 +281,7 @@
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="CancelRecordButton_Click"
                         ToolTip="Cancel Recording"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="M1 1L11 11M11 1L1 11" 
                           Stroke="#FFFF8C00" 
