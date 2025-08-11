@@ -1245,7 +1245,9 @@ namespace SharpShot
             trigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
             
             var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
-            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, Application.Current.Resources["SecondaryBrush"]));
+            // Use the same opacity-based approach as the settings buttons
+            var pressedColor = $"#30{iconColor.Substring(1)}"; // 30% opacity
+            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(pressedColor))));
             
             template.Triggers.Add(trigger);
             template.Triggers.Add(pressedTrigger);
@@ -1385,18 +1387,26 @@ namespace SharpShot
             var iconButtonStyle = this.Resources["IconButtonStyle"] as Style;
             var style = new Style(typeof(Button), iconButtonStyle);
 
-            // Override the hover effect to use theme color
+            // Override the hover effect to use theme color with opacity-based approach
             var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, hoverBrush));
+            // Use 15% opacity for hover (same as settings buttons)
+            var hoverColor = System.Windows.Media.Color.FromArgb(38, themeColor.R, themeColor.G, themeColor.B); // 15% of 255 ≈ 38
+            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(hoverColor)));
             hoverTrigger.Setters.Add(new Setter(EffectProperty, new DropShadowEffect
             {
                 Color = themeColor,
-                BlurRadius = 10,
+                BlurRadius = 12,
                 ShadowDepth = 0,
-                Opacity = 0.15
+                Opacity = 0.25
             }));
 
+            // Add pressed trigger with 30% opacity (same as settings buttons)
+            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            var pressedColor = System.Windows.Media.Color.FromArgb(77, themeColor.R, themeColor.G, themeColor.B); // 30% of 255 ≈ 77
+            pressedTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(pressedColor)));
+
             style.Triggers.Add(hoverTrigger);
+            style.Triggers.Add(pressedTrigger);
             return style;
         }
 
