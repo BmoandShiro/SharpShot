@@ -323,17 +323,6 @@
                                          Margin="0,0,0,15"
                                          ColorChanged="CustomColorChooser_ColorChanged"/>
 
-                <!-- Current Color Display -->
-                <Border Background="{Binding ElementName=CurrentColorDisplay, Path=Background}" 
-                        Width="50" Height="25" 
-                        BorderBrush="{DynamicResource AccentBrush}" 
-                        BorderThickness="2" 
-                        CornerRadius="4"
-                        HorizontalAlignment="Left"
-                        Margin="0,0,0,15">
-                    <Rectangle x:Name="CurrentColorDisplay" Fill="{DynamicResource AccentBrush}"/>
-                </Border>
-
                 <!-- Stroke width slider -->
                 <TextBlock Text="Stroke Width" 
                            Foreground="{DynamicResource AccentBrush}" 

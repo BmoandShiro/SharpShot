@@ -788,9 +788,6 @@ namespace SharpShot.UI
                     _currentColor = color;
                 }
                 
-                // Update current color display
-                CurrentColorDisplay.Fill = new SolidColorBrush(_currentColor);
-                
                 // Update the custom color chooser to match
                 if (CustomColorChooser != null)
                 {
@@ -805,9 +802,6 @@ namespace SharpShot.UI
             {
                 var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hexColor);
                 _currentColor = color;
-                
-                // Update the current color display
-                CurrentColorDisplay.Fill = new SolidColorBrush(color);
                 
                 System.Diagnostics.Debug.WriteLine($"Custom color changed to: {hexColor}");
             }
