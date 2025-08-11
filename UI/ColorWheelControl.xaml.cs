@@ -19,7 +19,26 @@ namespace SharpShot.UI
 
         private void ColorWheelControl_Loaded(object sender, RoutedEventArgs e)
         {
-            // Set initial color (orange)
+            // Set initial color to theme color
+            try
+            {
+                var accentBrush = Application.Current.Resources["AccentBrush"] as SolidColorBrush;
+                if (accentBrush != null)
+                {
+                    var color = accentBrush.Color;
+                    RedSlider.Value = color.R;
+                    GreenSlider.Value = color.G;
+                    BlueSlider.Value = color.B;
+                }
+            }
+            catch
+            {
+                // Fallback to default orange if theme color not available
+                RedSlider.Value = 255;
+                GreenSlider.Value = 140;
+                BlueSlider.Value = 0;
+            }
+            
             UpdateColorDisplay();
         }
 
@@ -80,10 +99,32 @@ namespace SharpShot.UI
             }
             catch
             {
-                // If parsing fails, use default orange color
-                RedSlider.Value = 255;
-                GreenSlider.Value = 140;
-                BlueSlider.Value = 0;
+                // If parsing fails, try to use theme color
+                try
+                {
+                    var accentBrush = Application.Current.Resources["AccentBrush"] as SolidColorBrush;
+                    if (accentBrush != null)
+                    {
+                        var themeColor = accentBrush.Color;
+                        RedSlider.Value = themeColor.R;
+                        GreenSlider.Value = themeColor.G;
+                        BlueSlider.Value = themeColor.B;
+                    }
+                    else
+                    {
+                        // Fallback to default orange color
+                        RedSlider.Value = 255;
+                        GreenSlider.Value = 140;
+                        BlueSlider.Value = 0;
+                    }
+                }
+                catch
+                {
+                    // Ultimate fallback to default orange color
+                    RedSlider.Value = 255;
+                    GreenSlider.Value = 140;
+                    BlueSlider.Value = 0;
+                }
                 UpdateColorDisplay();
             }
             finally

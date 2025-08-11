@@ -105,6 +105,12 @@ namespace SharpShot.UI
                 if (System.Windows.Media.ColorConverter.ConvertFromString(themeColorStr) is System.Windows.Media.Color themeColor)
                 {
                     _currentColor = themeColor;
+                    
+                    // Initialize the custom color chooser with the theme color
+                    if (CustomColorChooser != null)
+                    {
+                        CustomColorChooser.SetColor(themeColorStr);
+                    }
                 }
             }
             
@@ -152,6 +158,12 @@ namespace SharpShot.UI
                 
                 // Update the current color for new drawings
                 _currentColor = brush.Color;
+                
+                // Update the custom color chooser with the new theme color
+                if (CustomColorChooser != null)
+                {
+                    CustomColorChooser.SetColor(themeColor);
+                }
                 
                 // Refresh tool button states to use new theme color
                 ResetToolButtonStates();
@@ -778,6 +790,30 @@ namespace SharpShot.UI
                 
                 // Update current color display
                 CurrentColorDisplay.Fill = new SolidColorBrush(_currentColor);
+                
+                // Update the custom color chooser to match
+                if (CustomColorChooser != null)
+                {
+                    CustomColorChooser.SetColor(colorString);
+                }
+            }
+        }
+
+        private void CustomColorChooser_ColorChanged(object sender, string hexColor)
+        {
+            try
+            {
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hexColor);
+                _currentColor = color;
+                
+                // Update the current color display
+                CurrentColorDisplay.Fill = new SolidColorBrush(color);
+                
+                System.Diagnostics.Debug.WriteLine($"Custom color changed to: {hexColor}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error setting custom color: {ex.Message}");
             }
         }
 
