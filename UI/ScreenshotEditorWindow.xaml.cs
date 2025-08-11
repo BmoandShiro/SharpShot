@@ -1032,18 +1032,26 @@ namespace SharpShot.UI
             var baseStyle = this.Resources["EditToolButtonStyle"] as Style;
             var style = new Style(typeof(Button), baseStyle);
             
-            // Override the hover effect to use theme color
+            // Override the hover effect to use theme color with exact same opacity values as main toolbar
             var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, hoverBrush));
+            // Use 15% opacity for hover (same as main toolbar)
+            var hoverColor = System.Windows.Media.Color.FromArgb(38, themeColor.R, themeColor.G, themeColor.B); // 15% of 255 ≈ 38
+            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(hoverColor)));
             hoverTrigger.Setters.Add(new Setter(EffectProperty, new DropShadowEffect
             {
                 Color = themeColor,
-                BlurRadius = 10,
+                BlurRadius = 12,
                 ShadowDepth = 0,
-                Opacity = 0.15
+                Opacity = 0.25
             }));
             
+            // Add pressed trigger with 30% opacity (same as main toolbar)
+            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            var pressedColor = System.Windows.Media.Color.FromArgb(77, themeColor.R, themeColor.G, themeColor.B); // 30% of 255 ≈ 77
+            pressedTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(pressedColor)));
+            
             style.Triggers.Add(hoverTrigger);
+            style.Triggers.Add(pressedTrigger);
             
             return style;
         }
