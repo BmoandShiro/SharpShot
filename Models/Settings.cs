@@ -10,13 +10,20 @@ namespace SharpShot.Models
         private string _savePath = string.Empty;
         private string _screenshotFormat = string.Empty;
         private string _videoQuality = string.Empty;
-        private bool _enableAudioRecording;
+        private string _audioRecordingMode = string.Empty;
+        private string _recordingEngine = string.Empty;
+        private string _selectedOutputAudioDevice = string.Empty;
+        private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
         private bool _startMinimized;
         private Dictionary<string, string> _hotkeys = new();
         private string _iconColor = string.Empty;
         private double _hoverOpacity;
         private double _dropShadowOpacity;
+        private string _selectedScreen = string.Empty;
+        private bool _autoCopyScreenshots;
+        private bool _enableMagnifier;
+        private double _magnifierZoomLevel;
 
         public Settings()
         {
@@ -24,24 +31,22 @@ namespace SharpShot.Models
             SavePath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\SharpShot";
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
-            EnableAudioRecording = true;
-            EnableGlobalHotkeys = true;
+            AudioRecordingMode = "No Audio";
+            RecordingEngine = "FFmpeg";
+            SelectedOutputAudioDevice = string.Empty;
+            SelectedInputAudioDevice = string.Empty;
+            EnableGlobalHotkeys = false;
             StartMinimized = false;
             IconColor = "#FFFF8C00";
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
+            SelectedScreen = "Primary Monitor"; // Default to primary monitor
+            AutoCopyScreenshots = false; // Default to false - user must manually copy
+            EnableMagnifier = true; // Default to true - magnifier helps with precise selection
+            MagnifierZoomLevel = 2.0; // Default to 2x zoom
             
-            // Default hotkeys
-            Hotkeys = new Dictionary<string, string>
-            {
-                { "RegionCapture", "DoubleCtrl" },
-                { "FullScreenCapture", "Ctrl+Shift+S" },
-                { "PinScreenshot", "Ctrl+T" },
-                { "ToggleRecording", "Ctrl+Shift+R" },
-                { "Cancel", "Escape" },
-                { "Save", "Space" },
-                { "Copy", "Enter" }
-            };
+            // Start with empty hotkeys - users will set their own
+            Hotkeys = new Dictionary<string, string>();
         }
 
         public string SavePath
@@ -62,10 +67,28 @@ namespace SharpShot.Models
             set => SetProperty(ref _videoQuality, value);
         }
 
-        public bool EnableAudioRecording
+        public string AudioRecordingMode
         {
-            get => _enableAudioRecording;
-            set => SetProperty(ref _enableAudioRecording, value);
+            get => _audioRecordingMode;
+            set => SetProperty(ref _audioRecordingMode, value);
+        }
+
+        public string RecordingEngine
+        {
+            get => _recordingEngine;
+            set => SetProperty(ref _recordingEngine, value);
+        }
+
+        public string SelectedOutputAudioDevice
+        {
+            get => _selectedOutputAudioDevice;
+            set => SetProperty(ref _selectedOutputAudioDevice, value);
+        }
+
+        public string SelectedInputAudioDevice
+        {
+            get => _selectedInputAudioDevice;
+            set => SetProperty(ref _selectedInputAudioDevice, value);
         }
 
         public bool EnableGlobalHotkeys
@@ -102,6 +125,30 @@ namespace SharpShot.Models
         {
             get => _dropShadowOpacity;
             set => SetProperty(ref _dropShadowOpacity, value);
+        }
+
+        public string SelectedScreen
+        {
+            get => _selectedScreen;
+            set => SetProperty(ref _selectedScreen, value);
+        }
+
+        public bool AutoCopyScreenshots
+        {
+            get => _autoCopyScreenshots;
+            set => SetProperty(ref _autoCopyScreenshots, value);
+        }
+
+        public bool EnableMagnifier
+        {
+            get => _enableMagnifier;
+            set => SetProperty(ref _enableMagnifier, value);
+        }
+
+        public double MagnifierZoomLevel
+        {
+            get => _magnifierZoomLevel;
+            set => SetProperty(ref _magnifierZoomLevel, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

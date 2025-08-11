@@ -22,7 +22,9 @@ namespace SharpShot.Services
         {
             try
             {
-                var bounds = Screen.PrimaryScreen.Bounds;
+                // Get bounds based on selected screen
+                var bounds = GetBoundsForSelectedScreen();
+                
                 using var bitmap = new Bitmap(bounds.Width, bounds.Height);
                 using var graphics = Graphics.FromImage(bitmap);
                 
@@ -35,6 +37,83 @@ namespace SharpShot.Services
                 System.Diagnostics.Debug.WriteLine($"Full screen capture failed: {ex.Message}");
                 return string.Empty;
             }
+        }
+
+        private Rectangle GetBoundsForSelectedScreen()
+        {
+            var selectedScreen = _settingsService.CurrentSettings.SelectedScreen;
+            var allScreens = Screen.AllScreens;
+            
+            if (allScreens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                var primaryScreen = Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
+            }
+            
+            // Handle different screen selection options
+            switch (selectedScreen)
+            {
+                case "All Monitors":
+                    return GetVirtualDesktopBounds();
+                    
+                case "Primary Monitor":
+                    var primaryScreen = Screen.PrimaryScreen;
+                    if (primaryScreen == null)
+                    {
+                        // Ultimate fallback - return a default rectangle
+                        return new Rectangle(0, 0, 1920, 1080);
+                    }
+                    return primaryScreen.Bounds;
+                    
+                default:
+                    // Check if it's a specific monitor (e.g., "Monitor 1", "Monitor 2", etc.)
+                    if (selectedScreen.StartsWith("Monitor "))
+                    {
+                        var monitorNumber = selectedScreen.Replace("Monitor ", "").Replace(" (Primary)", "");
+                        if (int.TryParse(monitorNumber, out int index) && index > 0 && index <= allScreens.Length)
+                        {
+                            return allScreens[index - 1].Bounds;
+                        }
+                    }
+                    
+                    // Fallback to virtual desktop bounds
+                    return GetVirtualDesktopBounds();
+            }
+        }
+
+        private Rectangle GetVirtualDesktopBounds()
+        {
+            var allScreens = Screen.AllScreens;
+            if (allScreens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                var primaryScreen = Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
+            }
+
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (var screen in allScreens)
+            {
+                minX = Math.Min(minX, screen.Bounds.X);
+                minY = Math.Min(minY, screen.Bounds.Y);
+                maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+            }
+
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
         }
 
         public string CaptureRegion(Rectangle region)
@@ -82,35 +161,59 @@ namespace SharpShot.Services
             return savePath;
         }
 
-        public void CopyToClipboard(Bitmap bitmap)
+                public void CopyToClipboard(Bitmap bitmap)
         {
             try
             {
-                // Create a memory stream for the image
-                using var stream = new MemoryStream();
-                bitmap.Save(stream, ImageFormat.Png);
-                stream.Position = 0;
-
-                // Create data object with multiple formats for better compatibility
-                var dataObject = new System.Windows.Forms.DataObject();
+                System.Diagnostics.Debug.WriteLine($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
                 
-                // Add the bitmap directly
-                dataObject.SetData(System.Windows.Forms.DataFormats.Bitmap, bitmap);
+                // Log to file for debugging
+                LogToFile($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
                 
-                // Add as image stream
-                dataObject.SetData("image/png", stream);
+                // Try clipboard operation with retry mechanism
+                bool clipboardSet = false;
+                int retryCount = 0;
+                const int maxRetries = 3;
                 
-                // Add as file drop (some apps prefer this)
-                var tempFile = Path.GetTempFileName() + ".png";
-                bitmap.Save(tempFile, ImageFormat.Png);
-                dataObject.SetData(System.Windows.Forms.DataFormats.FileDrop, new string[] { tempFile });
-
-                // Set the data to clipboard
-                System.Windows.Forms.Clipboard.SetDataObject(dataObject, true);
+                while (!clipboardSet && retryCount < maxRetries)
+                {
+                    try
+                    {
+                        // Clear clipboard first to avoid conflicts
+                        System.Windows.Forms.Clipboard.Clear();
+                        System.Threading.Thread.Sleep(50); // Brief delay
+                        
+                        // Use the simple SetImage method which is much faster
+                        System.Windows.Forms.Clipboard.SetImage(bitmap);
+                        clipboardSet = true;
+                        System.Diagnostics.Debug.WriteLine("Successfully set image to clipboard");
+                        LogToFile("Successfully set image to clipboard");
+                    }
+                    catch (Exception ex)
+                    {
+                        retryCount++;
+                        System.Diagnostics.Debug.WriteLine($"Clipboard attempt {retryCount} failed: {ex.Message}");
+                        LogToFile($"Clipboard attempt {retryCount} failed: {ex.Message}");
+                        
+                        if (retryCount < maxRetries)
+                        {
+                            System.Threading.Thread.Sleep(200); // Wait before retry
+                        }
+                        else
+                        {
+                            // If all retries failed, just throw the exception
+                            throw;
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Copy to clipboard failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Exception type: {ex.GetType().Name}");
+                LogToFile($"Copy to clipboard failed: {ex.Message}");
+                LogToFile($"Exception type: {ex.GetType().Name}");
+                throw; // Re-throw the exception so the calling code can handle it
             }
         }
 
@@ -124,6 +227,7 @@ namespace SharpShot.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Copy to clipboard failed: {ex.Message}");
+                throw; // Re-throw the exception so the calling code can handle it
             }
         }
 
@@ -139,7 +243,8 @@ namespace SharpShot.Services
                 ShowInTaskbar = false
             };
 
-            overlay.Bounds = Screen.PrimaryScreen.Bounds;
+            // Use bounds based on selected screen
+            overlay.Bounds = GetBoundsForSelectedScreen();
             overlay.Show();
 
             var timer = new Timer { Interval = 200 };
@@ -149,6 +254,21 @@ namespace SharpShot.Services
                 timer.Dispose();
             };
             timer.Start();
+        }
+
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sharpshot_debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var logEntry = $"[{timestamp}] {message}\n";
+                File.AppendAllText(logPath, logEntry);
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
         }
     }
 } 

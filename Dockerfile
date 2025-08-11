@@ -14,7 +14,7 @@ RUN dotnet restore SharpShot.csproj
 COPY . ./
 
 # Build the application for Windows
-RUN dotnet build SharpShot.csproj --no-restore --configuration Release
+RUN dotnet build SharpShot.csproj --no-restore --configuration Release -p:Platform=x64
 
 # Publish the application for Windows
 RUN dotnet publish SharpShot.csproj --no-restore --configuration Release --output /app/publish --runtime win-x64 --self-contained false

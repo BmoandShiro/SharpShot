@@ -1,0 +1,132 @@
+<UserControl x:Class="SharpShot.UI.ColorWheelControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="200" Height="150">
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <!-- Color Preview -->
+        <Border x:Name="ColorPreview" 
+                Grid.Row="0"
+                Height="30"
+                Background="{DynamicResource AccentBrush}"
+                BorderBrush="#FF404040"
+                BorderThickness="2"
+                CornerRadius="6"
+                Margin="0,0,0,10"/>
+        
+        <!-- RGB Sliders -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+            <!-- Red Slider -->
+            <StackPanel Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="R:" 
+                               Foreground="Red" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,10,0"/>
+                    <Slider x:Name="RedSlider" 
+                            Grid.Column="1"
+                            Minimum="0" 
+                            Maximum="255" 
+                            Value="255"
+                            ValueChanged="Slider_ValueChanged"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" 
+                               x:Name="RedValue"
+                               Text="255" 
+                               Foreground="Red" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="10,0,0,0"
+                               MinWidth="30"/>
+                </Grid>
+            </StackPanel>
+            
+            <!-- Green Slider -->
+            <StackPanel Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="G:" 
+                               Foreground="Lime" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,10,0"/>
+                    <Slider x:Name="GreenSlider" 
+                            Grid.Column="1"
+                            Minimum="0" 
+                            Maximum="255" 
+                            Value="140"
+                            ValueChanged="Slider_ValueChanged"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" 
+                               x:Name="GreenValue"
+                               Text="140" 
+                               Foreground="Lime" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="10,0,0,0"
+                               MinWidth="30"/>
+                </Grid>
+            </StackPanel>
+            
+            <!-- Blue Slider -->
+            <StackPanel Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="B:" 
+                               Foreground="Blue" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,10,0"/>
+                    <Slider x:Name="BlueSlider" 
+                            Grid.Column="1"
+                            Minimum="0" 
+                            Maximum="255" 
+                            Value="0"
+                            ValueChanged="Slider_ValueChanged"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" 
+                               x:Name="BlueValue"
+                               Text="0" 
+                               Foreground="Blue" 
+                               FontWeight="Bold" 
+                               VerticalAlignment="Center" 
+                               Margin="10,0,0,0"
+                               MinWidth="30"/>
+                </Grid>
+            </StackPanel>
+        </StackPanel>
+        
+        <!-- Hex Color Display -->
+        <TextBlock Grid.Row="2"
+                   x:Name="HexColorText"
+                   Text="#FFFF8C00"
+                   Foreground="White"
+                   FontSize="12"
+                   FontFamily="Consolas"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,0"/>
+    </Grid>
+</UserControl> 

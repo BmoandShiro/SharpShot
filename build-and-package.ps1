@@ -3,21 +3,30 @@
 
 Write-Host "Building SharpShot..." -ForegroundColor Green
 
-# Check if FFmpeg is set up
+# Check if FFmpeg is set up with WASAPI support
 $ffmpegPath = "ffmpeg\bin\ffmpeg.exe"
 if (!(Test-Path $ffmpegPath)) {
-    Write-Host "FFmpeg not found. Setting up FFmpeg..." -ForegroundColor Yellow
-    & "$PSScriptRoot\setup-ffmpeg.ps1"
-    
-    if (!(Test-Path $ffmpegPath)) {
-        Write-Host "Warning: FFmpeg setup failed. Video recording may not work." -ForegroundColor Yellow
-        Write-Host "Please run setup-ffmpeg.ps1 manually or download FFmpeg from https://ffmpeg.org/" -ForegroundColor Yellow
+    Write-Host "FFmpeg not found. Setting up FFmpeg with WASAPI support..." -ForegroundColor Yellow
+    & "$PSScriptRoot\setup-windows-ffmpeg.ps1"
+} else {
+    # Check if current FFmpeg supports WASAPI
+    try {
+        # Use a simpler approach with Invoke-Expression
+        $output = & $ffmpegPath -devices 2>&1
+        if ($LASTEXITCODE -eq 0 -and $output -notmatch "wasapi") {
+            Write-Host "Current FFmpeg does not support WASAPI. Updating..." -ForegroundColor Yellow
+            & "$PSScriptRoot\setup-windows-ffmpeg.ps1"
+        } else {
+            Write-Host "FFmpeg with WASAPI support found!" -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "Warning: Could not check FFmpeg WASAPI support. Video recording may not work." -ForegroundColor Yellow
     }
 }
 
 # Build the application
 Write-Host "Building application..." -ForegroundColor Yellow
-dotnet build --configuration Release
+dotnet build --configuration Release -p:Platform=x64
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red

@@ -7,13 +7,14 @@
         Background="Transparent"
         Topmost="True"
         ShowInTaskbar="False"
-        WindowState="Maximized">
+        ResizeMode="NoResize">
     
-    <Canvas x:Name="SelectionCanvas" Background="#80000000">
+    <Canvas x:Name="SelectionCanvas" Background="#01000000">
         <Rectangle x:Name="SelectionRect" 
                    Stroke="{StaticResource AccentBrush}" 
                    StrokeThickness="2" 
-                   Fill="#20FFFFFF"
+                   StrokeDashArray="5,5"
+                   Fill="Transparent"
                    Visibility="Collapsed"/>
         
         <!-- Instructions -->

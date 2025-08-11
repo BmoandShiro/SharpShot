@@ -11,6 +11,7 @@ using SharpShot.Utils;
 using System.Threading.Tasks;
 using Point = System.Windows.Point;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace SharpShot
 {
@@ -24,6 +25,9 @@ namespace SharpShot
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
         private Bitmap? _lastCapturedBitmap = null;
+
+        // Windows message constants
+        private const int WM_HOTKEY = 0x0312;
 
         public MainWindow()
         {
@@ -41,14 +45,33 @@ namespace SharpShot
             // Position window
             PositionWindow();
             
-            // Start minimized if setting is enabled
-            if (_settingsService.CurrentSettings.StartMinimized)
-            {
-                WindowState = WindowState.Minimized;
-            }
+            // Force window to be visible and not minimized
+            WindowState = WindowState.Normal;
+            Visibility = Visibility.Visible;
+            
+            // Ensure window is on top and visible
+            Activate();
+            Focus();
+            
+            // Debug output
+            System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}, Visibility: {Visibility}");
             
             // Apply theme settings
             ApplyThemeSettings();
+            
+            // Ensure window is visible after a short delay
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (Visibility != Visibility.Visible)
+                {
+                    Visibility = Visibility.Visible;
+                    Activate();
+                    Focus();
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            
+            // Debug output
+            System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");
         }
 
         private void SetupEventHandlers()
@@ -66,7 +89,6 @@ namespace SharpShot
             _hotkeyManager.OnRegionCaptureRequested += OnRegionCaptureRequested;
             _hotkeyManager.OnFullScreenCaptureRequested += OnFullScreenCaptureRequested;
             _hotkeyManager.OnToggleRecordingRequested += OnToggleRecordingRequested;
-            _hotkeyManager.OnCancelRequested += OnCancelRequested;
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
             _hotkeyManager.OnCopyRequested += OnCopyRequested;
             
@@ -76,12 +98,50 @@ namespace SharpShot
 
         private void PositionWindow()
         {
-            // Position in top-right corner
-            var screenWidth = SystemParameters.PrimaryScreenWidth;
-            var screenHeight = SystemParameters.PrimaryScreenHeight;
-            
-            Left = screenWidth - Width - 20;
-            Top = 20;
+            try
+            {
+                // Use the primary screen for reliable positioning
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Fallback to first available screen
+                    var allScreens = System.Windows.Forms.Screen.AllScreens;
+                    if (allScreens.Length > 0)
+                    {
+                        primaryScreen = allScreens[0];
+                    }
+                    else
+                    {
+                        // Last resort - use default positioning
+                        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                        return;
+                    }
+                }
+                
+                // Position on primary screen, above taskbar
+                var screenBounds = primaryScreen.Bounds;
+                
+                // Center horizontally on the primary screen
+                Left = screenBounds.X + (screenBounds.Width - Width) / 2;
+                
+                // Position above taskbar (typically 40-50 pixels from bottom)
+                Top = screenBounds.Y + screenBounds.Height - Height - 50;
+                
+                // Ensure window is within the primary screen bounds
+                if (Left < screenBounds.X) Left = screenBounds.X;
+                if (Top < screenBounds.Y) Top = screenBounds.Y;
+                if (Left + Width > screenBounds.X + screenBounds.Width) Left = screenBounds.X + screenBounds.Width - Width;
+                if (Top + Height > screenBounds.Y + screenBounds.Height) Top = screenBounds.Y + screenBounds.Height - Height;
+                
+                // Debug output for positioning
+                System.Diagnostics.Debug.WriteLine($"Positioning window: Primary screen bounds: {screenBounds}, Window size: {Width}x{Height}, Position: ({Left}, {Top})");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Positioning failed: {ex.Message}");
+                // Fallback to center screen if positioning fails
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
         }
 
         #region Window Dragging
@@ -137,6 +197,11 @@ namespace SharpShot
             await StartFullScreenRecording();
         }
 
+        private async void OBSRecordButton_Click(object sender, RoutedEventArgs e)
+        {
+            await OpenOBSStudio();
+        }
+
         private void CancelRecordButton_Click(object sender, RoutedEventArgs e)
         {
             ShowNormalButtons();
@@ -146,33 +211,55 @@ namespace SharpShot
         {
             try
             {
+                                        // Ensure FFmpeg is selected for stop recording since OBS is handled in its GUI
+                        _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                        _settingsService.SaveSettings();
+                
                 await _recordingService.StopRecording();
-                // Show completion options after stopping
-                ShowRecordingCompletionOptions();
+                
+                // Return to main home page after stopping
+                ShowNormalButtons();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Stop recording failed: {ex.Message}");
                 ShowNotification("Stop recording failed!", isError: true);
+                ShowNormalButtons();
             }
         }
 
-        private void PauseRecordButton_Click(object sender, RoutedEventArgs e)
+        private async void PauseRecordButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_recordingService != null)
+            if (_recordingService != null && _recordingService.IsRecording)
             {
-                if (_recordingService.IsPaused)
+                // Stop the recording (don't treat exceptions as errors when canceling)
+                try
                 {
-                    _recordingService.ResumeRecording();
-                    PauseRecordButton.Content = "⏸";
-                    PauseRecordButton.ToolTip = "Pause Recording";
+                    await _recordingService.StopRecording();
                 }
-                else
+                catch (Exception ex)
                 {
-                    _recordingService.PauseRecording();
-                    PauseRecordButton.Content = "▶";
-                    PauseRecordButton.ToolTip = "Resume Recording";
+                    // Log the exception but don't show error to user when canceling
+                    System.Diagnostics.Debug.WriteLine($"Stop recording during cancel: {ex.Message}");
                 }
+                
+                // Delete the recorded video file
+                var recordingPath = _recordingService.GetCurrentRecordingPath();
+                if (!string.IsNullOrEmpty(recordingPath) && File.Exists(recordingPath))
+                {
+                    try
+                    {
+                        File.Delete(recordingPath);
+                        System.Diagnostics.Debug.WriteLine($"Deleted recording file: {recordingPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to delete recording file: {ex.Message}");
+                    }
+                }
+                
+                // Return to recording selection menu
+                ShowRecordingSelectionButtons();
             }
         }
 
@@ -201,10 +288,60 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
+                OBSRecordButton.Visibility = Visibility.Visible;
+                
+                // Show separator before cancel button
+                RecordingSelectionSeparator2.Visibility = Visibility.Visible;
+                
+                // Show cancel button on the far right
                 CancelRecordButton.Visibility = Visibility.Visible;
+            });
+        }
+
+        private void ShowRecordingControls()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                // Hide all other buttons first
+                RegionButton.Visibility = Visibility.Collapsed;
+                ScreenshotButton.Visibility = Visibility.Collapsed;
+                RecordingButton.Visibility = Visibility.Collapsed;
+                SettingsButton.Visibility = Visibility.Collapsed;
+                CloseButton.Visibility = Visibility.Collapsed;
+                
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                
+                // Hide recording selection buttons
+                RegionRecordButton.Visibility = Visibility.Collapsed;
+                FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                OBSRecordButton.Visibility = Visibility.Collapsed;
+                CancelRecordButton.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                
+                // Hide capture option buttons
+                CancelButton.Visibility = Visibility.Collapsed;
+                CopyButton.Visibility = Visibility.Collapsed;
+                SaveButton.Visibility = Visibility.Collapsed;
+                CaptureCompletionSeparator1.Visibility = Visibility.Collapsed;
+                
+                // Show recording control buttons
+                StopRecordButton.Visibility = Visibility.Visible;
+                PauseRecordButton.Visibility = Visibility.Visible; // This is now the cancel button
+                
+                // Show recording timer
+                RecordingTimer.Visibility = Visibility.Visible;
+
+                // Apply theme-aware styling to recording control buttons
+                UpdatePostCaptureButtonStyles();
             });
         }
 
@@ -216,6 +353,9 @@ namespace SharpShot
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
+
+                // Hide separator
+                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
 
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
@@ -229,6 +369,9 @@ namespace SharpShot
                 CopyButton.Visibility = Visibility.Visible;
                 SaveButton.Visibility = Visibility.Visible;
 
+                // Apply theme-aware styling to the buttons
+                UpdatePostCaptureButtonStyles();
+
                 // Set video-specific tooltips
                 CopyButton.ToolTip = "Copy Video (Not supported)";
                 SaveButton.ToolTip = "Save Video";
@@ -237,7 +380,7 @@ namespace SharpShot
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            var settingsWindow = new UI.SettingsWindow(_settingsService);
+            var settingsWindow = new UI.SettingsWindow(_settingsService, _hotkeyManager);
             settingsWindow.Owner = this;
             settingsWindow.ShowDialog();
         }
@@ -267,21 +410,14 @@ namespace SharpShot
                 Visibility = Visibility.Hidden;
                 await Task.Delay(100); // Brief delay to ensure window is hidden
                 
-                // Capture full screen and get both file path and bitmap
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                using var bitmap = new Bitmap(bounds.Width, bounds.Height);
-                using var graphics = Graphics.FromImage(bitmap);
-                
-                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
-                
-                // Store the bitmap for copying
-                _lastCapturedBitmap = new Bitmap(bitmap);
-                
-                // Save to file
-                var filePath = _screenshotService.SaveScreenshot(bitmap);
+                // Use the screenshot service to capture based on selected screen
+                var filePath = _screenshotService.CaptureFullScreen();
                 
                 if (!string.IsNullOrEmpty(filePath))
                 {
+                    // Load the captured bitmap for copying
+                    using var bitmap = new Bitmap(filePath);
+                    _lastCapturedBitmap = new Bitmap(bitmap);
                     _lastCapturedFilePath = filePath;
                     ShowCaptureOptions();
                 }
@@ -296,6 +432,34 @@ namespace SharpShot
             }
         }
 
+        private Rectangle GetVirtualDesktopBounds(System.Windows.Forms.Screen[] screens)
+        {
+            if (screens.Length == 0)
+            {
+                // Fallback to primary screen if no screens detected
+                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (primaryScreen == null)
+                {
+                    // Ultimate fallback - return a default rectangle
+                    return new Rectangle(0, 0, 1920, 1080);
+                }
+                return primaryScreen.Bounds;
+            }
+
+            int minX = int.MaxValue, minY = int.MaxValue;
+            int maxX = int.MinValue, maxY = int.MinValue;
+
+            foreach (var screen in screens)
+            {
+                minX = Math.Min(minX, screen.Bounds.X);
+                minY = Math.Min(minY, screen.Bounds.Y);
+                maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+            }
+
+            return new Rectangle(minX, minY, maxX - minX, maxY - minY);
+        }
+
         private async Task CaptureRegion()
         {
             try
@@ -305,14 +469,24 @@ namespace SharpShot
                 await Task.Delay(100);
                 
                 // Show region selection window
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
                 regionWindow.ShowDialog();
                 
                 // Check if a region was captured
                 if (regionWindow.CapturedBitmap != null)
                 {
                     _lastCapturedBitmap = regionWindow.CapturedBitmap;
-                    ShowCaptureOptions();
+                    System.Diagnostics.Debug.WriteLine($"Region captured successfully: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    
+                    // Only show capture options if the user didn't already save/copy in the editor
+                    if (!IsEditorActionCompleted(regionWindow))
+                    {
+                        ShowCaptureOptions();
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No bitmap captured from region selection");
                 }
                 
                 // Show main window again
@@ -326,10 +500,21 @@ namespace SharpShot
             }
         }
 
+        private bool IsEditorActionCompleted(UI.RegionSelectionWindow regionWindow)
+        {
+            return regionWindow.EditorActionCompleted;
+        }
+
         private void ShowCaptureOptions()
         {
             Dispatcher.Invoke(() =>
             {
+                // Auto-copy if enabled
+                if (_settingsService.CurrentSettings.AutoCopyScreenshots && _lastCapturedBitmap != null)
+                {
+                    AutoCopyScreenshot();
+                }
+                
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
@@ -337,10 +522,18 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
-                // Show completion options
-                CancelButton.Visibility = Visibility.Visible;
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+
+                // Show completion options in correct order: Copy, Save, Separator, Cancel (X on far right)
                 CopyButton.Visibility = Visibility.Visible;
                 SaveButton.Visibility = Visibility.Visible;
+                CaptureCompletionSeparator1.Visibility = Visibility.Visible;
+                CancelButton.Visibility = Visibility.Visible;
+
+                // Apply theme-aware styling to the buttons
+                UpdatePostCaptureButtonStyles();
 
                 // Set appropriate tooltips based on file type
                 bool isVideo = !string.IsNullOrEmpty(_lastCapturedFilePath) && 
@@ -363,6 +556,10 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
+                // Hide recording control buttons first
+                StopRecordButton.Visibility = Visibility.Collapsed;
+                PauseRecordButton.Visibility = Visibility.Collapsed; // This is now the cancel button
+                RecordingTimer.Visibility = Visibility.Collapsed;
                 
                 // Show normal buttons
                 RegionButton.Visibility = Visibility.Visible;
@@ -371,15 +568,27 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Visible;
                 CloseButton.Visibility = Visibility.Visible;
                 
+                // Reset recording button content to the original Path (video camera icon)
+                // The content is already set correctly in XAML, so we don't need to change it
+                
+                // Show main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Visible;
+                MainToolbarSeparator2.Visibility = Visibility.Visible;
+                
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
                 CopyButton.Visibility = Visibility.Collapsed;
                 SaveButton.Visibility = Visibility.Collapsed;
+                CaptureCompletionSeparator1.Visibility = Visibility.Collapsed;
                 
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
+
+                // Hide separator
+                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -398,8 +607,27 @@ namespace SharpShot
             {
                 if (_lastCapturedBitmap != null)
                 {
-                    // Copy screenshot to clipboard
-                    System.Windows.Forms.Clipboard.SetImage(_lastCapturedBitmap);
+                    System.Diagnostics.Debug.WriteLine($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    LogToFile($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    
+                    // Run the copy operation on the UI thread since clipboard requires STA mode
+                    _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                    
+                    System.Diagnostics.Debug.WriteLine("Copy operation completed successfully");
+                    LogToFile("Copy operation completed successfully");
+                    
+                    // Verify clipboard has data
+                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    {
+                        System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
+                        LogToFile("Clipboard verification successful - image data is present");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Warning: Clipboard verification failed - no image data found");
+                        LogToFile("Warning: Clipboard verification failed - no image data found");
+                        ShowNotification("Copy completed but verification failed", isError: true);
+                    }
                 }
                 else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
                 {
@@ -411,16 +639,33 @@ namespace SharpShot
                     }
                     else
                     {
-                        // For screenshots, copy the file to clipboard
-                        var bitmap = new System.Drawing.Bitmap(_lastCapturedFilePath);
-                        System.Windows.Forms.Clipboard.SetImage(bitmap);
+                        // For screenshots, copy the file to clipboard using the service method
+                        _screenshotService.CopyToClipboard(_lastCapturedFilePath);
                     }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No bitmap or file path available for copying");
+                    ShowNotification("No image available to copy!", isError: true);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Copy failed: {ex.Message}");
-                ShowNotification("Copy failed!", isError: true);
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                LogToFile($"Copy failed: {ex.Message}");
+                LogToFile($"Stack trace: {ex.StackTrace}");
+                
+                // Check if clipboard actually has the image despite the exception
+                if (System.Windows.Forms.Clipboard.ContainsImage())
+                {
+                    System.Diagnostics.Debug.WriteLine("Clipboard verification successful despite exception");
+                    LogToFile("Clipboard verification successful despite exception");
+                }
+                else
+                {
+                    ShowNotification("Copy failed!", isError: true);
+                }
             }
         }
 
@@ -481,8 +726,8 @@ namespace SharpShot
                 if (_recordingService.IsRecording)
                 {
                     await _recordingService.StopRecording();
-                    // Show recording completion options
-                    ShowRecordingCompletionOptions();
+                    // Return to main home page
+                    ShowNormalButtons();
                 }
                 else
                 {
@@ -497,99 +742,143 @@ namespace SharpShot
             }
         }
 
-        private async Task StartRegionRecording()
+                private Task StartRegionRecording()
+        {
+            // Show region selection window for recording (without hiding main window)
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true);
+            regionWindow.ShowDialog();
+            
+            // Check if a region was selected
+            if (regionWindow.SelectedRegion.HasValue)
+            {
+                // Update UI immediately to show recording controls
+                Dispatcher.Invoke(() =>
+                {
+                    // Use the proper recording controls method
+                    ShowRecordingControls();
+                }, System.Windows.Threading.DispatcherPriority.Render);
+                
+                // Start recording in the background (don't await it)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // Ensure FFmpeg is selected for region recording
+                        _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                        _settingsService.SaveSettings();
+                        
+                        await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
+                        // Don't show error to user since recording might still work
+                        // The OnRecordingStateChanged event will handle UI updates
+                    }
+                });
+            }
+            else
+            {
+                // If no region selected, go back to normal buttons
+                ShowNormalButtons();
+            }
+            
+            return Task.CompletedTask;
+        }
+
+        private Task StartFullScreenRecording()
+        {
+            // Update UI immediately to show recording controls
+            Dispatcher.Invoke(() =>
+            {
+                // Use the proper recording controls method
+                ShowRecordingControls();
+            }, System.Windows.Threading.DispatcherPriority.Render);
+            
+            // Start recording in the background (don't await it)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Ensure FFmpeg is selected for full screen recording
+                    _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
+                    _settingsService.SaveSettings();
+                    
+                    await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Background recording start failed: {ex.Message}");
+                    // Don't show error to user since recording might still work
+                    // The OnRecordingStateChanged event will handle UI updates
+                }
+            });
+            
+            return Task.CompletedTask;
+        }
+
+        private string? _originalRecordingEngine = null; // Track original engine
+        
+        private async Task OpenOBSStudio()
         {
             try
             {
-                // Show region selection window for recording (without hiding main window)
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService);
-                regionWindow.ShowDialog();
-                
-                // Check if a region was selected
-                if (regionWindow.SelectedRegion.HasValue)
+                // Just launch OBS - no recording engine switching or recording needed
+                var success = await _recordingService.SetupOBSForRecordingAsync();
+                if (success)
                 {
-                    // Start recording the selected region
-                    await _recordingService.StartRecording(regionWindow.SelectedRegion.Value);
-                    // Show completion options after starting recording
-                    ShowRecordingCompletionOptions();
+                    // OBS launched successfully - user controls everything through OBS GUI
+                    ShowNormalButtons();
                 }
                 else
                 {
-                    // If no region selected, go back to normal buttons
                     ShowNormalButtons();
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Region recording failed: {ex.Message}");
-                ShowNotification("Region recording failed!", isError: true);
+                System.Diagnostics.Debug.WriteLine($"OBS launch failed: {ex.Message}");
                 ShowNormalButtons();
             }
         }
-
-        private async Task StartFullScreenRecording()
+        
+        private void RestoreOriginalRecordingEngine()
         {
-            try
+            if (_originalRecordingEngine != null)
             {
-                // Start full screen recording (without hiding window)
-                var bounds = System.Windows.Forms.Screen.PrimaryScreen.Bounds;
-                await _recordingService.StartRecording(new Rectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height));
-                
-                // Show completion options after starting recording
-                ShowRecordingCompletionOptions();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Full screen recording failed: {ex.Message}");
-                ShowNotification("Full screen recording failed!", isError: true);
-                ShowNormalButtons();
+                _settingsService.CurrentSettings.RecordingEngine = _originalRecordingEngine;
+                _originalRecordingEngine = null;
             }
         }
 
-        private void OnRecordingStateChanged(bool isRecording)
+        private void OnRecordingStateChanged(object? sender, bool isRecording)
         {
             Dispatcher.Invoke(() =>
             {
                 if (isRecording)
                 {
-                    // Batch all UI changes together to reduce flickering
-                    RecordingTimer.Visibility = Visibility.Visible;
-                    RecordingButton.Content = "⏹️";
-                    
-                    // Show recording control buttons
-                    StopRecordButton.Visibility = Visibility.Visible;
-                    PauseRecordButton.Visibility = Visibility.Visible;
-                    
-                    // Hide normal buttons in one batch
-                    RegionButton.Visibility = Visibility.Collapsed;
-                    ScreenshotButton.Visibility = Visibility.Collapsed;
-                    RecordingButton.Visibility = Visibility.Collapsed;
-                    SettingsButton.Visibility = Visibility.Collapsed;
-                    CloseButton.Visibility = Visibility.Collapsed;
+                    // Use the proper recording controls method
+                    ShowRecordingControls();
                 }
                 else
                 {
-                    // Batch all UI changes together to reduce flickering
-                    RecordingTimer.Visibility = Visibility.Collapsed;
-                    RecordingButton.Content = "🎥";
-                    
-                    // Hide recording control buttons
-                    StopRecordButton.Visibility = Visibility.Collapsed;
-                    PauseRecordButton.Visibility = Visibility.Collapsed;
-                    
                     // Store the recording file path for save/copy options
                     if (_recordingService != null)
                     {
-                        _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath();
+                        _lastCapturedFilePath = _recordingService.GetCurrentRecordingPath() ?? string.Empty;
                     }
                     
-                    // Show completion options when recording stops
-                    ShowRecordingCompletionOptions();
+                    // If we were using OBS temporarily, restore original engine
+                    // (This handles cases where OBS recording ends from within OBS GUI)
+                    RestoreOriginalRecordingEngine();
+                    
+                    // Return to main home page when recording stops
+                    ShowNormalButtons();
                 }
-            });
+            }, System.Windows.Threading.DispatcherPriority.Render);
         }
 
-        private void OnRecordingTimeUpdated(TimeSpan duration)
+        private void OnRecordingTimeUpdated(object? sender, TimeSpan duration)
         {
             // Reduce update frequency to minimize flickering
             Dispatcher.Invoke(() =>
@@ -605,11 +894,6 @@ namespace SharpShot
         #endregion
 
         #region Hotkey Handlers
-        private void OnCancelRequested()
-        {
-            // TODO: Implement cancel functionality for annotation mode
-        }
-
         private void OnSaveRequested()
         {
             // TODO: Implement save functionality for annotation mode
@@ -622,12 +906,63 @@ namespace SharpShot
         #endregion
 
         #region Utility Methods
+        private void AutoCopyScreenshot()
+        {
+            try
+            {
+                if (_lastCapturedBitmap != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Auto-copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    LogToFile($"Auto-copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+                    
+                    // Run the copy operation on the UI thread since clipboard requires STA mode
+                    _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                    
+                    System.Diagnostics.Debug.WriteLine("Auto-copy operation completed successfully");
+                    LogToFile("Auto-copy operation completed successfully");
+                    
+                    // Verify clipboard has data
+                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    {
+                        System.Diagnostics.Debug.WriteLine("Auto-copy clipboard verification successful - image data is present");
+                        LogToFile("Auto-copy clipboard verification successful - image data is present");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Warning: Auto-copy clipboard verification failed - no image data found");
+                        LogToFile("Warning: Auto-copy clipboard verification failed - no image data found");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Auto-copy failed: {ex.Message}");
+                LogToFile($"Auto-copy failed: {ex.Message}");
+                // Don't show error notification for auto-copy to avoid interrupting user workflow
+            }
+        }
+
         private void ShowNotification(string message, bool isError = false)
         {
             // TODO: Implement proper toast notification
             // For now, just show a message box
             var icon = isError ? MessageBoxImage.Error : MessageBoxImage.Information;
             MessageBox.Show(message, "SharpShot", MessageBoxButton.OK, icon);
+        }
+
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sharpshot_debug.log");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var logEntry = $"[{timestamp}] {message}\n";
+                File.AppendAllText(logPath, logEntry);
+            }
+            catch
+            {
+                // Ignore logging errors
+            }
         }
 
         public void ApplyThemeSettings()
@@ -650,6 +985,9 @@ namespace SharpShot
                     // Apply drop shadow opacity
                     var dropShadowOpacity = _settingsService.CurrentSettings.DropShadowOpacity;
                     UpdateDropShadowOpacity(dropShadowOpacity);
+
+                    // Update post-capture button styles with new theme color
+                    UpdatePostCaptureButtonStyles();
                 });
             }
             catch (Exception ex)
@@ -657,26 +995,72 @@ namespace SharpShot
                 System.Diagnostics.Debug.WriteLine($"Failed to apply theme settings: {ex.Message}");
             }
         }
+        
+        public void UpdateHotkeys()
+        {
+            try
+            {
+                _hotkeyManager?.UpdateHotkeys();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update hotkeys: {ex.Message}");
+            }
+        }
 
         private void UpdateIconColors(string color)
         {
             try
             {
+                // Update the global AccentBrush resource so all XAML elements using {DynamicResource AccentBrush} update automatically
+                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                Application.Current.Resources["AccentBrush"] = brush;
+                
                 // Update all icon paths to use the new color
                 if (RegionButton.Content is System.Windows.Shapes.Path regionPath)
-                    regionPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    regionPath.Stroke = brush;
                 
                 if (ScreenshotButton.Content is System.Windows.Shapes.Path screenshotPath)
-                    screenshotPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    screenshotPath.Stroke = brush;
                 
                 if (RecordingButton.Content is System.Windows.Shapes.Path recordingPath)
-                    recordingPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    recordingPath.Stroke = brush;
                 
                 if (SettingsButton.Content is System.Windows.Shapes.Path settingsPath)
-                    settingsPath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    settingsPath.Stroke = brush;
                 
                 if (CloseButton.Content is System.Windows.Shapes.Path closePath)
-                    closePath.Stroke = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                    closePath.Stroke = brush;
+                
+                // Update recording selection icons
+                if (RegionRecordButton.Content is System.Windows.Shapes.Path regionRecordPath)
+                    regionRecordPath.Stroke = brush;
+                
+                if (FullScreenRecordButton.Content is System.Windows.Shapes.Path fullScreenRecordPath)
+                    fullScreenRecordPath.Stroke = brush;
+                
+                if (OBSRecordButton.Content is System.Windows.Shapes.Path obsRecordPath)
+                    obsRecordPath.Stroke = brush;
+                
+                if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
+                    cancelRecordPath.Stroke = brush;
+                
+                // Update recording control icons
+                if (StopRecordButton.Content is System.Windows.Shapes.Path stopRecordPath)
+                    stopRecordPath.Stroke = brush;
+                
+                if (PauseRecordButton.Content is System.Windows.Shapes.Path pauseRecordPath)
+                    pauseRecordPath.Stroke = brush;
+                
+                // Update capture option icons
+                if (CancelButton.Content is System.Windows.Shapes.Path cancelPath)
+                    cancelPath.Stroke = brush;
+                
+                if (CopyButton.Content is System.Windows.Shapes.Path copyPath)
+                    copyPath.Stroke = brush;
+                
+                if (SaveButton.Content is System.Windows.Shapes.Path savePath)
+                    savePath.Stroke = brush;
                 
                 // Update separator colors
                 UpdateSeparatorColors(color);
@@ -693,7 +1077,33 @@ namespace SharpShot
         {
             try
             {
-                // Find all Rectangle elements in the main StackPanel that are separators
+                // Ensure separators always use full opacity by removing any alpha channel
+                var fullOpacityColor = color;
+                if (color.Length == 9) // Has alpha channel (e.g., #80FF8C00)
+                {
+                    fullOpacityColor = "#FF" + color.Substring(3); // Force full opacity
+                }
+                else if (color.Length == 7) // No alpha channel (e.g., #FF8C00)
+                {
+                    fullOpacityColor = "#FF" + color.Substring(1); // Add full opacity
+                }
+                
+                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(fullOpacityColor));
+                
+                // Update named separators directly
+                if (MainToolbarSeparator1 != null)
+                    MainToolbarSeparator1.Fill = brush;
+                
+                if (MainToolbarSeparator2 != null)
+                    MainToolbarSeparator2.Fill = brush;
+                
+                if (RecordingSelectionSeparator2 != null)
+                    RecordingSelectionSeparator2.Fill = brush;
+                
+                if (CaptureCompletionSeparator1 != null)
+                    CaptureCompletionSeparator1.Fill = brush;
+                
+                // Find all Rectangle elements in the main StackPanel that are separators (fallback)
                 var mainStackPanel = this.FindName("MainToolbarStackPanel") as StackPanel;
                 if (mainStackPanel != null)
                 {
@@ -701,7 +1111,7 @@ namespace SharpShot
                     {
                         if (child is System.Windows.Shapes.Rectangle rectangle && rectangle.Width == 1)
                         {
-                            rectangle.Fill = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                            rectangle.Fill = brush;
                         }
                     }
                 }
@@ -835,7 +1245,9 @@ namespace SharpShot
             trigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
             
             var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
-            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, Application.Current.Resources["SecondaryBrush"]));
+            // Use the same opacity-based approach as the settings buttons
+            var pressedColor = $"#30{iconColor.Substring(1)}"; // 30% opacity
+            pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(pressedColor))));
             
             template.Triggers.Add(trigger);
             template.Triggers.Add(pressedTrigger);
@@ -853,6 +1265,12 @@ namespace SharpShot
             if (RecordingButton != null) RecordingButton.Style = null;
             if (SettingsButton != null) SettingsButton.Style = null;
             if (CloseButton != null) CloseButton.Style = null;
+            
+            // Force recording selection buttons to refresh their styles
+            if (RegionRecordButton != null) RegionRecordButton.Style = null;
+            if (FullScreenRecordButton != null) FullScreenRecordButton.Style = null;
+            if (OBSRecordButton != null) OBSRecordButton.Style = null;
+            if (CancelRecordButton != null) CancelRecordButton.Style = null;
             
             // Re-apply the style
             var buttonStyle = Application.Current.Resources["ToolbarButtonStyle"] as Style;
@@ -883,8 +1301,115 @@ namespace SharpShot
                     CloseButton.Style = buttonStyle;
                     CloseButton.Width = 60;
                 }
+                
+                // Re-apply style to recording selection buttons
+                if (RegionRecordButton != null) 
+                {
+                    RegionRecordButton.Style = buttonStyle;
+                    RegionRecordButton.Width = 60;
+                }
+                if (FullScreenRecordButton != null) 
+                {
+                    FullScreenRecordButton.Style = buttonStyle;
+                    FullScreenRecordButton.Width = 60;
+                }
+                if (OBSRecordButton != null) 
+                {
+                    OBSRecordButton.Style = buttonStyle;
+                    OBSRecordButton.Width = 60;
+                }
+                if (CancelRecordButton != null) 
+                {
+                    CancelRecordButton.Style = buttonStyle;
+                    CancelRecordButton.Width = 60;
+                }
             }
         }
+
+        #region Windows Message Handling
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            
+            // Get the window handle
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var hwnd = helper.Handle;
+            
+            // Set the window handle in the hotkey manager
+            _hotkeyManager.SetWindowHandle(hwnd);
+            
+            // Add message hook
+            System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        }
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_HOTKEY)
+            {
+                var hotkeyId = wParam.ToInt32();
+                _hotkeyManager.HandleHotkeyMessage(hotkeyId);
+                handled = true;
+                return IntPtr.Zero;
+            }
+            
+            return IntPtr.Zero;
+        }
+        #endregion
+        #endregion
+
+        #region Theme-Aware Button Styling
+
+        private void UpdatePostCaptureButtonStyles()
+        {
+            if (_settingsService?.CurrentSettings?.IconColor != null)
+            {
+                var iconColorstr = _settingsService.CurrentSettings.IconColor;
+                if (System.Windows.Media.ColorConverter.ConvertFromString(iconColorstr) is System.Windows.Media.Color themeColor)
+                {
+                    var themeBrush = new System.Windows.Media.SolidColorBrush(themeColor);
+                    var hoverBrush = new System.Windows.Media.SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(32, themeColor.R, themeColor.G, themeColor.B));
+
+                    // Create dynamic styles for post-capture menu buttons
+                    CopyButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                    SaveButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                    CancelButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+
+                    // Also apply theme-aware styling to recording control buttons
+                    StopRecordButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                    PauseRecordButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                }
+            }
+        }
+
+        private Style CreateThemeAwareButtonStyle(System.Windows.Media.Color themeColor, System.Windows.Media.Brush hoverBrush)
+        {
+            var iconButtonStyle = this.Resources["IconButtonStyle"] as Style;
+            var style = new Style(typeof(Button), iconButtonStyle);
+
+            // Override the hover effect to use theme color with opacity-based approach
+            var hoverTrigger = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+            // Use 15% opacity for hover (same as settings buttons)
+            var hoverColor = System.Windows.Media.Color.FromArgb(38, themeColor.R, themeColor.G, themeColor.B); // 15% of 255 ≈ 38
+            hoverTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(hoverColor)));
+            hoverTrigger.Setters.Add(new Setter(EffectProperty, new DropShadowEffect
+            {
+                Color = themeColor,
+                BlurRadius = 12,
+                ShadowDepth = 0,
+                Opacity = 0.25
+            }));
+
+            // Add pressed trigger with 30% opacity (same as settings buttons)
+            var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
+            var pressedColor = System.Windows.Media.Color.FromArgb(77, themeColor.R, themeColor.G, themeColor.B); // 30% of 255 ≈ 77
+            pressedTrigger.Setters.Add(new Setter(BackgroundProperty, new SolidColorBrush(pressedColor)));
+
+            style.Triggers.Add(hoverTrigger);
+            style.Triggers.Add(pressedTrigger);
+            return style;
+        }
+
         #endregion
     }
 } 

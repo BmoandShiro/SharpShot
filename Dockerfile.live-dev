@@ -1,0 +1,35 @@
+# SharpShot Live Development Environment
+# This Dockerfile is optimized for live development with hot reloading
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+# Install FFmpeg and development tools
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    inotify-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy project file first for better caching
+COPY SharpShot.csproj ./
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy all source code
+COPY . ./
+
+# Build the application initially
+RUN dotnet build --configuration Debug -p:Platform=x64
+
+# Expose port for potential debugging
+EXPOSE 5000
+
+# Copy the watch script
+COPY watch-and-build.sh /app/
+RUN chmod +x /app/watch-and-build.sh
+
+# Default command - will be overridden by docker-compose
+CMD ["/app/watch-and-build.sh"] 

@@ -2,6 +2,12 @@
 
 A modern, dark-themed screenshot and screen recording tool built with C# and WPF for Windows 11.
 
+## License
+
+This project is licensed under the GNU General Public License v2.0 - see the [LICENSE](LICENSE) file for details.
+
+SharpShot includes OBS Studio for enhanced audio recording capabilities. OBS Studio is licensed under the GNU General Public License v2.0 and is distributed with SharpShot under the same license terms.
+
 ## Features
 
 ### 🖼️ Screenshot Functionality
@@ -17,6 +23,7 @@ A modern, dark-themed screenshot and screen recording tool built with C# and WPF
 - **Audio Support**: Include microphone audio in recordings
 - **Timer Display**: Real-time recording duration
 - **Visual Indicators**: Button changes color and shows timer when recording
+- **Bundled OBS Studio**: Professional audio recording with pre-installed OBS
 
 ### 🎨 Modern Dark UI
 - **Floating Toolbar**: Always-on-top, draggable toolbar
@@ -39,31 +46,34 @@ A modern, dark-themed screenshot and screen recording tool built with C# and WPF
 
 ## Installation & Usage
 
-### Option 1: Docker (Recommended for Cross-Platform)
-**Prerequisites:**
-- Windows 10/11 with Docker Desktop installed
-- Windows containers enabled in Docker Desktop
+### Option 1: Pre-built Package (Recommended)
+**Download the complete package:**
+- SharpShot-with-OBS-Release.zip (includes bundled OBS Studio)
+- Extract and run `Run SharpShot.bat`
 
-**Quick Start with Docker:**
+### Option 2: Build with OBS Bundling
+**Prerequisites:**
+- Windows 10/11
+- .NET 8.0 SDK
+- PowerShell
+
+**Build with bundled OBS:**
 ```powershell
 # Clone the repository
 git clone <repository-url>
 cd SharpShot
 
-# Run the build script
-.\build-and-run.ps1
+# Run the build script (includes OBS bundling)
+.\Build SharpShot with OBS.bat
 ```
 
-**Manual Docker Commands:**
+**Manual build:**
 ```powershell
-# Build the Docker image
-docker build -t sharpshot:latest .
-
-# Run the container
-docker run -it --rm --name sharpshot-app sharpshot:latest
+# Build with OBS bundling
+powershell -ExecutionPolicy Bypass -File "build-with-obs.ps1"
 ```
 
-### Option 2: Native .NET
+### Option 3: Development Build
 **Prerequisites:**
 - Windows 10/11
 - .NET 8.0 Runtime
@@ -82,6 +92,21 @@ dotnet build
 
 # Run the application
 dotnet run
+```
+
+### Option 4: Docker (Cross-Platform)
+**Prerequisites:**
+- Windows 10/11 with Docker Desktop installed
+- Windows containers enabled in Docker Desktop
+
+**Quick Start with Docker:**
+```powershell
+# Clone the repository
+git clone <repository-url>
+cd SharpShot
+
+# Run the build script
+.\build-and-run.ps1
 ```
 
 ### Running the Application

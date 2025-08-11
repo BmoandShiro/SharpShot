@@ -16,50 +16,6 @@ try {
 # Navigate to project directory
 Set-Location $PSScriptRoot
 
-# Check if FFmpeg is available on Windows host
-Write-Host "Checking FFmpeg availability..." -ForegroundColor Yellow
-$ffmpegInstalled = $false
-
-try {
-    $ffmpegTest = & ffmpeg -version 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "FFmpeg found on Windows host!" -ForegroundColor Green
-        $ffmpegInstalled = $true
-    } else {
-        throw "FFmpeg not found in PATH"
-    }
-} catch {
-    # Check if FFmpeg is in the bundled location
-    $bundledFfmpegPath = Join-Path $PSScriptRoot "ffmpeg\bin\ffmpeg.exe"
-    if (Test-Path $bundledFfmpegPath) {
-        Write-Host "FFmpeg found in bundled location!" -ForegroundColor Green
-        $ffmpegInstalled = $true
-    } else {
-        Write-Host "FFmpeg not found. Installing..." -ForegroundColor Yellow
-        
-        # Run the FFmpeg setup script
-        if (Test-Path "setup-ffmpeg.ps1") {
-            & "$PSScriptRoot\setup-ffmpeg.ps1"
-            
-            # Check if installation was successful
-            if (Test-Path $bundledFfmpegPath) {
-                Write-Host "FFmpeg installed successfully!" -ForegroundColor Green
-                $ffmpegInstalled = $true
-            } else {
-                Write-Host "Warning: FFmpeg installation may have failed." -ForegroundColor Yellow
-                Write-Host "Please install FFmpeg manually from: https://ffmpeg.org/download.html" -ForegroundColor Yellow
-            }
-        } else {
-            Write-Host "Warning: setup-ffmpeg.ps1 not found. Please install FFmpeg manually." -ForegroundColor Yellow
-            Write-Host "Download from: https://ffmpeg.org/download.html" -ForegroundColor Yellow
-        }
-    }
-}
-
-if (-not $ffmpegInstalled) {
-    Write-Host "Warning: FFmpeg is not available. Video recording may not work." -ForegroundColor Yellow
-}
-
 # Stop any existing containers
 Write-Host "Stopping any existing containers..." -ForegroundColor Yellow
 docker compose -f docker-compose.dev.yml down
@@ -76,7 +32,7 @@ if ($LASTEXITCODE -eq 0) {
     
     # Build in Docker (consistent environment)
     Write-Host "Building SharpShot in Docker..." -ForegroundColor Yellow
-    docker exec sharpshot-development dotnet build
+    docker exec sharpshot-development dotnet build -p:Platform=x64
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "Build successful! Starting SharpShot..." -ForegroundColor Green
@@ -97,11 +53,11 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "=== Development Workflow ===" -ForegroundColor Cyan
     Write-Host "1. Make changes to your code" -ForegroundColor Gray
-    Write-Host "2. Build in Docker: docker exec sharpshot-development dotnet build" -ForegroundColor Gray
+    Write-Host "2. Build in Docker: docker exec sharpshot-development dotnet build -p:Platform=x64" -ForegroundColor Gray
     Write-Host "3. Run on host: dotnet run" -ForegroundColor Gray
     Write-Host ""
     Write-Host "=== Quick Commands ===" -ForegroundColor Cyan
-    Write-Host "Build in Docker: docker exec sharpshot-development dotnet build" -ForegroundColor Gray
+    Write-Host "Build in Docker: docker exec sharpshot-development dotnet build -p:Platform=x64" -ForegroundColor Gray
     Write-Host "Run locally: dotnet run" -ForegroundColor Gray
     Write-Host "Stop Docker: docker compose -f docker-compose.dev.yml down" -ForegroundColor Gray
     Write-Host ""
