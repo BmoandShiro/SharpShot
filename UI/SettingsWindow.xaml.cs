@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -207,6 +206,9 @@ namespace SharpShot.UI
             // Populate screen dropdown with actual monitors
             PopulateScreenDropdown();
             
+            // Populate editor display monitor dropdown
+            PopulateEditorDisplayMonitorDropdown();
+            
             LoadSettings();
             
             // Add event handlers for sliders
@@ -306,6 +308,17 @@ namespace SharpShot.UI
                     comboItem.Content.ToString() == _originalSettings.SelectedScreen)
                 {
                     ScreenComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            
+            // Set editor display monitor combo box
+            foreach (var item in EditorDisplayMonitorComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.ScreenshotEditorDisplayMonitor)
+                {
+                    EditorDisplayMonitorComboBox.SelectedItem = item;
                     break;
                 }
             }
@@ -566,6 +579,11 @@ namespace SharpShot.UI
                     _originalSettings.SelectedScreen = screenItem.Content?.ToString() ?? "Primary Monitor";
                 }
                 
+                if (EditorDisplayMonitorComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem editorMonitorItem)
+                {
+                    _originalSettings.ScreenshotEditorDisplayMonitor = editorMonitorItem.Content?.ToString() ?? "Primary Monitor";
+                }
+                
                 if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
                 {
                     var engine = recordingEngineItem.Content?.ToString() ?? "FFmpeg";
@@ -704,6 +722,7 @@ namespace SharpShot.UI
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.EnableMagnifier = source.EnableMagnifier;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
+            target.ScreenshotEditorDisplayMonitor = source.ScreenshotEditorDisplayMonitor;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
@@ -751,6 +770,44 @@ namespace SharpShot.UI
             if (ScreenComboBox.SelectedItem == null)
             {
                 ScreenComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private void PopulateEditorDisplayMonitorDropdown()
+        {
+            // Clear existing items
+            EditorDisplayMonitorComboBox.Items.Clear();
+            
+            // Get all screens
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Add primary monitor option first
+            EditorDisplayMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Primary Monitor" });
+            
+            // Add individual monitors
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                var isPrimary = screen.Primary;
+                var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
+                EditorDisplayMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = monitorName });
+            }
+            
+            // Select the saved setting
+            foreach (var item in EditorDisplayMonitorComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.ScreenshotEditorDisplayMonitor)
+                {
+                    EditorDisplayMonitorComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            
+            // If no match found, default to "Primary Monitor"
+            if (EditorDisplayMonitorComboBox.SelectedItem == null)
+            {
+                EditorDisplayMonitorComboBox.SelectedIndex = 0;
             }
         }
 

@@ -280,13 +280,16 @@ namespace SharpShot.UI
         
         private void CenterImageOnScreen()
         {
-            var screenWidth = SystemParameters.PrimaryScreenWidth;
-            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            // Get the bounds of the selected monitor for editor display
+            var selectedMonitorBounds = GetSelectedMonitorBounds();
+            
+            var screenWidth = selectedMonitorBounds.Width;
+            var screenHeight = selectedMonitorBounds.Height;
             
             var imageWidth = _originalBitmap.Width;
             var imageHeight = _originalBitmap.Height;
             
-            // Center the image on screen
+            // Center the image on the selected monitor
             Canvas.SetLeft(ScreenshotImage, (screenWidth - imageWidth) / 2);
             Canvas.SetTop(ScreenshotImage, (screenHeight - imageHeight) / 2);
             
@@ -295,6 +298,101 @@ namespace SharpShot.UI
             Canvas.SetTop(OverlayCanvas, (screenHeight - imageHeight) / 2);
             OverlayCanvas.Width = imageWidth;
             OverlayCanvas.Height = imageHeight;
+            
+            // Use Windows API to force the window to the correct monitor
+            ForceWindowToMonitor(selectedMonitorBounds);
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int left, top, right, bottom;
+        }
+
+        private void ForceWindowToMonitor(System.Drawing.Rectangle targetMonitorBounds)
+        {
+            try
+            {
+                // Get the window handle
+                var windowHandle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                
+                // Set the window to normal state to allow positioning
+                WindowState = WindowState.Normal;
+                
+                // Make the window fill the entire selected monitor
+                Width = targetMonitorBounds.Width;
+                Height = targetMonitorBounds.Height;
+                
+                // Position the window to cover the entire selected monitor
+                Left = targetMonitorBounds.X;
+                Top = targetMonitorBounds.Y;
+                
+                // Use Windows API to ensure the window is on the correct monitor
+                const uint SWP_NOZORDER = 0x0004;
+                const uint SWP_SHOWWINDOW = 0x0040;
+                
+                SetWindowPos(
+                    windowHandle,
+                    IntPtr.Zero,
+                    (int)Left,
+                    (int)Top,
+                    (int)Width,
+                    (int)Height,
+                    SWP_NOZORDER | SWP_SHOWWINDOW
+                );
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to force window to monitor: {ex.Message}");
+            }
+        }
+
+        private System.Drawing.Rectangle GetSelectedMonitorBounds()
+        {
+            if (_settingsService?.CurrentSettings?.ScreenshotEditorDisplayMonitor == null)
+            {
+                // Fallback to primary screen if no setting
+                return System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+            }
+
+            var selectedMonitor = _settingsService.CurrentSettings.ScreenshotEditorDisplayMonitor;
+            var screens = System.Windows.Forms.Screen.AllScreens;
+
+            if (selectedMonitor == "Primary Monitor")
+            {
+                return System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+            }
+
+            // Check if it's a specific monitor
+            if (selectedMonitor.StartsWith("Monitor "))
+            {
+                var monitorNumber = selectedMonitor.Replace("Monitor ", "").Replace(" (Primary)", "");
+                if (int.TryParse(monitorNumber, out int monitorIndex) && monitorIndex > 0 && monitorIndex <= screens.Length)
+                {
+                    return screens[monitorIndex - 1].Bounds;
+                }
+            }
+
+            // Fallback to primary screen
+            return System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
         }
 
         private BitmapSource ConvertBitmapToBitmapSource(Bitmap bitmap)
