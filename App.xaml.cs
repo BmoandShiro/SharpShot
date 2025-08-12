@@ -11,6 +11,9 @@ namespace SharpShot
         private SettingsService _settingsService = null!;
         private HotkeyManager _hotkeyManager = null!;
 
+        // Make SettingsService accessible to other parts of the app
+        public static SettingsService SettingsService => ((App)Current)._settingsService;
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
@@ -22,12 +25,18 @@ namespace SharpShot
             // Load settings
             _settingsService.LoadSettings();
             
+            // Debug: Verify settings are loaded
+            System.Diagnostics.Debug.WriteLine($"App startup - Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
+            
             // Initialize hotkeys
             _hotkeyManager.Initialize();
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
+            // Debug: Verify settings before saving
+            System.Diagnostics.Debug.WriteLine($"App exit - Settings before save - IconColor: {_settingsService?.CurrentSettings?.IconColor}, SavePath: {_settingsService?.CurrentSettings?.SavePath}");
+            
             // Save settings and cleanup
             _settingsService?.SaveSettings();
             _hotkeyManager?.Dispose();

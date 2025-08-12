@@ -33,8 +33,8 @@ namespace SharpShot
         {
             InitializeComponent();
             
-            // Initialize services
-            _settingsService = new SettingsService();
+            // Use the shared SettingsService from App.xaml.cs (which has loaded settings)
+            _settingsService = App.SettingsService;
             _screenshotService = new ScreenshotService(_settingsService);
             _recordingService = new RecordingService(_settingsService);
             _hotkeyManager = new HotkeyManager(_settingsService);
@@ -58,6 +58,9 @@ namespace SharpShot
             
             // Apply theme settings
             ApplyThemeSettings();
+            
+            // Debug: Verify settings are loaded
+            System.Diagnostics.Debug.WriteLine($"Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
             
             // Ensure window is visible after a short delay
             Dispatcher.BeginInvoke(new Action(() =>

@@ -1,0 +1,13 @@
+@echo off
+echo Starting SharpShot OBS Docker Environment...
+echo Clearing Docker cache and containers...
+docker system prune -f
+docker compose -f SharpShot/docker-compose.dev.yml down
+docker compose -f SharpShot/docker-compose.dev.yml rm -f
+echo Docker environment cleaned!
+cd SharpShot
+echo Starting OBS Docker environment with console output...
+powershell -ExecutionPolicy Bypass -File "obs-docker.ps1"
+echo.
+echo Press any key to close this window...
+pause > nul
