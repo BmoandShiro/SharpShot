@@ -50,6 +50,13 @@ namespace SharpShot.UI
         private readonly Stack<List<UIElement>> _redoStack = new();
         private readonly Stack<Bitmap> _bitmapRedoStack = new();
         
+        // Drag functionality for toolbars
+        private bool _isDraggingBottomToolbar = false;
+        private bool _isDraggingColorPicker = false;
+        private Point _dragStartPoint;
+        private Point _bottomToolbarStartPosition;
+        private Point _colorPickerStartPosition;
+        
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
         public bool ImageCopied { get; private set; } = false;
@@ -1342,5 +1349,111 @@ namespace SharpShot.UI
                 _previewBitmap = null; // Clear the preview bitmap after finalization
             }
         }
+
+        #region Toolbar Drag Functionality
+
+        private void BottomToolbar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                _isDraggingBottomToolbar = true;
+                _dragStartPoint = e.GetPosition(this);
+                _bottomToolbarStartPosition = new Point(
+                    BottomToolbarBorder.Margin.Left,
+                    BottomToolbarBorder.Margin.Top
+                );
+                BottomToolbarBorder.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void BottomToolbar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingBottomToolbar)
+            {
+                _isDraggingBottomToolbar = false;
+                BottomToolbarBorder.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        private void BottomToolbar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingBottomToolbar && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentPoint = e.GetPosition(this);
+                var deltaX = currentPoint.X - _dragStartPoint.X;
+                var deltaY = currentPoint.Y - _dragStartPoint.Y;
+
+                // Calculate new position
+                var newLeft = _bottomToolbarStartPosition.X + deltaX;
+                var newTop = _bottomToolbarStartPosition.Y + deltaY;
+
+                // Constrain to window bounds with some padding
+                var padding = 10.0;
+                var maxLeft = ActualWidth - BottomToolbarBorder.ActualWidth - padding;
+                var maxTop = ActualHeight - BottomToolbarBorder.ActualHeight - padding;
+                newLeft = Math.Max(padding, Math.Min(newLeft, maxLeft));
+                newTop = Math.Max(padding, Math.Min(newTop, maxTop));
+
+                // Update position by changing alignment and margin
+                BottomToolbarBorder.HorizontalAlignment = HorizontalAlignment.Left;
+                BottomToolbarBorder.VerticalAlignment = VerticalAlignment.Top;
+                BottomToolbarBorder.Margin = new Thickness(newLeft, newTop, 0, 0);
+            }
+        }
+
+        private void ColorPicker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                _isDraggingColorPicker = true;
+                _dragStartPoint = e.GetPosition(this);
+                _colorPickerStartPosition = new Point(
+                    ColorPickerPanel.Margin.Left,
+                    ColorPickerPanel.Margin.Top
+                );
+                ColorPickerPanel.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void ColorPicker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingColorPicker)
+            {
+                _isDraggingColorPicker = false;
+                ColorPickerPanel.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        private void ColorPicker_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingColorPicker && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentPoint = e.GetPosition(this);
+                var deltaX = currentPoint.X - _dragStartPoint.X;
+                var deltaY = currentPoint.Y - _dragStartPoint.Y;
+
+                // Calculate new position
+                var newLeft = _colorPickerStartPosition.X + deltaX;
+                var newTop = _colorPickerStartPosition.Y + deltaY;
+
+                // Constrain to window bounds with some padding
+                var padding = 10.0;
+                var maxLeft = ActualWidth - ColorPickerPanel.ActualWidth - padding;
+                var maxTop = ActualHeight - ColorPickerPanel.ActualHeight - padding;
+                newLeft = Math.Max(padding, Math.Min(newLeft, maxLeft));
+                newTop = Math.Max(padding, Math.Min(newTop, maxTop));
+
+                // Update position by changing alignment and margin
+                ColorPickerPanel.HorizontalAlignment = HorizontalAlignment.Left;
+                ColorPickerPanel.VerticalAlignment = VerticalAlignment.Top;
+                ColorPickerPanel.Margin = new Thickness(newLeft, newTop, 0, 0);
+            }
+        }
+
+        #endregion
     }
 }
