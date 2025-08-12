@@ -17,6 +17,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <Platform>x64</Platform>
     <Platforms>x64</Platforms>
+    <ApplicationIcon>output_color.ico</ApplicationIcon>
     <RestoreFallbackFolders></RestoreFallbackFolders>
   </PropertyGroup>
 
