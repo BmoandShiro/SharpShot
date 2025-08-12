@@ -48,11 +48,17 @@ if (Test-Path "ffmpeg") {
     Write-Host "FFmpeg bundled successfully!" -ForegroundColor Green
 }
 
-# 7. Copy documentation
-Write-Host "Step 6: Copying documentation..." -ForegroundColor Yellow
+# 7. Copy documentation and license files
+Write-Host "Step 6: Copying documentation and license files..." -ForegroundColor Yellow
 if (Test-Path "README.md") { Copy-Item -Path "README.md" -Destination $releaseFolder -Force }
 if (Test-Path "LICENSE") { Copy-Item -Path "LICENSE" -Destination $releaseFolder -Force }
 if (Test-Path "OBS_INTEGRATION.md") { Copy-Item -Path "OBS_INTEGRATION.md" -Destination $releaseFolder -Force }
+
+# Copy license files for third-party components
+Write-Host "Step 6a: Copying third-party license files..." -ForegroundColor Yellow
+if (Test-Path "FFmpeg-LICENSE.txt") { Copy-Item -Path "FFmpeg-LICENSE.txt" -Destination $releaseFolder -Force }
+if (Test-Path "OBS-LICENSE.txt") { Copy-Item -Path "OBS-LICENSE.txt" -Destination $releaseFolder -Force }
+Write-Host "Third-party license files copied successfully!" -ForegroundColor Green
 
 # 8. Create launcher scripts
 Write-Host "Step 7: Creating launchers..." -ForegroundColor Yellow
@@ -108,6 +114,7 @@ Write-Host "- SharpShot.exe (standalone)" -ForegroundColor White
 Write-Host "- OBS Studio (complete)" -ForegroundColor White
 Write-Host "- FFmpeg (if available)" -ForegroundColor White
 Write-Host "- Launchers and documentation" -ForegroundColor White
+Write-Host "- License files (GPL v2, FFmpeg, OBS Studio)" -ForegroundColor White
 Write-Host ""
 Write-Host "Test the release package by running:" -ForegroundColor Yellow
 Write-Host "  $releaseFolder\Run SharpShot.bat" -ForegroundColor Cyan
