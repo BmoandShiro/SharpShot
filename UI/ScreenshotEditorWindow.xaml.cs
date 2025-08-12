@@ -1358,10 +1358,38 @@ namespace SharpShot.UI
             {
                 _isDraggingBottomToolbar = true;
                 _dragStartPoint = e.GetPosition(this);
-                _bottomToolbarStartPosition = new Point(
-                    BottomToolbarBorder.Margin.Left,
-                    BottomToolbarBorder.Margin.Top
-                );
+                
+                // Calculate current position based on alignment and margin
+                var currentLeft = 0.0;
+                var currentTop = 0.0;
+                
+                if (BottomToolbarBorder.HorizontalAlignment == HorizontalAlignment.Center)
+                {
+                    currentLeft = (ActualWidth - BottomToolbarBorder.ActualWidth) / 2;
+                }
+                else if (BottomToolbarBorder.HorizontalAlignment == HorizontalAlignment.Left)
+                {
+                    currentLeft = BottomToolbarBorder.Margin.Left;
+                }
+                else if (BottomToolbarBorder.HorizontalAlignment == HorizontalAlignment.Right)
+                {
+                    currentLeft = ActualWidth - BottomToolbarBorder.ActualWidth - BottomToolbarBorder.Margin.Right;
+                }
+                
+                if (BottomToolbarBorder.VerticalAlignment == VerticalAlignment.Bottom)
+                {
+                    currentTop = ActualHeight - BottomToolbarBorder.ActualHeight - BottomToolbarBorder.Margin.Bottom;
+                }
+                else if (BottomToolbarBorder.VerticalAlignment == VerticalAlignment.Top)
+                {
+                    currentTop = BottomToolbarBorder.Margin.Top;
+                }
+                else if (BottomToolbarBorder.VerticalAlignment == VerticalAlignment.Center)
+                {
+                    currentTop = (ActualHeight - BottomToolbarBorder.ActualHeight) / 2;
+                }
+                
+                _bottomToolbarStartPosition = new Point(currentLeft, currentTop);
                 BottomToolbarBorder.CaptureMouse();
                 e.Handled = true;
             }
@@ -1409,10 +1437,38 @@ namespace SharpShot.UI
             {
                 _isDraggingColorPicker = true;
                 _dragStartPoint = e.GetPosition(this);
-                _colorPickerStartPosition = new Point(
-                    ColorPickerPanel.Margin.Left,
-                    ColorPickerPanel.Margin.Top
-                );
+                
+                // Calculate current position based on alignment and margin
+                var currentLeft = 0.0;
+                var currentTop = 0.0;
+                
+                if (ColorPickerPanel.HorizontalAlignment == HorizontalAlignment.Center)
+                {
+                    currentLeft = (ActualWidth - ColorPickerPanel.ActualWidth) / 2;
+                }
+                else if (ColorPickerPanel.HorizontalAlignment == HorizontalAlignment.Left)
+                {
+                    currentLeft = ColorPickerPanel.Margin.Left;
+                }
+                else if (ColorPickerPanel.HorizontalAlignment == HorizontalAlignment.Right)
+                {
+                    currentLeft = ActualWidth - ColorPickerPanel.ActualWidth - ColorPickerPanel.Margin.Right;
+                }
+                
+                if (ColorPickerPanel.VerticalAlignment == VerticalAlignment.Center)
+                {
+                    currentTop = (ActualHeight - ColorPickerPanel.ActualHeight) / 2;
+                }
+                else if (ColorPickerPanel.VerticalAlignment == VerticalAlignment.Top)
+                {
+                    currentTop = ColorPickerPanel.Margin.Top;
+                }
+                else if (ColorPickerPanel.VerticalAlignment == VerticalAlignment.Bottom)
+                {
+                    currentTop = ActualHeight - ColorPickerPanel.ActualHeight - ColorPickerPanel.Margin.Bottom;
+                }
+                
+                _colorPickerStartPosition = new Point(currentLeft, currentTop);
                 ColorPickerPanel.CaptureMouse();
                 e.Handled = true;
             }
