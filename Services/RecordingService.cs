@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using SharpShot.Models;
 using SharpShot.Services;
-using ScreenRecorderLib;
+// using ScreenRecorderLib; // Temporarily commented out for MSIX build
 
 namespace SharpShot.Services
 {

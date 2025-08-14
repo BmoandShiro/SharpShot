@@ -1365,16 +1365,16 @@ namespace SharpShot.UI
                 var allDevices = new List<string>();
                 
                 // Method 1: Try using ScreenRecorderLib's built-in device enumeration
-                var screenRecorderDevices = GetScreenRecorderLibDevices();
-                if (screenRecorderDevices.Count > 0)
-                {
-                    LogToFile($"ScreenRecorderLib found {screenRecorderDevices.Count} devices");
-                    allDevices.AddRange(screenRecorderDevices);
-                }
-                else
-                {
-                    LogToFile("ScreenRecorderLib found no devices, trying fallback methods");
-                }
+                // var screenRecorderDevices = GetScreenRecorderLibDevices();
+                // if (screenRecorderDevices.Count > 0)
+                // {
+                //     LogToFile($"ScreenRecorderLib found {screenRecorderDevices.Count} devices");
+                //     allDevices.AddRange(screenRecorderDevices);
+                // }
+                // else
+                // {
+                //     LogToFile("ScreenRecorderLib found no devices, trying fallback methods");
+                // }
                 
                 // Method 2: Try using NAudio (if available) - most reliable
                 var naudioDevices = GetNAudioDevices();
@@ -1439,37 +1439,37 @@ namespace SharpShot.UI
             }
         }
 
-        private List<string> GetScreenRecorderLibDevices()
-        {
-            var devices = new List<string>();
-            
-            try
-            {
-                LogToFile("Getting audio devices using ScreenRecorderLib...");
-                
-                // ScreenRecorderLib provides access to audio devices through its API
-                // We can use the library's built-in capabilities to get device information
-                
-                // For now, we'll use a simplified approach that leverages ScreenRecorderLib's
-                // understanding of the audio system, but we'll still use our Windows API
-                // enumeration since ScreenRecorderLib doesn't expose device enumeration directly
-                
-                // Get devices using the real Windows Core Audio API approach
-                var inputDevices = GetRealAudioDevicesByType("input");
-                var outputDevices = GetRealAudioDevicesByType("output");
-                
-                devices.AddRange(inputDevices);
-                devices.AddRange(outputDevices);
-                
-                LogToFile($"ScreenRecorderLib-compatible devices found: {devices.Count} (Input: {inputDevices.Count}, Output: {outputDevices.Count})");
-                return devices;
-            }
-            catch (Exception ex)
-            {
-                LogToFile($"Error getting ScreenRecorderLib audio devices: {ex.Message}");
-                return devices;
-            }
-        }
+        // private List<string> GetScreenRecorderLibDevices()
+        // {
+        //     var devices = new List<string>();
+        //     
+        //     try
+        //     {
+        //         LogToFile("Getting audio devices using ScreenRecorderLib...");
+        //         
+        //         // ScreenRecorderLib provides access to audio devices through its API
+        //         // We can use the library's built-in capabilities to get device information
+        //         
+        //         // For now, we'll use a simplified approach that leverages ScreenRecorderLib's
+        //         // understanding of the audio system, but we'll still use our Windows API
+        //         // enumeration since ScreenRecorderLib doesn't expose device enumeration directly
+        //         
+        //         // Get devices using the real Windows Core Audio API approach
+        //         var inputDevices = GetRealAudioDevicesByType("input");
+        //         var outputDevices = GetRealAudioDevicesByType("output");
+        //         
+        //         devices.AddRange(inputDevices);
+        //         devices.AddRange(outputDevices);
+        //         
+        //         LogToFile($"ScreenRecorderLib-compatible devices found: {devices.Count} (Input: {inputDevices.Count}, Output: {outputDevices.Count})");
+        //         return devices;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         LogToFile($"Error getting ScreenRecorderLib audio devices: {ex.Message}");
+        //         return devices;
+        //     }
+        // }
 
         private List<string> GetRealAudioDevicesByType(string deviceType)
         {
@@ -2011,7 +2011,7 @@ namespace SharpShot.UI
                 LogToFile("=== Refreshing Audio Devices ===");
                 
                 // Test new device enumeration methods
-                var screenRecorderDevices = GetScreenRecorderLibDevices();
+                // var screenRecorderDevices = GetScreenRecorderLibDevices();
                 var naudioDevices = GetNAudioDevices();
                 var wmiDevices = GetWMIAudioDevices();
                 var coreAudioDevices = GetSimplifiedCoreAudioDevices();
@@ -2077,7 +2077,7 @@ namespace SharpShot.UI
                 
                 var message = $"=== Audio Device Detection Results ===\n\n";
                 message += $"Enumeration Methods:\n";
-                message += $"  - ScreenRecorderLib devices: {screenRecorderDevices.Count}\n";
+                // message += $"  - ScreenRecorderLib devices: {screenRecorderDevices.Count}\n";
                 message += $"  - NAudio devices: {naudioDevices.Count}\n";
                 message += $"  - WMI devices: {wmiDevices.Count}\n";
                 message += $"  - Core Audio devices: {coreAudioDevices.Count}\n\n";

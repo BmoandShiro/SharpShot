@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace SharpShot.Models
 {
@@ -28,8 +29,8 @@ namespace SharpShot.Models
 
         public Settings()
         {
-            // Default values
-            SavePath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\SharpShot";
+            // Default values - automatically detect user's Pictures folder
+            SavePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SharpShot");
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
             AudioRecordingMode = "No Audio";
