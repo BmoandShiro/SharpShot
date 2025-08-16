@@ -1052,20 +1052,51 @@ namespace SharpShot.UI
                 var finalBitmap = RenderToBitmap();
                 FinalBitmap = finalBitmap;
                 
-                // Copy to clipboard
-                using var stream = new MemoryStream();
-                finalBitmap.Save(stream, ImageFormat.Png);
-                stream.Position = 0;
-                
-                var bitmapSource = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-                Clipboard.SetImage(bitmapSource);
-                
-                ImageCopied = true;
-                Close();
+                if (finalBitmap != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Copying bitmap: {finalBitmap.Width}x{finalBitmap.Height}");
+                    
+                    // Run the copy operation using the same reliable method as the toolbar
+                    _screenshotService.CopyToClipboard(finalBitmap);
+                    
+                    System.Diagnostics.Debug.WriteLine("Copy operation completed successfully");
+                    
+                    // Verify clipboard has data (same verification as toolbar)
+                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    {
+                        System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Warning: Clipboard verification failed - no image data found");
+                        MessageBox.Show("Copy completed but verification failed", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    
+                    ImageCopied = true;
+                    Close();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("No bitmap available for copying");
+                    MessageBox.Show("No image available to copy!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to copy image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Copy failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                
+                // Check if clipboard actually has the image despite the exception (same as toolbar)
+                if (System.Windows.Forms.Clipboard.ContainsImage())
+                {
+                    System.Diagnostics.Debug.WriteLine("Clipboard verification successful despite exception");
+                    ImageCopied = true;
+                    Close();
+                }
+                else
+                {
+                    MessageBox.Show($"Failed to copy image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
