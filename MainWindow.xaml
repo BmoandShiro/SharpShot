@@ -73,7 +73,7 @@
                 <Button x:Name="RegionButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="RegionButton_Click"
-                        ToolTip="Select Region (Double Ctrl)"
+                        ToolTip="Select Region"
                         Width="70" Height="50"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource RegionIcon}" 
@@ -89,7 +89,7 @@
                 <Button x:Name="ScreenshotButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="ScreenshotButton_Click"
-                        ToolTip="Full Screen Screenshot (Ctrl+Shift+S)"
+                        ToolTip="Full Screen Screenshot"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource CameraIcon}" 
                           Stroke="#FFFF8C00" 
@@ -111,7 +111,7 @@
                 <Button x:Name="RecordingButton" 
                         Style="{StaticResource RecordingButtonStyle}"
                         Click="RecordingButton_Click"
-                        ToolTip="Toggle Recording (Ctrl+Shift+R)"
+                        ToolTip="Toggle Recording"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource VideoIcon}" 
                           Stroke="#FFFF8C00" 
