@@ -84,6 +84,13 @@ namespace SharpShot.Utils
             {
                 var (modifiers, keyCode) = ParseHotkey(hotkeyString);
                 
+                // Prevent single modifier keys from being registered as global hotkeys
+                if (IsSingleModifierKey(hotkeyString))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Warning: Cannot register '{hotkeyString}' as a global hotkey for {actionName} - it would interfere with normal typing. Use combinations like 'Ctrl+Shift+A', 'F1', or 'Space' instead.");
+                    return;
+                }
+                
                 // Validate hotkey - must have both modifiers and a key, or just a key
                 if (keyCode == 0)
                 {
@@ -116,29 +123,23 @@ namespace SharpShot.Utils
             }
         }
 
+        private bool IsSingleModifierKey(string hotkeyString)
+        {
+            return hotkeyString == "Shift" || hotkeyString == "Ctrl" || 
+                   hotkeyString == "Control" || hotkeyString == "Alt";
+        }
+
         private (uint modifiers, uint keyCode) ParseHotkey(string hotkeyString)
         {
             uint modifiers = 0;
             uint keyCode = 0;
 
-            // Handle single modifier keys
-            if (hotkeyString == "Ctrl" || hotkeyString == "Control")
+            // Prevent single modifier keys from being parsed as valid hotkeys
+            if (hotkeyString == "Ctrl" || hotkeyString == "Control" || 
+                hotkeyString == "Shift" || hotkeyString == "Alt")
             {
-                modifiers = 0x0003; // MOD_CONTROL
-                keyCode = 0x11; // VK_CONTROL
-                return (modifiers, keyCode);
-            }
-            if (hotkeyString == "Shift")
-            {
-                modifiers = 0x0004; // MOD_SHIFT
-                keyCode = 0x10; // VK_SHIFT
-                return (modifiers, keyCode);
-            }
-            if (hotkeyString == "Alt")
-            {
-                modifiers = 0x0001; // MOD_ALT
-                keyCode = 0x12; // VK_MENU (Alt key)
-                return (modifiers, keyCode);
+                // Return invalid combination to prevent registration
+                return (0, 0);
             }
 
             var parts = hotkeyString.Split('+');
