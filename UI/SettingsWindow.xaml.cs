@@ -365,6 +365,7 @@ namespace SharpShot.UI
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
+            DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             
             // Load magnifier zoom level
             if (MagnifierZoomComboBox != null && MagnifierZoomComboBox.Items.Count > 0)
@@ -635,6 +636,7 @@ namespace SharpShot.UI
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
+                _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
                 
                 // Save magnifier zoom level
                 if (MagnifierZoomComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem zoomItem)
@@ -721,6 +723,7 @@ namespace SharpShot.UI
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.EnableMagnifier = source.EnableMagnifier;
+            target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
             target.ScreenshotEditorDisplayMonitor = source.ScreenshotEditorDisplayMonitor;
             

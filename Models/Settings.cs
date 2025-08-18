@@ -26,6 +26,7 @@ namespace SharpShot.Models
         private bool _enableMagnifier;
         private double _magnifierZoomLevel;
         private string _screenshotEditorDisplayMonitor = string.Empty;
+        private bool _disableAllPopups;
 
         public Settings()
         {
@@ -47,6 +48,7 @@ namespace SharpShot.Models
             EnableMagnifier = true; // Default to true - magnifier helps with precise selection
             MagnifierZoomLevel = 2.0; // Default to 2x zoom
             ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
+            DisableAllPopups = false; // Default to false - show popups
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
@@ -158,6 +160,12 @@ namespace SharpShot.Models
         {
             get => _screenshotEditorDisplayMonitor;
             set => SetProperty(ref _screenshotEditorDisplayMonitor, value);
+        }
+
+        public bool DisableAllPopups
+        {
+            get => _disableAllPopups;
+            set => SetProperty(ref _disableAllPopups, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

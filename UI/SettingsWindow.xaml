@@ -452,6 +452,11 @@
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
+                <CheckBox x:Name="DisableAllPopupsCheckBox"
+                          Content="Disable all popup notifications"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, all popup dialogs (success messages, file saved confirmations, etc.) will be suppressed"/>
                
                <!-- Magnifier Zoom Level -->
                <StackPanel x:Name="MagnifierZoomPanel"

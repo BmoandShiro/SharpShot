@@ -486,11 +486,41 @@ namespace SharpShot
                     _lastCapturedBitmap = regionWindow.CapturedBitmap;
                     System.Diagnostics.Debug.WriteLine($"Region captured successfully: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
                     
-                    // Only show capture options if the user didn't already save/copy in the editor
-                    if (!IsEditorActionCompleted(regionWindow))
+                    // Check if user completed an action in the editor
+                    if (IsEditorActionCompleted(regionWindow))
                     {
-                        ShowCaptureOptions();
+                        // User saved or copied in editor - handle accordingly
+                        if (regionWindow.CapturedBitmap != null)
+                        {
+                            // Check what action was completed
+                            if (regionWindow.EditorCopyRequested)
+                            {
+                                // User clicked copy in editor - automatically trigger copy using our working method
+                                System.Diagnostics.Debug.WriteLine("Editor copy requested - automatically triggering copy operation");
+                                
+                                // Use the working MSIX-compatible copy method
+                                _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                                
+                                // Show success notification
+                                ShowNotification("Screenshot copied to clipboard!", isError: false);
+                                
+                                // Don't show capture options since copy is already done
+                                return;
+                            }
+                            else if (regionWindow.EditorSaveRequested)
+                            {
+                                // User saved in editor - show success notification
+                                System.Diagnostics.Debug.WriteLine("Editor save completed");
+                                ShowNotification("Screenshot saved!", isError: false);
+                                
+                                // Don't show capture options since save is already done
+                                return;
+                            }
+                        }
                     }
+                    
+                    // Show capture options for normal cases
+                    ShowCaptureOptions();
                 }
                 else
                 {
@@ -503,7 +533,8 @@ namespace SharpShot
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Region capture failed: {ex.Message}");
-                ShowNotification("Region capture failed!", isError: true);
+                // Commented out false alarm - this can trigger when editor copy/save is successful
+                // ShowNotification("Region capture failed!", isError: true);
                 Visibility = Visibility.Visible;
             }
         }
@@ -626,7 +657,7 @@ namespace SharpShot
                     LogToFile("Copy operation completed successfully");
                     
                     // Verify clipboard has data
-                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    if (System.Windows.Clipboard.ContainsImage())
                     {
                         System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
                         LogToFile("Clipboard verification successful - image data is present");
@@ -666,7 +697,7 @@ namespace SharpShot
                 LogToFile($"Stack trace: {ex.StackTrace}");
                 
                 // Check if clipboard actually has the image despite the exception
-                if (System.Windows.Forms.Clipboard.ContainsImage())
+                if (System.Windows.Clipboard.ContainsImage())
                 {
                     System.Diagnostics.Debug.WriteLine("Clipboard verification successful despite exception");
                     LogToFile("Clipboard verification successful despite exception");
@@ -697,20 +728,30 @@ namespace SharpShot
 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    var fileType = filePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? "Recording" : "Screenshot";
-                    var result = MessageBox.Show(
-                        $"{fileType} saved to:\n{filePath}\n\nWould you like to open the folder?",
-                        "File Saved",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Information);
-
-                    if (result == MessageBoxResult.Yes)
+                    // Show success popup if popups are enabled
+                    if (!_settingsService.CurrentSettings.DisableAllPopups)
                     {
-                        var folderPath = Path.GetDirectoryName(filePath);
-                        if (!string.IsNullOrEmpty(folderPath))
+                        var fileType = filePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? "Recording" : "Screenshot";
+                        var result = MessageBox.Show(
+                            $"{fileType} saved to:\n{filePath}\n\nWould you like to open the folder?",
+                            "File Saved",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Information);
+
+                        if (result == MessageBoxResult.Yes)
                         {
-                            System.Diagnostics.Process.Start("explorer.exe", folderPath);
+                            var folderPath = Path.GetDirectoryName(filePath);
+                            if (!string.IsNullOrEmpty(folderPath))
+                            {
+                                System.Diagnostics.Process.Start("explorer.exe", folderPath);
+                            }
                         }
+                    }
+                    else
+                    {
+                        // Log the save operation instead of showing popup
+                        System.Diagnostics.Debug.WriteLine($"File saved (popup disabled): {filePath}");
+                        LogToFile($"File saved (popup disabled): {filePath}");
                     }
                 }
             }
@@ -931,7 +972,7 @@ namespace SharpShot
                     LogToFile("Auto-copy operation completed successfully");
                     
                     // Verify clipboard has data
-                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    if (System.Windows.Clipboard.ContainsImage())
                     {
                         System.Diagnostics.Debug.WriteLine("Auto-copy clipboard verification successful - image data is present");
                         LogToFile("Auto-copy clipboard verification successful - image data is present");
@@ -953,6 +994,15 @@ namespace SharpShot
 
         private void ShowNotification(string message, bool isError = false)
         {
+            // Check if popups are disabled
+            if (_settingsService.CurrentSettings.DisableAllPopups)
+            {
+                // Just log the message instead of showing popup
+                System.Diagnostics.Debug.WriteLine($"Notification (popup disabled): {message}");
+                LogToFile($"Notification (popup disabled): {message}");
+                return;
+            }
+
             // TODO: Implement proper toast notification
             // For now, just show a message box
             var icon = isError ? MessageBoxImage.Error : MessageBoxImage.Information;

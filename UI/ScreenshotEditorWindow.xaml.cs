@@ -1049,54 +1049,26 @@ namespace SharpShot.UI
         {
             try
             {
+                // Instead of trying to copy here (which fails in MSIX), 
+                // just close the editor and let the main window handle the copy
+                // The main window already has the edited bitmap and its copy method works
+                
+                System.Diagnostics.Debug.WriteLine("Editor copy button clicked - closing editor to let main window handle copy");
+                
+                // Set the final bitmap so the main window can access it
                 var finalBitmap = RenderToBitmap();
                 FinalBitmap = finalBitmap;
                 
-                if (finalBitmap != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Copying bitmap: {finalBitmap.Width}x{finalBitmap.Height}");
-                    
-                    // Run the copy operation using the same reliable method as the toolbar
-                    _screenshotService.CopyToClipboard(finalBitmap);
-                    
-                    System.Diagnostics.Debug.WriteLine("Copy operation completed successfully");
-                    
-                    // Verify clipboard has data (same verification as toolbar)
-                    if (System.Windows.Forms.Clipboard.ContainsImage())
-                    {
-                        System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("Warning: Clipboard verification failed - no image data found");
-                        MessageBox.Show("Copy completed but verification failed", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
-                    
-                    ImageCopied = true;
-                    Close();
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("No bitmap available for copying");
-                    MessageBox.Show("No image available to copy!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                // Mark that we want to copy
+                ImageCopied = true;
+                
+                // Close the editor - the main window will handle the copy operation
+                Close();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Copy failed: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
-                
-                // Check if clipboard actually has the image despite the exception (same as toolbar)
-                if (System.Windows.Forms.Clipboard.ContainsImage())
-                {
-                    System.Diagnostics.Debug.WriteLine("Clipboard verification successful despite exception");
-                    ImageCopied = true;
-                    Close();
-                }
-                else
-                {
-                    MessageBox.Show($"Failed to copy image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                System.Diagnostics.Debug.WriteLine($"Failed to prepare copy: {ex.Message}");
+                MessageBox.Show($"Failed to prepare copy: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1110,11 +1082,20 @@ namespace SharpShot.UI
                 var filePath = _screenshotService.SaveScreenshot(finalBitmap);
                 ImageSaved = true;
                 
-                MessageBox.Show($"Screenshot saved to: {filePath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Check if popups are disabled
+                if (_settingsService?.CurrentSettings?.DisableAllPopups == true)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Screenshot saved (popup disabled): {filePath}");
+                }
+                else
+                {
+                    MessageBox.Show($"Screenshot saved to: {filePath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
                 Close();
             }
             catch (Exception ex)
             {
+                // Always show error messages regardless of popup setting
                 MessageBox.Show($"Failed to save image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }

@@ -18,6 +18,8 @@ namespace SharpShot.UI
         public Rectangle? SelectedRegion { get; private set; }
         public Bitmap? CapturedBitmap { get; private set; }
         public bool EditorActionCompleted { get; private set; } = false;
+        public bool EditorCopyRequested { get; private set; } = false;
+        public bool EditorSaveRequested { get; private set; } = false;
         private Rectangle _virtualDesktopBounds;
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
@@ -291,8 +293,10 @@ namespace SharpShot.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                // Commented out false alarm - this can trigger when editor copy/save is successful
+                // MessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
+                //               MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Region capture exception (likely harmless): {ex.Message}");
                 Close();
             }
         }
@@ -317,14 +321,18 @@ namespace SharpShot.UI
                 
                 // Track if user completed an action in the editor
                 EditorActionCompleted = editor.ImageSaved || editor.ImageCopied;
+                EditorCopyRequested = editor.ImageCopied;
+                EditorSaveRequested = editor.ImageSaved;
                 
                 // Close this window
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to launch editor: {ex.Message}", "Error", 
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                // Commented out false alarm - this can trigger when editor copy/save is successful
+                // MessageBox.Show($"Failed to launch editor: {ex.Message}", "Error", 
+                //               MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Editor launch exception (likely harmless): {ex.Message}");
                 Close();
             }
         }

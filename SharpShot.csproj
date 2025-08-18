@@ -51,6 +51,11 @@
     <Content Include="$(MSBuildThisFileDirectory)runtimes\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Include OBS-Studio for MSIX packaging -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)OBS-Studio\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- OBS Studio Bundling removed to prevent infinite loop -->
 
 </Project> 
