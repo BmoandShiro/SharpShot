@@ -14,10 +14,12 @@ namespace SharpShot.Utils
         private readonly Dictionary<string, int> _hotkeyIds;
         private readonly Dictionary<string, int> _hotkeyPressCounts;
         private readonly Dictionary<string, DateTime> _hotkeyLastPressTimes;
+        private readonly Dictionary<string, bool> _hotkeyToggleStates;
         private int _nextHotkeyId = 1;
         private bool _isInitialized;
         private IntPtr _windowHandle;
         private const int TRIPLE_CLICK_TIMEOUT_MS = 500; // 500ms window for triple click
+        private const int DOUBLE_CLICK_TIMEOUT_MS = 300; // 300ms window for double click
 
         // Windows API imports
         [DllImport("user32.dll")]
@@ -36,6 +38,7 @@ namespace SharpShot.Utils
             _hotkeyIds = new Dictionary<string, int>();
             _hotkeyPressCounts = new Dictionary<string, int>();
             _hotkeyLastPressTimes = new Dictionary<string, DateTime>();
+            _hotkeyToggleStates = new Dictionary<string, bool>();
             _isInitialized = false;
         }
         
@@ -63,18 +66,24 @@ namespace SharpShot.Utils
             // Unregister existing hotkeys
             UnregisterAllHotkeys();
 
-            // Register hotkeys from settings - only register if they exist
-            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotRegion"))
+            // Register hotkeys from settings - only register if they exist and are not empty
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotRegion") && 
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["ScreenshotRegion"]))
                 RegisterHotkey("ScreenshotRegion", _settingsService.CurrentSettings.Hotkeys["ScreenshotRegion"]);
-            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotFullscreen"))
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotFullscreen") && 
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["ScreenshotFullscreen"]))
                 RegisterHotkey("ScreenshotFullscreen", _settingsService.CurrentSettings.Hotkeys["ScreenshotFullscreen"]);
-            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordRegion"))
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordRegion") && 
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["RecordRegion"]))
                 RegisterHotkey("RecordRegion", _settingsService.CurrentSettings.Hotkeys["RecordRegion"]);
-            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordFullscreen"))
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordFullscreen") && 
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["RecordFullscreen"]))
                 RegisterHotkey("RecordFullscreen", _settingsService.CurrentSettings.Hotkeys["RecordFullscreen"]);
-            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("Copy"))
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("Copy") && 
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["Copy"]))
                 RegisterHotkey("Copy", _settingsService.CurrentSettings.Hotkeys["Copy"]);
-            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("Save"))
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("Save") && 
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["Save"]))
                 RegisterHotkey("Save", _settingsService.CurrentSettings.Hotkeys["Save"]);
         }
 
@@ -211,6 +220,18 @@ namespace SharpShot.Utils
                 case "F10": return 0x79;
                 case "F11": return 0x7A;
                 case "F12": return 0x7B;
+                case "F13": return 0x7C;
+                case "F14": return 0x7D;
+                case "F15": return 0x7E;
+                case "F16": return 0x7F;
+                case "F17": return 0x80;
+                case "F18": return 0x81;
+                case "F19": return 0x82;
+                case "F20": return 0x83;
+                case "F21": return 0x84;
+                case "F22": return 0x85;
+                case "F23": return 0x86;
+                case "F24": return 0x87;
                 case "ESCAPE": return 0x1B;
                 case "ENTER": return 0x0D;
                 case "SPACE": return 0x20;
@@ -272,9 +293,14 @@ namespace SharpShot.Utils
                     {
                         HandleTripleClickAction(actionName, action);
                     }
+                    else if (actionName == "ScreenshotRegion")
+                    {
+                        // Special handling for region selection - implement toggle behavior
+                        HandleRegionSelectionToggle();
+                    }
                     else
                     {
-                        // Normal single-click behavior
+                        // Normal single-click behavior for other actions
                         action?.Invoke();
                     }
                 }
@@ -325,6 +351,66 @@ namespace SharpShot.Utils
             }
         }
 
+        private void HandleRegionSelectionToggle()
+        {
+            var now = DateTime.Now;
+            var actionName = "ScreenshotRegion";
+            
+            // Initialize if not exists
+            if (!_hotkeyPressCounts.ContainsKey(actionName))
+            {
+                _hotkeyPressCounts[actionName] = 0;
+                _hotkeyLastPressTimes[actionName] = now;
+            }
+
+            var lastPressTime = _hotkeyLastPressTimes[actionName];
+            var timeSinceLastPress = (now - lastPressTime).TotalMilliseconds;
+
+            // Reset counter if too much time has passed
+            if (timeSinceLastPress > DOUBLE_CLICK_TIMEOUT_MS)
+            {
+                _hotkeyPressCounts[actionName] = 0;
+            }
+
+            // Increment press count
+            _hotkeyPressCounts[actionName]++;
+            _hotkeyLastPressTimes[actionName] = now;
+
+            if (_hotkeyPressCounts[actionName] == 1)
+            {
+                // Check if there's already an active region selection window
+                if (_hotkeyToggleStates.ContainsKey(actionName) && _hotkeyToggleStates[actionName])
+                {
+                    // There's already an active region selection - cancel it first
+                    System.Diagnostics.Debug.WriteLine("F18 pressed while region selection is active - canceling existing instance first");
+                    OnRegionCaptureCanceled?.Invoke();
+                    
+                    // Reset the toggle state
+                    _hotkeyToggleStates[actionName] = false;
+                    _hotkeyPressCounts[actionName] = 0;
+                    return;
+                }
+                
+                // First press - start region selection
+                System.Diagnostics.Debug.WriteLine("First press of F18 - starting region selection");
+                _hotkeyToggleStates[actionName] = true;
+                OnRegionCaptureRequested?.Invoke();
+            }
+            else if (_hotkeyPressCounts[actionName] == 2 && timeSinceLastPress <= DOUBLE_CLICK_TIMEOUT_MS)
+            {
+                // Second press within timeout - cancel region selection
+                System.Diagnostics.Debug.WriteLine("Second press of F18 - canceling region selection");
+                _hotkeyToggleStates[actionName] = false;
+                _hotkeyPressCounts[actionName] = 0;
+                OnRegionCaptureCanceled?.Invoke();
+            }
+            else if (_hotkeyPressCounts[actionName] >= 3)
+            {
+                // Reset for next cycle
+                _hotkeyPressCounts[actionName] = 0;
+            }
+        }
+
         private void UnregisterAllHotkeys()
         {
             if (_windowHandle != IntPtr.Zero)
@@ -338,6 +424,7 @@ namespace SharpShot.Utils
             _hotkeyIds.Clear();
             _hotkeyPressCounts.Clear();
             _hotkeyLastPressTimes.Clear();
+            _hotkeyToggleStates.Clear();
         }
 
         public void UpdateHotkeys()
@@ -360,8 +447,45 @@ namespace SharpShot.Utils
             _isInitialized = false;
         }
 
+        public void DebugHotkeyStatus()
+        {
+            System.Diagnostics.Debug.WriteLine($"=== Hotkey Manager Debug Info ===");
+            System.Diagnostics.Debug.WriteLine($"Initialized: {_isInitialized}");
+            System.Diagnostics.Debug.WriteLine($"Window Handle: {_windowHandle}");
+            System.Diagnostics.Debug.WriteLine($"Global Hotkeys Enabled: {_settingsService.CurrentSettings.EnableGlobalHotkeys}");
+            System.Diagnostics.Debug.WriteLine($"Registered Hotkeys Count: {_registeredHotkeys.Count}");
+            
+            foreach (var hotkey in _settingsService.CurrentSettings.Hotkeys)
+            {
+                System.Diagnostics.Debug.WriteLine($"Setting: {hotkey.Key} = '{hotkey.Value}'");
+            }
+            
+            foreach (var registered in _registeredHotkeys)
+            {
+                var actionName = _hotkeyIds.FirstOrDefault(x => x.Value == registered.Key).Key ?? "Unknown";
+                System.Diagnostics.Debug.WriteLine($"Registered: {actionName} (ID: {registered.Key})");
+            }
+
+            foreach (var toggleState in _hotkeyToggleStates)
+            {
+                System.Diagnostics.Debug.WriteLine($"Toggle State: {toggleState.Key} = {toggleState.Value}");
+            }
+            System.Diagnostics.Debug.WriteLine($"================================");
+        }
+
+        public void ResetRegionSelectionToggle()
+        {
+            var actionName = "ScreenshotRegion";
+            if (_hotkeyToggleStates.ContainsKey(actionName))
+            {
+                _hotkeyToggleStates[actionName] = false;
+                System.Diagnostics.Debug.WriteLine("Region selection toggle state reset");
+            }
+        }
+
         // Events
         public event Action? OnRegionCaptureRequested;
+        public event Action? OnRegionCaptureCanceled;
         public event Action? OnFullScreenCaptureRequested;
         public event Action? OnToggleRecordingRequested;
         public event Action? OnSaveRequested;

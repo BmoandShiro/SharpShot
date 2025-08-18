@@ -263,21 +263,30 @@ namespace SharpShot.UI
             System.Diagnostics.Debug.WriteLine($"Initial magnifier position: ({magnifierX}, {magnifierY})");
             
             // Ensure magnifier stays within virtual desktop bounds
-            if (magnifierX + MagnifierSize > screenWidth)
+            if (magnifierX + MagnifierSize > virtualDesktopBounds.X + virtualDesktopBounds.Width)
             {
                 magnifierX = cursorX - MagnifierSize - 50; // Place to the left instead with increased offset
                 System.Diagnostics.Debug.WriteLine($"Switched to left side: {magnifierX}");
             }
             
-            if (magnifierY < 0)
+            // Also ensure left boundary is respected
+            if (magnifierX < virtualDesktopBounds.X)
             {
-                magnifierY = 0;
-                System.Diagnostics.Debug.WriteLine($"Adjusted Y to top: {magnifierY}");
+                magnifierX = virtualDesktopBounds.X;
+                System.Diagnostics.Debug.WriteLine($"Adjusted X to virtual desktop left: {magnifierX}");
             }
-            else if (magnifierY + MagnifierSize > screenHeight)
+            
+            // Fix: Use virtual desktop bounds instead of hardcoded 0 for Y positioning
+            // This allows the magnifier to move to monitors with negative Y coordinates (like top monitors)
+            if (magnifierY < virtualDesktopBounds.Y)
             {
-                magnifierY = screenHeight - MagnifierSize;
-                System.Diagnostics.Debug.WriteLine($"Adjusted Y to bottom: {magnifierY}");
+                magnifierY = virtualDesktopBounds.Y;
+                System.Diagnostics.Debug.WriteLine($"Adjusted Y to virtual desktop top: {magnifierY}");
+            }
+            else if (magnifierY + MagnifierSize > virtualDesktopBounds.Y + virtualDesktopBounds.Height)
+            {
+                magnifierY = virtualDesktopBounds.Y + virtualDesktopBounds.Height - MagnifierSize;
+                System.Diagnostics.Debug.WriteLine($"Adjusted Y to virtual desktop bottom: {magnifierY}");
             }
             
             // Additional DPI-aware positioning for 4K monitors
@@ -327,8 +336,18 @@ namespace SharpShot.UI
             // Update window position
             Dispatcher.Invoke(() =>
             {
+                // Ensure the window can be positioned at negative coordinates (for top monitors)
+                // Windows sometimes has issues with this, so we need to be explicit
                 Left = magnifierX;
                 Top = magnifierY;
+                
+                // Force a window position update to ensure it actually moves
+                // This is especially important for monitors with negative coordinates
+                if (WindowState == WindowState.Normal)
+                {
+                    // Force window to update its position
+                    UpdateLayout();
+                }
             });
         }
 

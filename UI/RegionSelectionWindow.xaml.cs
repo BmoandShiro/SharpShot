@@ -13,6 +13,14 @@ namespace SharpShot.UI
     {
         private readonly ScreenshotService _screenshotService;
         private readonly SettingsService? _settingsService;
+        private static RegionSelectionWindow? _activeInstance;
+        
+        public static void CancelActiveInstance()
+        {
+            _activeInstance?.Close();
+            _activeInstance = null;
+        }
+        
         private Point _startPoint;
         private bool _isSelecting;
         public Rectangle? SelectedRegion { get; private set; }
@@ -31,6 +39,9 @@ namespace SharpShot.UI
             _screenshotService = screenshotService;
             _settingsService = settingsService;
             _isRecordingMode = isRecordingMode; // Store the mode
+            
+            // Set this as the active instance
+            _activeInstance = this;
             
             // Calculate virtual desktop bounds (all monitors combined)
             _virtualDesktopBounds = GetVirtualDesktopBounds();
@@ -58,6 +69,15 @@ namespace SharpShot.UI
             
             // Initialize magnifier
             InitializeMagnifier();
+            
+            // Handle window closed event
+            Closed += (sender, e) =>
+            {
+                if (_activeInstance == this)
+                {
+                    _activeInstance = null;
+                }
+            };
         }
 
         private Rectangle GetVirtualDesktopBounds()

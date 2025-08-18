@@ -90,6 +90,7 @@ namespace SharpShot
             
             // Hotkey events
             _hotkeyManager.OnRegionCaptureRequested += OnRegionCaptureRequested;
+            _hotkeyManager.OnRegionCaptureCanceled += OnRegionCaptureCanceled;
             _hotkeyManager.OnFullScreenCaptureRequested += OnFullScreenCaptureRequested;
             _hotkeyManager.OnToggleRecordingRequested += OnToggleRecordingRequested;
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
@@ -405,6 +406,16 @@ namespace SharpShot
             await CaptureRegion();
         }
 
+        private void OnRegionCaptureCanceled()
+        {
+            // Cancel any ongoing region selection
+            // This will be called when F18 is pressed twice
+            System.Diagnostics.Debug.WriteLine("Region capture canceled by double-press of F18");
+            
+            // Cancel the active region selection window if it exists
+            UI.RegionSelectionWindow.CancelActiveInstance();
+        }
+
         private async void OnFullScreenCaptureRequested()
         {
             await CaptureFullScreen();
@@ -527,6 +538,9 @@ namespace SharpShot
                     System.Diagnostics.Debug.WriteLine("No bitmap captured from region selection");
                 }
                 
+                // Reset the hotkey toggle state since region selection is complete
+                _hotkeyManager.ResetRegionSelectionToggle();
+                
                 // Show main window again
                 Visibility = Visibility.Visible;
             }
@@ -535,6 +549,10 @@ namespace SharpShot
                 System.Diagnostics.Debug.WriteLine($"Region capture failed: {ex.Message}");
                 // Commented out false alarm - this can trigger when editor copy/save is successful
                 // ShowNotification("Region capture failed!", isError: true);
+                
+                // Reset the hotkey toggle state since region selection failed
+                _hotkeyManager.ResetRegionSelectionToggle();
+                
                 Visibility = Visibility.Visible;
             }
         }
@@ -1402,6 +1420,9 @@ namespace SharpShot
             
             // Add message hook
             System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            
+            // Debug hotkey status after window handle is set
+            _hotkeyManager.DebugHotkeyStatus();
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
