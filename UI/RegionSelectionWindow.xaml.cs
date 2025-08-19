@@ -66,17 +66,43 @@ namespace SharpShot.UI
             
             // Ensure the window can capture keyboard input and connect the KeyDown event
             Focusable = true;
-            Focus();
-            KeyDown += OnKeyDown;
             
-            // Also try connecting to PreviewKeyDown as a backup
+            // Set window to capture all keyboard input
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Background = System.Windows.Media.Brushes.Transparent;
+            
+            // Connect keyboard events
+            KeyDown += OnKeyDown;
             PreviewKeyDown += OnKeyDown;
             
-            // Ensure window gets focus when activated
+            // Also try to capture keyboard input at the window level
+            PreviewKeyUp += (s, e) => { }; // Empty handler to ensure keyboard capture
+            
+            // Ensure window gets focus when activated and maintains it
             Activated += (s, e) => 
             {
                 System.Diagnostics.Debug.WriteLine("RegionSelectionWindow activated - setting focus");
                 Focus();
+                // Force focus again after a short delay to ensure it sticks
+                Dispatcher.BeginInvoke(new Action(() => Focus()), System.Windows.Threading.DispatcherPriority.Loaded);
+            };
+            
+            // Also ensure focus when the window is shown
+            Loaded += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow loaded - setting focus");
+                Focus();
+            };
+            
+            // Ensure focus when the window becomes visible
+            IsVisibleChanged += (s, e) =>
+            {
+                if (IsVisible)
+                {
+                    System.Diagnostics.Debug.WriteLine("RegionSelectionWindow became visible - setting focus");
+                    Focus();
+                }
             };
             
             // Debug focus events
@@ -312,6 +338,13 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine("ESC key pressed - canceling region selection");
                 e.Handled = true; // Mark as handled to prevent other handlers from processing it
+                
+                // Ensure we have focus before processing ESC
+                if (!IsFocused)
+                {
+                    System.Diagnostics.Debug.WriteLine("Window not focused, forcing focus before processing ESC");
+                    Focus();
+                }
                 
                 // Reset the hotkey toggle state when ESC is pressed
                 if (_activeInstance == this)
