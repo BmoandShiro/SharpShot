@@ -143,6 +143,20 @@
                           Width="28" Height="28"/>
                 </Button>
 
+                <!-- Minimize Button -->
+                <Button x:Name="MinimizeButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="MinimizeButton_Click"
+                        ToolTip="Minimize SharpShot"
+                        VerticalAlignment="Center">
+                    <Path Data="M2 7H22" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="24" Height="8"/>
+                </Button>
+
                 <!-- Close Button -->
                 <Button x:Name="CloseButton" 
                         Style="{StaticResource IconButtonStyle}"

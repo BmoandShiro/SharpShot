@@ -332,6 +332,7 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
@@ -361,6 +362,7 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
                 
                 // Hide main toolbar separators
@@ -413,6 +415,7 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Show completion options for video
@@ -434,6 +437,11 @@ namespace SharpShot
             var settingsWindow = new UI.SettingsWindow(_settingsService, _hotkeyManager);
             settingsWindow.Owner = this;
             settingsWindow.ShowDialog();
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -630,6 +638,7 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
@@ -676,6 +685,7 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Visible;
                 RecordingButton.Visibility = Visibility.Visible;
                 SettingsButton.Visibility = Visibility.Visible;
+                MinimizeButton.Visibility = Visibility.Visible;
                 CloseButton.Visibility = Visibility.Visible;
                 
                 // Reset recording button content to the original Path (video camera icon)
@@ -1159,6 +1169,9 @@ namespace SharpShot
                 if (SettingsButton.Content is System.Windows.Shapes.Path settingsPath)
                     settingsPath.Stroke = brush;
                 
+                if (MinimizeButton.Content is System.Windows.Shapes.Path minimizePath)
+                    minimizePath.Stroke = brush;
+                
                 if (CloseButton.Content is System.Windows.Shapes.Path closePath)
                     closePath.Stroke = brush;
                 
@@ -1397,6 +1410,7 @@ namespace SharpShot
             if (ScreenshotButton != null) ScreenshotButton.Style = null;
             if (RecordingButton != null) RecordingButton.Style = null;
             if (SettingsButton != null) SettingsButton.Style = null;
+            if (MinimizeButton != null) MinimizeButton.Style = null;
             if (CloseButton != null) CloseButton.Style = null;
             
             // Force recording selection buttons to refresh their styles
@@ -1428,6 +1442,11 @@ namespace SharpShot
                 {
                     SettingsButton.Style = buttonStyle;
                     SettingsButton.Width = 60;
+                }
+                if (MinimizeButton != null) 
+                {
+                    MinimizeButton.Style = buttonStyle;
+                    MinimizeButton.Width = 60;
                 }
                 if (CloseButton != null) 
                 {
