@@ -143,6 +143,14 @@
                           Width="28" Height="28"/>
                 </Button>
 
+                <!-- Separator -->
+                <Rectangle x:Name="MainToolbarSeparator3"
+                           Width="1" 
+                           Height="25" 
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"/>
+
                 <!-- Minimize Button -->
                 <Button x:Name="MinimizeButton" 
                         Style="{StaticResource IconButtonStyle}"

@@ -338,6 +338,7 @@ namespace SharpShot
                 // Hide main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
 
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
@@ -368,6 +369,7 @@ namespace SharpShot
                 // Hide main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
                 
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
@@ -417,6 +419,11 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
+
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
 
                 // Show completion options for video
                 CancelButton.Visibility = Visibility.Visible;
@@ -644,6 +651,7 @@ namespace SharpShot
                 // Hide main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
 
                 // Show completion options in correct order: Copy, Save, Separator, Cancel (X on far right)
                 CopyButton.Visibility = Visibility.Visible;
@@ -694,6 +702,7 @@ namespace SharpShot
                 // Show main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Visible;
                 MainToolbarSeparator2.Visibility = Visibility.Visible;
+                MainToolbarSeparator3.Visibility = Visibility.Visible;
                 
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
@@ -1239,6 +1248,9 @@ namespace SharpShot
                 
                 if (MainToolbarSeparator2 != null)
                     MainToolbarSeparator2.Fill = brush;
+                
+                if (MainToolbarSeparator3 != null)
+                    MainToolbarSeparator3.Fill = brush;
                 
                 if (RecordingSelectionSeparator2 != null)
                     RecordingSelectionSeparator2.Fill = brush;
