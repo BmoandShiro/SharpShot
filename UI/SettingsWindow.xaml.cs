@@ -401,6 +401,9 @@ namespace SharpShot.UI
             CopyHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Copy", "");
             SaveHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Save", "");
             
+            // Apply current hotkeys immediately so they work without saving
+            ApplyCurrentHotkeys();
+            
             // Apply initial theme colors and close button style
             UpdateThemeColors();
             
@@ -732,6 +735,32 @@ namespace SharpShot.UI
             foreach (var kvp in source.Hotkeys)
             {
                 target.Hotkeys[kvp.Key] = kvp.Value;
+            }
+        }
+
+        private void ApplyCurrentHotkeys()
+        {
+            try
+            {
+                // Copy current hotkey settings to the service immediately
+                var currentSettings = _settingsService.CurrentSettings;
+                currentSettings.EnableGlobalHotkeys = _originalSettings.EnableGlobalHotkeys;
+                
+                // Copy hotkeys
+                currentSettings.Hotkeys.Clear();
+                foreach (var kvp in _originalSettings.Hotkeys)
+                {
+                    currentSettings.Hotkeys[kvp.Key] = kvp.Value;
+                }
+                
+                // Update hotkeys immediately so they work without saving
+                _hotkeyManager?.UpdateHotkeys();
+                
+                System.Diagnostics.Debug.WriteLine("Current hotkeys applied immediately - no save required");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying current hotkeys: {ex.Message}");
             }
         }
 

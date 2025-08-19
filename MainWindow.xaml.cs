@@ -77,6 +77,37 @@ namespace SharpShot
             System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");
         }
 
+        private void LoadHotkeysFromConfig()
+        {
+            try
+            {
+                // Load hotkeys directly from the settings service
+                var settings = _settingsService.CurrentSettings;
+                
+                // Update the hotkey manager's settings with the loaded config
+                if (_hotkeyManager != null)
+                {
+                    // The hotkey manager will use these settings when Initialize() is called
+                    System.Diagnostics.Debug.WriteLine("Hotkeys loaded from config file on startup");
+                    System.Diagnostics.Debug.WriteLine($"ScreenshotRegion: {GetHotkeyValue(settings.Hotkeys, "ScreenshotRegion")}");
+                    System.Diagnostics.Debug.WriteLine($"ScreenshotFullscreen: {GetHotkeyValue(settings.Hotkeys, "ScreenshotFullscreen")}");
+                    System.Diagnostics.Debug.WriteLine($"RecordRegion: {GetHotkeyValue(settings.Hotkeys, "RecordRegion")}");
+                    System.Diagnostics.Debug.WriteLine($"RecordFullscreen: {GetHotkeyValue(settings.Hotkeys, "RecordFullscreen")}");
+                    System.Diagnostics.Debug.WriteLine($"Copy: {GetHotkeyValue(settings.Hotkeys, "Copy")}");
+                    System.Diagnostics.Debug.WriteLine($"Save: {GetHotkeyValue(settings.Hotkeys, "Save")}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading hotkeys from config: {ex.Message}");
+            }
+        }
+
+        private string GetHotkeyValue(System.Collections.Generic.Dictionary<string, string> hotkeys, string key)
+        {
+            return hotkeys.ContainsKey(key) ? hotkeys[key] : "Not Set";
+        }
+
         private void SetupEventHandlers()
         {
             // Window dragging
@@ -95,6 +126,9 @@ namespace SharpShot
             _hotkeyManager.OnToggleRecordingRequested += OnToggleRecordingRequested;
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
             _hotkeyManager.OnCopyRequested += OnCopyRequested;
+            
+            // Load hotkeys directly from config file immediately
+            LoadHotkeysFromConfig();
             
             // Initialize hotkeys
             _hotkeyManager.Initialize();
@@ -489,6 +523,17 @@ namespace SharpShot
                 
                 // Show region selection window
                 var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
+                
+                // Set the hotkey toggle state to indicate region selection is active
+                _hotkeyManager.SetRegionSelectionActive();
+                
+                // Subscribe to the canceled event to reset the hotkey toggle state
+                regionWindow.OnRegionSelectionCanceled += () =>
+                {
+                    System.Diagnostics.Debug.WriteLine("RegionSelectionCanceled event received in MainWindow");
+                    _hotkeyManager.ResetRegionSelectionToggle();
+                };
+                
                 regionWindow.ShowDialog();
                 
                 // Check if a region was captured

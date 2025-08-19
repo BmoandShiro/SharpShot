@@ -9,16 +9,26 @@ using Point = System.Windows.Point;
 
 namespace SharpShot.UI
 {
-    public partial class RegionSelectionWindow : Window
-    {
-        private readonly ScreenshotService _screenshotService;
-        private readonly SettingsService? _settingsService;
-        private static RegionSelectionWindow? _activeInstance;
+            public partial class RegionSelectionWindow : Window
+        {
+            private readonly ScreenshotService _screenshotService;
+            private readonly SettingsService? _settingsService;
+            private static RegionSelectionWindow? _activeInstance;
+            
+            // Event to notify when region selection is canceled
+            public event Action? OnRegionSelectionCanceled;
         
         public static void CancelActiveInstance()
         {
-            _activeInstance?.Close();
-            _activeInstance = null;
+            if (_activeInstance != null)
+            {
+                // Notify that region selection was canceled
+                _activeInstance.OnRegionSelectionCanceled?.Invoke();
+                
+                // Close the window
+                _activeInstance.Close();
+                _activeInstance = null;
+            }
         }
         
         private Point _startPoint;
@@ -53,7 +63,28 @@ namespace SharpShot.UI
             SelectionCanvas.MouseLeftButtonDown += OnMouseLeftButtonDown;
             SelectionCanvas.MouseLeftButtonUp += OnMouseLeftButtonUp;
             SelectionCanvas.MouseMove += OnMouseMove;
+            
+            // Ensure the window can capture keyboard input and connect the KeyDown event
+            Focusable = true;
+            Focus();
             KeyDown += OnKeyDown;
+            
+            // Also try connecting to PreviewKeyDown as a backup
+            PreviewKeyDown += OnKeyDown;
+            
+            // Ensure window gets focus when activated
+            Activated += (s, e) => 
+            {
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow activated - setting focus");
+                Focus();
+            };
+            
+            // Debug focus events
+            GotFocus += (s, e) => System.Diagnostics.Debug.WriteLine("RegionSelectionWindow got focus");
+            LostFocus += (s, e) => System.Diagnostics.Debug.WriteLine("RegionSelectionWindow lost focus");
+            
+            // Test keyboard input by showing a message
+            System.Diagnostics.Debug.WriteLine("RegionSelectionWindow constructor completed - testing keyboard input");
             
             // Hide cursor instructions after a moment
             var timer = new System.Windows.Threading.DispatcherTimer
@@ -267,8 +298,30 @@ namespace SharpShot.UI
 
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"Key pressed in RegionSelectionWindow: {e.Key} (Handled: {e.Handled})");
+            
+            // Test any key press to see if keyboard input is working
+            if (e.Key == Key.Space)
+            {
+                System.Diagnostics.Debug.WriteLine("SPACE key pressed - testing keyboard input");
+                e.Handled = true;
+                return;
+            }
+            
             if (e.Key == Key.Escape)
             {
+                System.Diagnostics.Debug.WriteLine("ESC key pressed - canceling region selection");
+                e.Handled = true; // Mark as handled to prevent other handlers from processing it
+                
+                // Reset the hotkey toggle state when ESC is pressed
+                if (_activeInstance == this)
+                {
+                    _activeInstance = null;
+                }
+                
+                // Notify that region selection was canceled
+                OnRegionSelectionCanceled?.Invoke();
+                
                 // Magnifier will be stopped when window closes
                 Close();
             }

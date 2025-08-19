@@ -481,6 +481,17 @@ namespace SharpShot.Utils
                 _hotkeyToggleStates[actionName] = false;
                 System.Diagnostics.Debug.WriteLine("Region selection toggle state reset");
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ResetRegionSelectionToggle called but no toggle state found");
+            }
+        }
+
+        public void SetRegionSelectionActive()
+        {
+            var actionName = "ScreenshotRegion";
+            _hotkeyToggleStates[actionName] = true;
+            System.Diagnostics.Debug.WriteLine("Region selection toggle state set to active (started via button)");
         }
 
         // Events
