@@ -77,36 +77,45 @@ namespace SharpShot
             System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");
         }
 
-        private void LoadHotkeysFromConfig()
+        private void ApplySavedHotkeys()
         {
             try
             {
-                // Load hotkeys directly from the settings service
-                var settings = _settingsService.CurrentSettings;
+                // This method does exactly what the settings window does when it opens
+                // It copies the saved hotkey settings to the current settings and updates the hotkey manager
                 
-                // Update the hotkey manager's settings with the loaded config
+                System.Diagnostics.Debug.WriteLine("=== APPLYING SAVED HOTKEYS ON STARTUP ===");
+                
+                // Get the current settings from the service
+                var currentSettings = _settingsService.CurrentSettings;
+                
+                // Debug: Show what hotkeys are currently loaded
+                System.Diagnostics.Debug.WriteLine($"Current EnableGlobalHotkeys: {currentSettings.EnableGlobalHotkeys}");
+                foreach (var hotkey in currentSettings.Hotkeys)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Current: {hotkey.Key} = '{hotkey.Value}'");
+                }
+                
+                // The settings are already loaded from the config file by the SettingsService
+                // We just need to tell the hotkey manager to use them
                 if (_hotkeyManager != null)
                 {
-                    // The hotkey manager will use these settings when Initialize() is called
-                    System.Diagnostics.Debug.WriteLine("Hotkeys loaded from config file on startup");
-                    System.Diagnostics.Debug.WriteLine($"ScreenshotRegion: {GetHotkeyValue(settings.Hotkeys, "ScreenshotRegion")}");
-                    System.Diagnostics.Debug.WriteLine($"ScreenshotFullscreen: {GetHotkeyValue(settings.Hotkeys, "ScreenshotFullscreen")}");
-                    System.Diagnostics.Debug.WriteLine($"RecordRegion: {GetHotkeyValue(settings.Hotkeys, "RecordRegion")}");
-                    System.Diagnostics.Debug.WriteLine($"RecordFullscreen: {GetHotkeyValue(settings.Hotkeys, "RecordFullscreen")}");
-                    System.Diagnostics.Debug.WriteLine($"Copy: {GetHotkeyValue(settings.Hotkeys, "Copy")}");
-                    System.Diagnostics.Debug.WriteLine($"Save: {GetHotkeyValue(settings.Hotkeys, "Save")}");
+                    System.Diagnostics.Debug.WriteLine("Calling _hotkeyManager.UpdateHotkeys() to register hotkeys with Windows");
+                    _hotkeyManager.UpdateHotkeys();
+                    
+                    // Debug the hotkey manager status after update
+                    _hotkeyManager.DebugHotkeyStatus();
                 }
+                
+                System.Diagnostics.Debug.WriteLine("=== SAVED HOTKEYS APPLIED SUCCESSFULLY ===");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading hotkeys from config: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error applying saved hotkeys: {ex.Message}");
             }
         }
 
-        private string GetHotkeyValue(System.Collections.Generic.Dictionary<string, string> hotkeys, string key)
-        {
-            return hotkeys.ContainsKey(key) ? hotkeys[key] : "Not Set";
-        }
+
 
         private void SetupEventHandlers()
         {
@@ -127,11 +136,10 @@ namespace SharpShot
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
             _hotkeyManager.OnCopyRequested += OnCopyRequested;
             
-            // Load hotkeys directly from config file immediately
-            LoadHotkeysFromConfig();
-            
-            // Initialize hotkeys
+            // Initialize hotkeys first (this sets _isInitialized = true)
             _hotkeyManager.Initialize();
+            
+            // NOTE: Hotkeys will be applied AFTER the window handle is set in OnSourceInitialized
         }
 
         private void PositionWindow()
@@ -1466,7 +1474,10 @@ namespace SharpShot
             // Add message hook
             System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
             
-            // Debug hotkey status after window handle is set
+            // CRITICAL: NOW apply saved hotkeys AFTER the window handle is set
+            ApplySavedHotkeys();
+            
+            // Debug hotkey status after everything is set up
             _hotkeyManager.DebugHotkeyStatus();
         }
 
