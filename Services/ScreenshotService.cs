@@ -60,6 +60,7 @@ namespace SharpShot.Services
             // Handle different screen selection options
             switch (selectedScreen)
             {
+                case "All Screens":
                 case "All Monitors":
                     return GetVirtualDesktopBounds();
                     

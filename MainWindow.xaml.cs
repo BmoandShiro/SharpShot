@@ -944,7 +944,8 @@ namespace SharpShot
                     _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
                     _settingsService.SaveSettings();
                     
-                    await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                    // Pass null as region to let the service determine bounds based on selected screen
+                    await _recordingService.StartRecording(null);
                 }
                 catch (Exception ex)
                 {

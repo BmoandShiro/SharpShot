@@ -126,6 +126,20 @@ namespace SharpShot.UI
             
             // Save initial state for undo/redo
             SaveStateForUndo();
+            
+            // Update undo/redo button states
+            UpdateUndoRedoButtonStates();
+            
+            // Ensure theme-aware button styles are applied after window is loaded
+            if (_settingsService?.CurrentSettings?.IconColor != null)
+            {
+                var themeColorStr = _settingsService.CurrentSettings.IconColor;
+                if (System.Windows.Media.ColorConverter.ConvertFromString(themeColorStr) is System.Windows.Media.Color themeColor)
+                {
+                    var brush = new SolidColorBrush(themeColor);
+                    UpdateButtonStyleColors(brush);
+                }
+            }
         }
 
         private void ApplyThemeSettings()
@@ -251,7 +265,7 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to update separator colors: {ex.Message}");
             }
-                }
+        }
         
         private void UpdateButtonStyleColors(SolidColorBrush brush)
         {
@@ -261,6 +275,8 @@ namespace SharpShot.UI
                 // Create dynamic styles for all the editor buttons
                 var themeColor = brush.Color;
                 var hoverBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(32, themeColor.R, themeColor.G, themeColor.B));
+                
+                System.Diagnostics.Debug.WriteLine($"Applying theme-aware button styles with color: {themeColor}");
                 
                 // Apply theme-aware styling to all editor buttons
                 UndoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
@@ -278,6 +294,8 @@ namespace SharpShot.UI
                 PenButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 TextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 HighlightButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                
+                System.Diagnostics.Debug.WriteLine("All button styles updated with theme-aware styling");
             }
             catch (Exception ex)
             {
@@ -970,50 +988,114 @@ namespace SharpShot.UI
             // Clear redo stacks when new action is performed
             _redoStack.Clear();
             _bitmapRedoStack.Clear();
+            
+            // Update button states
+            UpdateUndoRedoButtonStates();
+            
+            System.Diagnostics.Debug.WriteLine($"State saved for undo - UI elements: {currentState.Count}, Undo stack: {_undoStack.Count}, Redo stack cleared");
         }
 
         private void UndoButton_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"Undo clicked - Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            
             if (_undoStack.Count > 0 && _bitmapUndoStack.Count > 0)
             {
-                // Save current state to redo stack
-                var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
-                var currentBitmap = FinalBitmap ?? _originalBitmap;
-                _redoStack.Push(currentUIState);
-                _bitmapRedoStack.Push(new Bitmap(currentBitmap));
-                
-                // Restore previous state
-                var previousUIState = _undoStack.Pop();
-                var previousBitmap = _bitmapUndoStack.Pop();
-                
-                // Restore UI elements
-                RestoreState(previousUIState);
-                
-                // Restore bitmap
-                RestoreBitmapState(previousBitmap);
+                try
+                {
+                    // Save current state to redo stack
+                    var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
+                    var currentBitmap = FinalBitmap ?? _originalBitmap;
+                    _redoStack.Push(currentUIState);
+                    _bitmapRedoStack.Push(new Bitmap(currentBitmap));
+                    
+                    System.Diagnostics.Debug.WriteLine($"Current state saved to redo - UI elements: {currentUIState.Count}");
+                    
+                    // Restore previous state
+                    var previousUIState = _undoStack.Pop();
+                    var previousBitmap = _bitmapUndoStack.Pop();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Restoring previous state - UI elements: {previousUIState.Count}");
+                    
+                    // Restore UI elements
+                    RestoreState(previousUIState);
+                    
+                    // Restore bitmap
+                    RestoreBitmapState(previousBitmap);
+                    
+                    // Update button states
+                    UpdateUndoRedoButtonStates();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Undo completed - New undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Undo failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Undo failed - insufficient items. Undo: {_undoStack.Count}, BitmapUndo: {_bitmapUndoStack.Count}");
             }
         }
 
         private void RedoButton_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"Redo clicked - Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            
             if (_redoStack.Count > 0 && _bitmapRedoStack.Count > 0)
             {
-                // Save current state to undo stack
-                var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
-                var currentBitmap = FinalBitmap ?? _originalBitmap;
-                _undoStack.Push(currentUIState);
-                _bitmapUndoStack.Push(new Bitmap(currentBitmap));
-                
-                // Restore next state
-                var nextUIState = _redoStack.Pop();
-                var nextBitmap = _bitmapRedoStack.Pop();
-                
-                // Restore UI elements
-                RestoreState(nextUIState);
-                
-                // Restore bitmap
-                RestoreBitmapState(nextBitmap);
+                try
+                {
+                    // Save current state to undo stack
+                    var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
+                    var currentBitmap = FinalBitmap ?? _originalBitmap;
+                    _undoStack.Push(currentUIState);
+                    _bitmapUndoStack.Push(new Bitmap(currentBitmap));
+                    
+                    System.Diagnostics.Debug.WriteLine($"Current state saved to undo - UI elements: {currentUIState.Count}");
+                    
+                    // Restore next state
+                    var nextUIState = _redoStack.Pop();
+                    var nextBitmap = _bitmapRedoStack.Pop();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Restoring next state - UI elements: {nextUIState.Count}");
+                    
+                    // Restore UI elements
+                    RestoreState(nextUIState);
+                    
+                    // Restore bitmap
+                    RestoreBitmapState(nextBitmap);
+                    
+                    // Update button states
+                    UpdateUndoRedoButtonStates();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Redo completed - New undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Redo failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                }
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Redo failed - insufficient items. Redo: {_redoStack.Count}, BitmapRedo: {_bitmapRedoStack.Count}");
+            }
+        }
+
+        private void UpdateUndoRedoButtonStates()
+        {
+            // Update button enabled states based on stack contents
+            UndoButton.IsEnabled = _undoStack.Count > 0;
+            RedoButton.IsEnabled = _redoStack.Count > 0;
+            
+            // Update button opacity for visual feedback
+            UndoButton.Opacity = _undoStack.Count > 0 ? 1.0 : 0.5;
+            RedoButton.Opacity = _redoStack.Count > 0 ? 1.0 : 0.5;
+            
+            System.Diagnostics.Debug.WriteLine($"Button states updated - Undo enabled: {UndoButton.IsEnabled} (stack: {_undoStack.Count}), Redo enabled: {RedoButton.IsEnabled} (stack: {_redoStack.Count})");
         }
 
         private void RestoreState(List<UIElement> state)

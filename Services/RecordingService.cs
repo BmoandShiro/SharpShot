@@ -195,8 +195,6 @@ namespace SharpShot.Services
             {
                 // For full screen recording, respect the selected monitor setting
                 var screenBounds = GetBoundsForSelectedScreen();
-                System.Diagnostics.Debug.WriteLine($"Full screen recording on: {settings.SelectedScreen}");
-                System.Diagnostics.Debug.WriteLine($"Screen bounds: {screenBounds.X},{screenBounds.Y} {screenBounds.Width}x{screenBounds.Height}");
                 
                 if (settings.SelectedScreen == "All Screens" || settings.SelectedScreen == "All Monitors")
                 {
@@ -463,7 +461,38 @@ namespace SharpShot.Services
         // Methods that MainWindow expects
         public async Task StartRecording(System.Drawing.Rectangle? region = null)
         {
-            await StartRecordingAsync(region);
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"=== StartRecordingAsync called ===");
+                System.Diagnostics.Debug.WriteLine($"Region parameter: {(region.HasValue ? region.Value.ToString() : "null")}");
+                
+                var settings = _settingsService.CurrentSettings;
+                System.Diagnostics.Debug.WriteLine($"Selected screen from settings: '{settings.SelectedScreen}'");
+                
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                var fileName = $"recording_{timestamp}.mp4";
+                _currentRecordingPath = Path.Combine(settings.SavePath, fileName);
+                
+                System.Diagnostics.Debug.WriteLine($"Recording engine: {settings.RecordingEngine}");
+
+                // Choose recording engine based on settings
+                switch (settings.RecordingEngine)
+                {
+                    case "OBS":
+                        await StartOBSRecordingAsync(region);
+                        break;
+                    case "FFmpeg":
+                    default:
+                        await StartFFmpegRecordingAsync(region);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error starting recording: {ex.Message}");
+                _isRecording = false;
+                RecordingStateChanged?.Invoke(this, false);
+            }
         }
 
         public async Task StopRecording()

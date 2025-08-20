@@ -366,6 +366,9 @@ namespace SharpShot.UI
             {
                 if (SelectedRegion.HasValue)
                 {
+                    // Stop magnifier before capturing
+                    StopMagnifier();
+                    
                     // Hide the selection UI before capturing
                     SelectionRect.Visibility = Visibility.Collapsed;
                     InstructionsText.Visibility = Visibility.Collapsed;
@@ -411,11 +414,20 @@ namespace SharpShot.UI
         {
             try
             {
+                // Stop magnifier before launching editor
+                StopMagnifier();
+                
                 // Hide this window
                 Visibility = Visibility.Hidden;
                 
                 // Launch the screenshot editor
                 var editor = new ScreenshotEditorWindow(bitmap, _screenshotService, _settingsService);
+                
+                // Make sure the editor window is visible and on top
+                editor.WindowState = WindowState.Normal;
+                editor.Visibility = Visibility.Visible;
+                editor.Topmost = true;
+                
                 var result = editor.ShowDialog();
                 
                 // Update our captured bitmap with the edited result if available
@@ -435,10 +447,10 @@ namespace SharpShot.UI
             }
             catch (Exception ex)
             {
-                // Commented out false alarm - this can trigger when editor copy/save is successful
-                // MessageBox.Show($"Failed to launch editor: {ex.Message}", "Error", 
-                //               MessageBoxButton.OK, MessageBoxImage.Error);
-                System.Diagnostics.Debug.WriteLine($"Editor launch exception (likely harmless): {ex.Message}");
+                // Show error to user since editor is not working
+                MessageBox.Show($"Failed to launch editor: {ex.Message}", "Editor Error", 
+                              MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Editor launch exception: {ex.Message}");
                 Close();
             }
         }
