@@ -262,18 +262,58 @@ namespace SharpShot.UI
             
             System.Diagnostics.Debug.WriteLine($"Initial magnifier position: ({magnifierX}, {magnifierY})");
             
-            // Ensure magnifier stays within virtual desktop bounds
-            if (magnifierX + MagnifierSize > virtualDesktopBounds.X + virtualDesktopBounds.Width)
+            // Improved edge detection: Check if magnifier would go off the current monitor's right edge
+            if (currentScreen != null)
             {
-                magnifierX = cursorX - MagnifierSize - 50; // Place to the left instead with increased offset
-                System.Diagnostics.Debug.WriteLine($"Switched to left side: {magnifierX}");
+                var monitorBounds = currentScreen.Bounds;
+                var monitorRightEdge = monitorBounds.X + monitorBounds.Width;
+                var monitorLeftEdge = monitorBounds.X;
+                
+                // If magnifier would go off the right edge of current monitor, try left side
+                if (magnifierX + MagnifierSize > monitorRightEdge)
+                {
+                    magnifierX = cursorX - MagnifierSize - 50; // Place to the left with increased offset
+                    System.Diagnostics.Debug.WriteLine($"Switched to left side: {magnifierX}");
+                    
+                    // Ensure left side is still within current monitor bounds
+                    if (magnifierX < monitorLeftEdge)
+                    {
+                        // If left side is also off-screen, position at monitor edge with small margin
+                        magnifierX = monitorLeftEdge + 10;
+                        System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor left edge: {magnifierX}");
+                    }
+                }
+                
+                // If magnifier would go off the left edge of current monitor, try right side
+                if (magnifierX < monitorLeftEdge)
+                {
+                    magnifierX = cursorX + 50; // Place to the right
+                    System.Diagnostics.Debug.WriteLine($"Switched to right side: {magnifierX}");
+                    
+                    // Ensure right side is still within current monitor bounds
+                    if (magnifierX + MagnifierSize > monitorRightEdge)
+                    {
+                        // If right side is also off-screen, position at monitor edge with small margin
+                        magnifierX = monitorRightEdge - MagnifierSize - 10;
+                        System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor right edge: {magnifierX}");
+                    }
+                }
             }
-            
-            // Also ensure left boundary is respected
-            if (magnifierX < virtualDesktopBounds.X)
+            else
             {
-                magnifierX = virtualDesktopBounds.X;
-                System.Diagnostics.Debug.WriteLine($"Adjusted X to virtual desktop left: {magnifierX}");
+                // Fallback to virtual desktop bounds if current screen detection fails
+                if (magnifierX + MagnifierSize > virtualDesktopBounds.X + virtualDesktopBounds.Width)
+                {
+                    magnifierX = cursorX - MagnifierSize - 50; // Place to the left instead with increased offset
+                    System.Diagnostics.Debug.WriteLine($"Switched to left side: {magnifierX}");
+                }
+                
+                // Also ensure left boundary is respected
+                if (magnifierX < virtualDesktopBounds.X)
+                {
+                    magnifierX = virtualDesktopBounds.X;
+                    System.Diagnostics.Debug.WriteLine($"Adjusted X to virtual desktop left: {magnifierX}");
+                }
             }
             
             // Fix: Use virtual desktop bounds instead of hardcoded 0 for Y positioning
