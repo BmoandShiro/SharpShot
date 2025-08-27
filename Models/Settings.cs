@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.IO;
 
 namespace SharpShot.Models
 {
@@ -24,11 +25,13 @@ namespace SharpShot.Models
         private bool _autoCopyScreenshots;
         private bool _enableMagnifier;
         private double _magnifierZoomLevel;
+        private string _screenshotEditorDisplayMonitor = string.Empty;
+        private bool _disableAllPopups;
 
         public Settings()
         {
-            // Default values
-            SavePath = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures) + "\\SharpShot";
+            // Default values - automatically detect user's Pictures folder
+            SavePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "SharpShot");
             ScreenshotFormat = "PNG";
             VideoQuality = "High";
             AudioRecordingMode = "No Audio";
@@ -44,6 +47,8 @@ namespace SharpShot.Models
             AutoCopyScreenshots = false; // Default to false - user must manually copy
             EnableMagnifier = true; // Default to true - magnifier helps with precise selection
             MagnifierZoomLevel = 2.0; // Default to 2x zoom
+            ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
+            DisableAllPopups = false; // Default to false - show popups
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
@@ -149,6 +154,18 @@ namespace SharpShot.Models
         {
             get => _magnifierZoomLevel;
             set => SetProperty(ref _magnifierZoomLevel, value);
+        }
+
+        public string ScreenshotEditorDisplayMonitor
+        {
+            get => _screenshotEditorDisplayMonitor;
+            set => SetProperty(ref _screenshotEditorDisplayMonitor, value);
+        }
+
+        public bool DisableAllPopups
+        {
+            get => _disableAllPopups;
+            set => SetProperty(ref _disableAllPopups, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

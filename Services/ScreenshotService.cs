@@ -5,6 +5,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Media.Imaging;
 using SharpShot.Models;
 
 namespace SharpShot.Services
@@ -59,6 +60,7 @@ namespace SharpShot.Services
             // Handle different screen selection options
             switch (selectedScreen)
             {
+                case "All Screens":
                 case "All Monitors":
                     return GetVirtualDesktopBounds();
                     
@@ -161,7 +163,7 @@ namespace SharpShot.Services
             return savePath;
         }
 
-                public void CopyToClipboard(Bitmap bitmap)
+        public void CopyToClipboard(Bitmap bitmap)
         {
             try
             {
@@ -170,42 +172,14 @@ namespace SharpShot.Services
                 // Log to file for debugging
                 LogToFile($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
                 
-                // Try clipboard operation with retry mechanism
-                bool clipboardSet = false;
-                int retryCount = 0;
-                const int maxRetries = 3;
+                // Convert Bitmap to BitmapSource for WPF clipboard
+                var bitmapSource = ConvertBitmapToBitmapSource(bitmap);
                 
-                while (!clipboardSet && retryCount < maxRetries)
-                {
-                    try
-                    {
-                        // Clear clipboard first to avoid conflicts
-                        System.Windows.Forms.Clipboard.Clear();
-                        System.Threading.Thread.Sleep(50); // Brief delay
-                        
-                        // Use the simple SetImage method which is much faster
-                        System.Windows.Forms.Clipboard.SetImage(bitmap);
-                        clipboardSet = true;
-                        System.Diagnostics.Debug.WriteLine("Successfully set image to clipboard");
-                        LogToFile("Successfully set image to clipboard");
-                    }
-                    catch (Exception ex)
-                    {
-                        retryCount++;
-                        System.Diagnostics.Debug.WriteLine($"Clipboard attempt {retryCount} failed: {ex.Message}");
-                        LogToFile($"Clipboard attempt {retryCount} failed: {ex.Message}");
-                        
-                        if (retryCount < maxRetries)
-                        {
-                            System.Threading.Thread.Sleep(200); // Wait before retry
-                        }
-                        else
-                        {
-                            // If all retries failed, just throw the exception
-                            throw;
-                        }
-                    }
-                }
+                // Use WPF clipboard instead of Windows Forms for better MSIX compatibility
+                System.Windows.Clipboard.SetImage(bitmapSource);
+                
+                System.Diagnostics.Debug.WriteLine("Successfully set image to clipboard");
+                LogToFile("Successfully set image to clipboard");
             }
             catch (Exception ex)
             {
@@ -215,6 +189,22 @@ namespace SharpShot.Services
                 LogToFile($"Exception type: {ex.GetType().Name}");
                 throw; // Re-throw the exception so the calling code can handle it
             }
+        }
+
+        private System.Windows.Media.Imaging.BitmapSource ConvertBitmapToBitmapSource(Bitmap bitmap)
+        {
+            using var memory = new MemoryStream();
+            bitmap.Save(memory, ImageFormat.Png);
+            memory.Position = 0;
+            
+            var bitmapImage = new System.Windows.Media.Imaging.BitmapImage();
+            bitmapImage.BeginInit();
+            bitmapImage.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bitmapImage.StreamSource = memory;
+            bitmapImage.EndInit();
+            bitmapImage.Freeze();
+            
+            return bitmapImage;
         }
 
         public void CopyToClipboard(string filePath)

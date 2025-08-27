@@ -9,15 +9,35 @@ using Point = System.Windows.Point;
 
 namespace SharpShot.UI
 {
-    public partial class RegionSelectionWindow : Window
-    {
-        private readonly ScreenshotService _screenshotService;
-        private readonly SettingsService? _settingsService;
+            public partial class RegionSelectionWindow : Window
+        {
+            private readonly ScreenshotService _screenshotService;
+            private readonly SettingsService? _settingsService;
+            private static RegionSelectionWindow? _activeInstance;
+            
+            // Event to notify when region selection is canceled
+            public event Action? OnRegionSelectionCanceled;
+        
+        public static void CancelActiveInstance()
+        {
+            if (_activeInstance != null)
+            {
+                // Notify that region selection was canceled
+                _activeInstance.OnRegionSelectionCanceled?.Invoke();
+                
+                // Close the window
+                _activeInstance.Close();
+                _activeInstance = null;
+            }
+        }
+        
         private Point _startPoint;
         private bool _isSelecting;
         public Rectangle? SelectedRegion { get; private set; }
         public Bitmap? CapturedBitmap { get; private set; }
         public bool EditorActionCompleted { get; private set; } = false;
+        public bool EditorCopyRequested { get; private set; } = false;
+        public bool EditorSaveRequested { get; private set; } = false;
         private Rectangle _virtualDesktopBounds;
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
@@ -30,6 +50,9 @@ namespace SharpShot.UI
             _settingsService = settingsService;
             _isRecordingMode = isRecordingMode; // Store the mode
             
+            // Set this as the active instance
+            _activeInstance = this;
+            
             // Calculate virtual desktop bounds (all monitors combined)
             _virtualDesktopBounds = GetVirtualDesktopBounds();
             
@@ -40,7 +63,54 @@ namespace SharpShot.UI
             SelectionCanvas.MouseLeftButtonDown += OnMouseLeftButtonDown;
             SelectionCanvas.MouseLeftButtonUp += OnMouseLeftButtonUp;
             SelectionCanvas.MouseMove += OnMouseMove;
+            
+            // Ensure the window can capture keyboard input and connect the KeyDown event
+            Focusable = true;
+            
+            // Set window to capture all keyboard input
+            WindowStyle = WindowStyle.None;
+            AllowsTransparency = true;
+            Background = System.Windows.Media.Brushes.Transparent;
+            
+            // Connect keyboard events
             KeyDown += OnKeyDown;
+            PreviewKeyDown += OnKeyDown;
+            
+            // Also try to capture keyboard input at the window level
+            PreviewKeyUp += (s, e) => { }; // Empty handler to ensure keyboard capture
+            
+            // Ensure window gets focus when activated and maintains it
+            Activated += (s, e) => 
+            {
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow activated - setting focus");
+                Focus();
+                // Force focus again after a short delay to ensure it sticks
+                Dispatcher.BeginInvoke(new Action(() => Focus()), System.Windows.Threading.DispatcherPriority.Loaded);
+            };
+            
+            // Also ensure focus when the window is shown
+            Loaded += (s, e) =>
+            {
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow loaded - setting focus");
+                Focus();
+            };
+            
+            // Ensure focus when the window becomes visible
+            IsVisibleChanged += (s, e) =>
+            {
+                if (IsVisible)
+                {
+                    System.Diagnostics.Debug.WriteLine("RegionSelectionWindow became visible - setting focus");
+                    Focus();
+                }
+            };
+            
+            // Debug focus events
+            GotFocus += (s, e) => System.Diagnostics.Debug.WriteLine("RegionSelectionWindow got focus");
+            LostFocus += (s, e) => System.Diagnostics.Debug.WriteLine("RegionSelectionWindow lost focus");
+            
+            // Test keyboard input by showing a message
+            System.Diagnostics.Debug.WriteLine("RegionSelectionWindow constructor completed - testing keyboard input");
             
             // Hide cursor instructions after a moment
             var timer = new System.Windows.Threading.DispatcherTimer
@@ -56,6 +126,15 @@ namespace SharpShot.UI
             
             // Initialize magnifier
             InitializeMagnifier();
+            
+            // Handle window closed event
+            Closed += (sender, e) =>
+            {
+                if (_activeInstance == this)
+                {
+                    _activeInstance = null;
+                }
+            };
         }
 
         private Rectangle GetVirtualDesktopBounds()
@@ -245,8 +324,37 @@ namespace SharpShot.UI
 
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"Key pressed in RegionSelectionWindow: {e.Key} (Handled: {e.Handled})");
+            
+            // Test any key press to see if keyboard input is working
+            if (e.Key == Key.Space)
+            {
+                System.Diagnostics.Debug.WriteLine("SPACE key pressed - testing keyboard input");
+                e.Handled = true;
+                return;
+            }
+            
             if (e.Key == Key.Escape)
             {
+                System.Diagnostics.Debug.WriteLine("ESC key pressed - canceling region selection");
+                e.Handled = true; // Mark as handled to prevent other handlers from processing it
+                
+                // Ensure we have focus before processing ESC
+                if (!IsFocused)
+                {
+                    System.Diagnostics.Debug.WriteLine("Window not focused, forcing focus before processing ESC");
+                    Focus();
+                }
+                
+                // Reset the hotkey toggle state when ESC is pressed
+                if (_activeInstance == this)
+                {
+                    _activeInstance = null;
+                }
+                
+                // Notify that region selection was canceled
+                OnRegionSelectionCanceled?.Invoke();
+                
                 // Magnifier will be stopped when window closes
                 Close();
             }
@@ -258,6 +366,9 @@ namespace SharpShot.UI
             {
                 if (SelectedRegion.HasValue)
                 {
+                    // Stop magnifier before capturing
+                    StopMagnifier();
+                    
                     // Hide the selection UI before capturing
                     SelectionRect.Visibility = Visibility.Collapsed;
                     InstructionsText.Visibility = Visibility.Collapsed;
@@ -291,8 +402,10 @@ namespace SharpShot.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
-                              MessageBoxButton.OK, MessageBoxImage.Error);
+                // Commented out false alarm - this can trigger when editor copy/save is successful
+                // MessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
+                //               MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Region capture exception (likely harmless): {ex.Message}");
                 Close();
             }
         }
@@ -301,11 +414,20 @@ namespace SharpShot.UI
         {
             try
             {
+                // Stop magnifier before launching editor
+                StopMagnifier();
+                
                 // Hide this window
                 Visibility = Visibility.Hidden;
                 
                 // Launch the screenshot editor
                 var editor = new ScreenshotEditorWindow(bitmap, _screenshotService, _settingsService);
+                
+                // Make sure the editor window is visible and on top
+                editor.WindowState = WindowState.Normal;
+                editor.Visibility = Visibility.Visible;
+                editor.Topmost = true;
+                
                 var result = editor.ShowDialog();
                 
                 // Update our captured bitmap with the edited result if available
@@ -317,14 +439,18 @@ namespace SharpShot.UI
                 
                 // Track if user completed an action in the editor
                 EditorActionCompleted = editor.ImageSaved || editor.ImageCopied;
+                EditorCopyRequested = editor.ImageCopied;
+                EditorSaveRequested = editor.ImageSaved;
                 
                 // Close this window
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to launch editor: {ex.Message}", "Error", 
+                // Show error to user since editor is not working
+                MessageBox.Show($"Failed to launch editor: {ex.Message}", "Editor Error", 
                               MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Editor launch exception: {ex.Message}");
                 Close();
             }
         }

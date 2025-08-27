@@ -17,16 +17,43 @@
     <PlatformTarget>x64</PlatformTarget>
     <Platform>x64</Platform>
     <Platforms>x64</Platforms>
+    <ApplicationIcon>output_color.ico</ApplicationIcon>
     <RestoreFallbackFolders></RestoreFallbackFolders>
+    
+    <!-- Enhanced Runtime Compatibility -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    
+    <!-- MSIX Packaging Properties -->
+    <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+    <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+    <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+    <AppxPackageSigningTimestampUrl>http://timestamp.digicert.com</AppxPackageSigningTimestampUrl>
+    <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+    <AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+    <GenerateTestArtifacts>True</GenerateTestArtifacts>
+    <AppxBundle>Never</AppxBundle>
+    <AppxBundlePlatforms></AppxBundlePlatforms>
+    <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.2428" />
-    <PackageReference Include="ScreenRecorderLib" Version="6.5.1" />
     <PackageReference Include="System.Management" Version="8.0.0" />
+    <!-- Temporarily commented out to avoid win10-* runtime conflicts -->
+    <!-- <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.4.231115000" /> -->
+  </ItemGroup>
 
+  <!-- Bundle essential Visual C++ runtime DLLs -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)runtimes\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Include OBS-Studio for MSIX packaging -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)OBS-Studio\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- OBS Studio Bundling removed to prevent infinite loop -->

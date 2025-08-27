@@ -33,8 +33,8 @@ namespace SharpShot
         {
             InitializeComponent();
             
-            // Initialize services
-            _settingsService = new SettingsService();
+            // Use the shared SettingsService from App.xaml.cs (which has loaded settings)
+            _settingsService = App.SettingsService;
             _screenshotService = new ScreenshotService(_settingsService);
             _recordingService = new RecordingService(_settingsService);
             _hotkeyManager = new HotkeyManager(_settingsService);
@@ -59,6 +59,9 @@ namespace SharpShot
             // Apply theme settings
             ApplyThemeSettings();
             
+            // Debug: Verify settings are loaded
+            System.Diagnostics.Debug.WriteLine($"Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
+            
             // Ensure window is visible after a short delay
             Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -74,6 +77,46 @@ namespace SharpShot
             System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");
         }
 
+        private void ApplySavedHotkeys()
+        {
+            try
+            {
+                // This method does exactly what the settings window does when it opens
+                // It copies the saved hotkey settings to the current settings and updates the hotkey manager
+                
+                System.Diagnostics.Debug.WriteLine("=== APPLYING SAVED HOTKEYS ON STARTUP ===");
+                
+                // Get the current settings from the service
+                var currentSettings = _settingsService.CurrentSettings;
+                
+                // Debug: Show what hotkeys are currently loaded
+                System.Diagnostics.Debug.WriteLine($"Current EnableGlobalHotkeys: {currentSettings.EnableGlobalHotkeys}");
+                foreach (var hotkey in currentSettings.Hotkeys)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Current: {hotkey.Key} = '{hotkey.Value}'");
+                }
+                
+                // The settings are already loaded from the config file by the SettingsService
+                // We just need to tell the hotkey manager to use them
+                if (_hotkeyManager != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Calling _hotkeyManager.UpdateHotkeys() to register hotkeys with Windows");
+                    _hotkeyManager.UpdateHotkeys();
+                    
+                    // Debug the hotkey manager status after update
+                    _hotkeyManager.DebugHotkeyStatus();
+                }
+                
+                System.Diagnostics.Debug.WriteLine("=== SAVED HOTKEYS APPLIED SUCCESSFULLY ===");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying saved hotkeys: {ex.Message}");
+            }
+        }
+
+
+
         private void SetupEventHandlers()
         {
             // Window dragging
@@ -87,13 +130,16 @@ namespace SharpShot
             
             // Hotkey events
             _hotkeyManager.OnRegionCaptureRequested += OnRegionCaptureRequested;
+            _hotkeyManager.OnRegionCaptureCanceled += OnRegionCaptureCanceled;
             _hotkeyManager.OnFullScreenCaptureRequested += OnFullScreenCaptureRequested;
             _hotkeyManager.OnToggleRecordingRequested += OnToggleRecordingRequested;
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
             _hotkeyManager.OnCopyRequested += OnCopyRequested;
             
-            // Initialize hotkeys
+            // Initialize hotkeys first (this sets _isInitialized = true)
             _hotkeyManager.Initialize();
+            
+            // NOTE: Hotkeys will be applied AFTER the window handle is set in OnSourceInitialized
         }
 
         private void PositionWindow()
@@ -286,19 +332,22 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
 
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
                 OBSRecordButton.Visibility = Visibility.Visible;
                 
-                // Show separator before cancel button
+                // Show separators between recording selection buttons for proper spacing
                 RecordingSelectionSeparator2.Visibility = Visibility.Visible;
+                RecordingSelectionSeparator3.Visibility = Visibility.Visible;
                 
                 // Show cancel button on the far right
                 CancelRecordButton.Visibility = Visibility.Visible;
@@ -314,18 +363,23 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
                 
                 // Hide main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
                 
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
+                
+                // Hide recording selection separators
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
                 
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
@@ -354,15 +408,22 @@ namespace SharpShot
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
 
-                // Hide separator
+                // Hide separators
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
 
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
+
+                // Hide main toolbar separators
+                MainToolbarSeparator1.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
 
                 // Show completion options for video
                 CancelButton.Visibility = Visibility.Visible;
@@ -385,6 +446,11 @@ namespace SharpShot
             settingsWindow.ShowDialog();
         }
 
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
@@ -395,6 +461,16 @@ namespace SharpShot
         private async void OnRegionCaptureRequested()
         {
             await CaptureRegion();
+        }
+
+        private void OnRegionCaptureCanceled()
+        {
+            // Cancel any ongoing region selection
+            // This will be called when F18 is pressed twice
+            System.Diagnostics.Debug.WriteLine("Region capture canceled by double-press of F18");
+            
+            // Cancel the active region selection window if it exists
+            UI.RegionSelectionWindow.CancelActiveInstance();
         }
 
         private async void OnFullScreenCaptureRequested()
@@ -470,6 +546,17 @@ namespace SharpShot
                 
                 // Show region selection window
                 var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
+                
+                // Set the hotkey toggle state to indicate region selection is active
+                _hotkeyManager.SetRegionSelectionActive();
+                
+                // Subscribe to the canceled event to reset the hotkey toggle state
+                regionWindow.OnRegionSelectionCanceled += () =>
+                {
+                    System.Diagnostics.Debug.WriteLine("RegionSelectionCanceled event received in MainWindow");
+                    _hotkeyManager.ResetRegionSelectionToggle();
+                };
+                
                 regionWindow.ShowDialog();
                 
                 // Check if a region was captured
@@ -478,16 +565,49 @@ namespace SharpShot
                     _lastCapturedBitmap = regionWindow.CapturedBitmap;
                     System.Diagnostics.Debug.WriteLine($"Region captured successfully: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
                     
-                    // Only show capture options if the user didn't already save/copy in the editor
-                    if (!IsEditorActionCompleted(regionWindow))
+                    // Check if user completed an action in the editor
+                    if (IsEditorActionCompleted(regionWindow))
                     {
-                        ShowCaptureOptions();
+                        // User saved or copied in editor - handle accordingly
+                        if (regionWindow.CapturedBitmap != null)
+                        {
+                            // Check what action was completed
+                            if (regionWindow.EditorCopyRequested)
+                            {
+                                // User clicked copy in editor - automatically trigger copy using our working method
+                                System.Diagnostics.Debug.WriteLine("Editor copy requested - automatically triggering copy operation");
+                                
+                                // Use the working MSIX-compatible copy method
+                                _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+                                
+                                // Show success notification
+                                ShowNotification("Screenshot copied to clipboard!", isError: false);
+                                
+                                // Don't show capture options since copy is already done
+                                return;
+                            }
+                            else if (regionWindow.EditorSaveRequested)
+                            {
+                                // User saved in editor - show success notification
+                                System.Diagnostics.Debug.WriteLine("Editor save completed");
+                                ShowNotification("Screenshot saved!", isError: false);
+                                
+                                // Don't show capture options since save is already done
+                                return;
+                            }
+                        }
                     }
+                    
+                    // Show capture options for normal cases
+                    ShowCaptureOptions();
                 }
                 else
                 {
                     System.Diagnostics.Debug.WriteLine("No bitmap captured from region selection");
                 }
+                
+                // Reset the hotkey toggle state since region selection is complete
+                _hotkeyManager.ResetRegionSelectionToggle();
                 
                 // Show main window again
                 Visibility = Visibility.Visible;
@@ -495,7 +615,12 @@ namespace SharpShot
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Region capture failed: {ex.Message}");
-                ShowNotification("Region capture failed!", isError: true);
+                // Commented out false alarm - this can trigger when editor copy/save is successful
+                // ShowNotification("Region capture failed!", isError: true);
+                
+                // Reset the hotkey toggle state since region selection failed
+                _hotkeyManager.ResetRegionSelectionToggle();
+                
                 Visibility = Visibility.Visible;
             }
         }
@@ -520,11 +645,13 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
+                MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
+                MainToolbarSeparator3.Visibility = Visibility.Collapsed;
 
                 // Show completion options in correct order: Copy, Save, Separator, Cancel (X on far right)
                 CopyButton.Visibility = Visibility.Visible;
@@ -566,6 +693,7 @@ namespace SharpShot
                 ScreenshotButton.Visibility = Visibility.Visible;
                 RecordingButton.Visibility = Visibility.Visible;
                 SettingsButton.Visibility = Visibility.Visible;
+                MinimizeButton.Visibility = Visibility.Visible;
                 CloseButton.Visibility = Visibility.Visible;
                 
                 // Reset recording button content to the original Path (video camera icon)
@@ -574,6 +702,7 @@ namespace SharpShot
                 // Show main toolbar separators
                 MainToolbarSeparator1.Visibility = Visibility.Visible;
                 MainToolbarSeparator2.Visibility = Visibility.Visible;
+                MainToolbarSeparator3.Visibility = Visibility.Visible;
                 
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
@@ -587,8 +716,9 @@ namespace SharpShot
                 OBSRecordButton.Visibility = Visibility.Collapsed;
                 CancelRecordButton.Visibility = Visibility.Collapsed;
 
-                // Hide separator
+                // Hide recording selection separators
                 RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -617,7 +747,7 @@ namespace SharpShot
                     LogToFile("Copy operation completed successfully");
                     
                     // Verify clipboard has data
-                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    if (System.Windows.Clipboard.ContainsImage())
                     {
                         System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
                         LogToFile("Clipboard verification successful - image data is present");
@@ -657,7 +787,7 @@ namespace SharpShot
                 LogToFile($"Stack trace: {ex.StackTrace}");
                 
                 // Check if clipboard actually has the image despite the exception
-                if (System.Windows.Forms.Clipboard.ContainsImage())
+                if (System.Windows.Clipboard.ContainsImage())
                 {
                     System.Diagnostics.Debug.WriteLine("Clipboard verification successful despite exception");
                     LogToFile("Clipboard verification successful despite exception");
@@ -688,20 +818,30 @@ namespace SharpShot
 
                 if (!string.IsNullOrEmpty(filePath))
                 {
-                    var fileType = filePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? "Recording" : "Screenshot";
-                    var result = MessageBox.Show(
-                        $"{fileType} saved to:\n{filePath}\n\nWould you like to open the folder?",
-                        "File Saved",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Information);
-
-                    if (result == MessageBoxResult.Yes)
+                    // Show success popup if popups are enabled
+                    if (!_settingsService.CurrentSettings.DisableAllPopups)
                     {
-                        var folderPath = Path.GetDirectoryName(filePath);
-                        if (!string.IsNullOrEmpty(folderPath))
+                        var fileType = filePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? "Recording" : "Screenshot";
+                        var result = MessageBox.Show(
+                            $"{fileType} saved to:\n{filePath}\n\nWould you like to open the folder?",
+                            "File Saved",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Information);
+
+                        if (result == MessageBoxResult.Yes)
                         {
-                            System.Diagnostics.Process.Start("explorer.exe", folderPath);
+                            var folderPath = Path.GetDirectoryName(filePath);
+                            if (!string.IsNullOrEmpty(folderPath))
+                            {
+                                System.Diagnostics.Process.Start("explorer.exe", folderPath);
+                            }
                         }
+                    }
+                    else
+                    {
+                        // Log the save operation instead of showing popup
+                        System.Diagnostics.Debug.WriteLine($"File saved (popup disabled): {filePath}");
+                        LogToFile($"File saved (popup disabled): {filePath}");
                     }
                 }
             }
@@ -804,7 +944,8 @@ namespace SharpShot
                     _settingsService.CurrentSettings.RecordingEngine = "FFmpeg";
                     _settingsService.SaveSettings();
                     
-                    await _recordingService.StartRecording(); // Use null to let the service determine bounds based on selected screen
+                    // Pass null as region to let the service determine bounds based on selected screen
+                    await _recordingService.StartRecording(null);
                 }
                 catch (Exception ex)
                 {
@@ -922,7 +1063,7 @@ namespace SharpShot
                     LogToFile("Auto-copy operation completed successfully");
                     
                     // Verify clipboard has data
-                    if (System.Windows.Forms.Clipboard.ContainsImage())
+                    if (System.Windows.Clipboard.ContainsImage())
                     {
                         System.Diagnostics.Debug.WriteLine("Auto-copy clipboard verification successful - image data is present");
                         LogToFile("Auto-copy clipboard verification successful - image data is present");
@@ -944,6 +1085,15 @@ namespace SharpShot
 
         private void ShowNotification(string message, bool isError = false)
         {
+            // Check if popups are disabled
+            if (_settingsService.CurrentSettings.DisableAllPopups)
+            {
+                // Just log the message instead of showing popup
+                System.Diagnostics.Debug.WriteLine($"Notification (popup disabled): {message}");
+                LogToFile($"Notification (popup disabled): {message}");
+                return;
+            }
+
             // TODO: Implement proper toast notification
             // For now, just show a message box
             var icon = isError ? MessageBoxImage.Error : MessageBoxImage.Information;
@@ -1029,6 +1179,9 @@ namespace SharpShot
                 if (SettingsButton.Content is System.Windows.Shapes.Path settingsPath)
                     settingsPath.Stroke = brush;
                 
+                if (MinimizeButton.Content is System.Windows.Shapes.Path minimizePath)
+                    minimizePath.Stroke = brush;
+                
                 if (CloseButton.Content is System.Windows.Shapes.Path closePath)
                     closePath.Stroke = brush;
                 
@@ -1097,8 +1250,14 @@ namespace SharpShot
                 if (MainToolbarSeparator2 != null)
                     MainToolbarSeparator2.Fill = brush;
                 
+                if (MainToolbarSeparator3 != null)
+                    MainToolbarSeparator3.Fill = brush;
+                
                 if (RecordingSelectionSeparator2 != null)
                     RecordingSelectionSeparator2.Fill = brush;
+                
+                if (RecordingSelectionSeparator3 != null)
+                    RecordingSelectionSeparator3.Fill = brush;
                 
                 if (CaptureCompletionSeparator1 != null)
                     CaptureCompletionSeparator1.Fill = brush;
@@ -1264,6 +1423,7 @@ namespace SharpShot
             if (ScreenshotButton != null) ScreenshotButton.Style = null;
             if (RecordingButton != null) RecordingButton.Style = null;
             if (SettingsButton != null) SettingsButton.Style = null;
+            if (MinimizeButton != null) MinimizeButton.Style = null;
             if (CloseButton != null) CloseButton.Style = null;
             
             // Force recording selection buttons to refresh their styles
@@ -1295,6 +1455,11 @@ namespace SharpShot
                 {
                     SettingsButton.Style = buttonStyle;
                     SettingsButton.Width = 60;
+                }
+                if (MinimizeButton != null) 
+                {
+                    MinimizeButton.Style = buttonStyle;
+                    MinimizeButton.Width = 60;
                 }
                 if (CloseButton != null) 
                 {
@@ -1340,6 +1505,12 @@ namespace SharpShot
             
             // Add message hook
             System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            
+            // CRITICAL: NOW apply saved hotkeys AFTER the window handle is set
+            ApplySavedHotkeys();
+            
+            // Debug hotkey status after everything is set up
+            _hotkeyManager.DebugHotkeyStatus();
         }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

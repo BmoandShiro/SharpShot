@@ -73,7 +73,7 @@
                 <Button x:Name="RegionButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="RegionButton_Click"
-                        ToolTip="Select Region (Double Ctrl)"
+                        ToolTip="Select Region"
                         Width="70" Height="50"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource RegionIcon}" 
@@ -89,7 +89,7 @@
                 <Button x:Name="ScreenshotButton" 
                         Style="{StaticResource IconButtonStyle}"
                         Click="ScreenshotButton_Click"
-                        ToolTip="Full Screen Screenshot (Ctrl+Shift+S)"
+                        ToolTip="Full Screen Screenshot"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource CameraIcon}" 
                           Stroke="#FFFF8C00" 
@@ -111,7 +111,7 @@
                 <Button x:Name="RecordingButton" 
                         Style="{StaticResource RecordingButtonStyle}"
                         Click="RecordingButton_Click"
-                        ToolTip="Toggle Recording (Ctrl+Shift+R)"
+                        ToolTip="Toggle Recording"
                         VerticalAlignment="Center">
                     <Path Data="{StaticResource VideoIcon}" 
                           Stroke="#FFFF8C00" 
@@ -141,6 +141,28 @@
                           Fill="Transparent"
                           Stretch="Uniform"
                           Width="28" Height="28"/>
+                </Button>
+
+                <!-- Separator -->
+                <Rectangle x:Name="MainToolbarSeparator3"
+                           Width="1" 
+                           Height="25" 
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"/>
+
+                <!-- Minimize Button -->
+                <Button x:Name="MinimizeButton" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Click="MinimizeButton_Click"
+                        ToolTip="Minimize SharpShot"
+                        VerticalAlignment="Center">
+                    <Path Data="M2 7H22" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="2" 
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="24" Height="8"/>
                 </Button>
 
                 <!-- Close Button -->
@@ -214,6 +236,7 @@
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="RegionRecordButton_Click"
                         ToolTip="Record Selected Region (FFmpeg)"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource RegionIcon}" 
                           Stroke="#FFFF8C00" 
@@ -229,6 +252,7 @@
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="FullScreenRecordButton_Click"
                         ToolTip="Record Full Screen (FFmpeg)"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource FullScreenRecordIcon}" 
                           Stroke="#FFFF8C00" 
@@ -238,11 +262,21 @@
                            Width="28" Height="28"/>
                 </Button>
 
+                <!-- Separator between Full Screen and OBS Recording -->
+                <Rectangle x:Name="RecordingSelectionSeparator2"
+                           Width="1" 
+                           Height="25" 
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
+
                 <!-- OBS Record Button (Hidden by default) -->
                 <Button x:Name="OBSRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
                         ToolTip="Launch OBS Studio"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="{StaticResource OBSIcon}" 
                           Stroke="#FFFF8C00" 
@@ -256,7 +290,7 @@
                 </Button>
 
                 <!-- Separator for Cancel Button -->
-                <Rectangle x:Name="RecordingSelectionSeparator2"
+                <Rectangle x:Name="RecordingSelectionSeparator3"
                            Width="1" 
                            Height="25" 
                            Fill="#FFFF8C00" 
@@ -269,6 +303,7 @@
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="CancelRecordButton_Click"
                         ToolTip="Cancel Recording"
+                        Width="60"
                         Visibility="Collapsed">
                     <Path Data="M1 1L11 11M11 1L1 11" 
                           Stroke="#FFFF8C00" 

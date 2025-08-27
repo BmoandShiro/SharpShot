@@ -519,6 +519,13 @@ namespace SharpShot.Services
                 var savePath = _settingsService.CurrentSettings.SavePath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "SharpShot");
                 _currentRecordingPath = Path.Combine(savePath, fileName);
                 
+                // Ensure save directory exists
+                var directory = Path.GetDirectoryName(_currentRecordingPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+                
                 // Simply try to start recording - OBS should already be running
                 if (await StartOBSRecordingViaCommandLineAsync())
                 {

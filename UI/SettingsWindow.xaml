@@ -348,6 +348,22 @@
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
 
+                <!-- Screenshot Editor Display Monitor -->
+                <TextBlock Text="Screenshot Editor Display Monitor:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="EditorDisplayMonitorComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15"
+                          ToolTip="Choose which monitor displays the screenshot editor toolbar and preview when editing screenshots">
+                    <ComboBoxItem Content="Primary Monitor"/>
+                    <ComboBoxItem Content="Monitor 1"/>
+                    <ComboBoxItem Content="Monitor 2"/>
+                    <ComboBoxItem Content="Monitor 3"/>
+                    <ComboBoxItem Content="Monitor 4"/>
+                </ComboBox>
+
                 <!-- Recording Engine -->
                 <TextBlock Text="Recording Engine:" 
                            Foreground="{StaticResource TextBrush}" 
@@ -436,6 +452,11 @@
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
+                <CheckBox x:Name="DisableAllPopupsCheckBox"
+                          Content="Disable all popup notifications"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, all popup dialogs (success messages, file saved confirmations, etc.) will be suppressed"/>
                
                <!-- Magnifier Zoom Level -->
                <StackPanel x:Name="MagnifierZoomPanel"

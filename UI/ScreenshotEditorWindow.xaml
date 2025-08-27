@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SharpShot.UI"
         Title="Edit Screenshot"
-        WindowState="Maximized"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -79,9 +78,21 @@
                 Padding="10"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Bottom"
-                Margin="0,0,0,20">
+                Margin="0,0,0,20"
+                x:Name="BottomToolbarBorder"
+                MouseLeftButtonDown="BottomToolbar_MouseLeftButtonDown"
+                MouseLeftButtonUp="BottomToolbar_MouseLeftButtonUp"
+                MouseMove="BottomToolbar_MouseMove"
+                Cursor="SizeAll">
             
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <!-- Drag indicator -->
+                <TextBlock Text="⋮⋮" 
+                           Foreground="#40FFFFFF" 
+                           FontSize="12" 
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0"
+                           ToolTip="Drag to move toolbar"/>
                 
                 <!-- Blur Tool -->
                 <Button x:Name="BlurButton" 
@@ -277,9 +288,21 @@
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Margin="0,0,20,0"
-                Visibility="Collapsed">
+                Visibility="Collapsed"
+                MouseLeftButtonDown="ColorPicker_MouseLeftButtonDown"
+                MouseLeftButtonUp="ColorPicker_MouseLeftButtonUp"
+                MouseMove="ColorPicker_MouseMove"
+                Cursor="SizeAll">
             
             <StackPanel Orientation="Vertical" Width="200">
+                <!-- Drag indicator -->
+                <TextBlock Text="⋮⋮" 
+                           Foreground="#40FFFFFF" 
+                           FontSize="12" 
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,5"
+                           ToolTip="Drag to move panel"/>
+                
                 <TextBlock Text="Color" 
                            Foreground="{DynamicResource AccentBrush}" 
                            FontWeight="Bold" 

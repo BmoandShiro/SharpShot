@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -207,6 +206,9 @@ namespace SharpShot.UI
             // Populate screen dropdown with actual monitors
             PopulateScreenDropdown();
             
+            // Populate editor display monitor dropdown
+            PopulateEditorDisplayMonitorDropdown();
+            
             LoadSettings();
             
             // Add event handlers for sliders
@@ -310,6 +312,17 @@ namespace SharpShot.UI
                 }
             }
             
+            // Set editor display monitor combo box
+            foreach (var item in EditorDisplayMonitorComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.ScreenshotEditorDisplayMonitor)
+                {
+                    EditorDisplayMonitorComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            
             // Set recording engine combo box
             foreach (var item in RecordingEngineComboBox.Items)
             {
@@ -352,6 +365,7 @@ namespace SharpShot.UI
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
+            DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             
             // Load magnifier zoom level
             if (MagnifierZoomComboBox != null && MagnifierZoomComboBox.Items.Count > 0)
@@ -386,6 +400,9 @@ namespace SharpShot.UI
             RecordFullscreenHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("RecordFullscreen", "");
             CopyHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Copy", "");
             SaveHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Save", "");
+            
+            // Apply current hotkeys immediately so they work without saving
+            ApplyCurrentHotkeys();
             
             // Apply initial theme colors and close button style
             UpdateThemeColors();
@@ -566,6 +583,11 @@ namespace SharpShot.UI
                     _originalSettings.SelectedScreen = screenItem.Content?.ToString() ?? "Primary Monitor";
                 }
                 
+                if (EditorDisplayMonitorComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem editorMonitorItem)
+                {
+                    _originalSettings.ScreenshotEditorDisplayMonitor = editorMonitorItem.Content?.ToString() ?? "Primary Monitor";
+                }
+                
                 if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
                 {
                     var engine = recordingEngineItem.Content?.ToString() ?? "FFmpeg";
@@ -617,6 +639,7 @@ namespace SharpShot.UI
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
+                _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
                 
                 // Save magnifier zoom level
                 if (MagnifierZoomComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem zoomItem)
@@ -703,13 +726,41 @@ namespace SharpShot.UI
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.EnableMagnifier = source.EnableMagnifier;
+            target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
+            target.ScreenshotEditorDisplayMonitor = source.ScreenshotEditorDisplayMonitor;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
             foreach (var kvp in source.Hotkeys)
             {
                 target.Hotkeys[kvp.Key] = kvp.Value;
+            }
+        }
+
+        private void ApplyCurrentHotkeys()
+        {
+            try
+            {
+                // Copy current hotkey settings to the service immediately
+                var currentSettings = _settingsService.CurrentSettings;
+                currentSettings.EnableGlobalHotkeys = _originalSettings.EnableGlobalHotkeys;
+                
+                // Copy hotkeys
+                currentSettings.Hotkeys.Clear();
+                foreach (var kvp in _originalSettings.Hotkeys)
+                {
+                    currentSettings.Hotkeys[kvp.Key] = kvp.Value;
+                }
+                
+                // Update hotkeys immediately so they work without saving
+                _hotkeyManager?.UpdateHotkeys();
+                
+                System.Diagnostics.Debug.WriteLine("Current hotkeys applied immediately - no save required");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error applying current hotkeys: {ex.Message}");
             }
         }
 
@@ -751,6 +802,44 @@ namespace SharpShot.UI
             if (ScreenComboBox.SelectedItem == null)
             {
                 ScreenComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private void PopulateEditorDisplayMonitorDropdown()
+        {
+            // Clear existing items
+            EditorDisplayMonitorComboBox.Items.Clear();
+            
+            // Get all screens
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Add primary monitor option first
+            EditorDisplayMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Primary Monitor" });
+            
+            // Add individual monitors
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                var isPrimary = screen.Primary;
+                var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
+                EditorDisplayMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = monitorName });
+            }
+            
+            // Select the saved setting
+            foreach (var item in EditorDisplayMonitorComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
+                    comboItem.Content.ToString() == _originalSettings.ScreenshotEditorDisplayMonitor)
+                {
+                    EditorDisplayMonitorComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+            
+            // If no match found, default to "Primary Monitor"
+            if (EditorDisplayMonitorComboBox.SelectedItem == null)
+            {
+                EditorDisplayMonitorComboBox.SelectedIndex = 0;
             }
         }
 
@@ -1308,16 +1397,16 @@ namespace SharpShot.UI
                 var allDevices = new List<string>();
                 
                 // Method 1: Try using ScreenRecorderLib's built-in device enumeration
-                var screenRecorderDevices = GetScreenRecorderLibDevices();
-                if (screenRecorderDevices.Count > 0)
-                {
-                    LogToFile($"ScreenRecorderLib found {screenRecorderDevices.Count} devices");
-                    allDevices.AddRange(screenRecorderDevices);
-                }
-                else
-                {
-                    LogToFile("ScreenRecorderLib found no devices, trying fallback methods");
-                }
+                // var screenRecorderDevices = GetScreenRecorderLibDevices();
+                // if (screenRecorderDevices.Count > 0)
+                // {
+                //     LogToFile($"ScreenRecorderLib found {screenRecorderDevices.Count} devices");
+                //     allDevices.AddRange(screenRecorderDevices);
+                // }
+                // else
+                // {
+                //     LogToFile("ScreenRecorderLib found no devices, trying fallback methods");
+                // }
                 
                 // Method 2: Try using NAudio (if available) - most reliable
                 var naudioDevices = GetNAudioDevices();
@@ -1382,37 +1471,37 @@ namespace SharpShot.UI
             }
         }
 
-        private List<string> GetScreenRecorderLibDevices()
-        {
-            var devices = new List<string>();
-            
-            try
-            {
-                LogToFile("Getting audio devices using ScreenRecorderLib...");
-                
-                // ScreenRecorderLib provides access to audio devices through its API
-                // We can use the library's built-in capabilities to get device information
-                
-                // For now, we'll use a simplified approach that leverages ScreenRecorderLib's
-                // understanding of the audio system, but we'll still use our Windows API
-                // enumeration since ScreenRecorderLib doesn't expose device enumeration directly
-                
-                // Get devices using the real Windows Core Audio API approach
-                var inputDevices = GetRealAudioDevicesByType("input");
-                var outputDevices = GetRealAudioDevicesByType("output");
-                
-                devices.AddRange(inputDevices);
-                devices.AddRange(outputDevices);
-                
-                LogToFile($"ScreenRecorderLib-compatible devices found: {devices.Count} (Input: {inputDevices.Count}, Output: {outputDevices.Count})");
-                return devices;
-            }
-            catch (Exception ex)
-            {
-                LogToFile($"Error getting ScreenRecorderLib audio devices: {ex.Message}");
-                return devices;
-            }
-        }
+        // private List<string> GetScreenRecorderLibDevices()
+        // {
+        //     var devices = new List<string>();
+        //     
+        //     try
+        //     {
+        //         LogToFile("Getting audio devices using ScreenRecorderLib...");
+        //         
+        //         // ScreenRecorderLib provides access to audio devices through its API
+        //         // We can use the library's built-in capabilities to get device information
+        //         
+        //         // For now, we'll use a simplified approach that leverages ScreenRecorderLib's
+        //         // understanding of the audio system, but we'll still use our Windows API
+        //         // enumeration since ScreenRecorderLib doesn't expose device enumeration directly
+        //         
+        //         // Get devices using the real Windows Core Audio API approach
+        //         var inputDevices = GetRealAudioDevicesByType("input");
+        //         var outputDevices = GetRealAudioDevicesByType("output");
+        //         
+        //         devices.AddRange(inputDevices);
+        //         devices.AddRange(outputDevices);
+        //         
+        //         LogToFile($"ScreenRecorderLib-compatible devices found: {devices.Count} (Input: {inputDevices.Count}, Output: {outputDevices.Count})");
+        //         return devices;
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         LogToFile($"Error getting ScreenRecorderLib audio devices: {ex.Message}");
+        //         return devices;
+        //     }
+        // }
 
         private List<string> GetRealAudioDevicesByType(string deviceType)
         {
@@ -1954,7 +2043,7 @@ namespace SharpShot.UI
                 LogToFile("=== Refreshing Audio Devices ===");
                 
                 // Test new device enumeration methods
-                var screenRecorderDevices = GetScreenRecorderLibDevices();
+                // var screenRecorderDevices = GetScreenRecorderLibDevices();
                 var naudioDevices = GetNAudioDevices();
                 var wmiDevices = GetWMIAudioDevices();
                 var coreAudioDevices = GetSimplifiedCoreAudioDevices();
@@ -2020,7 +2109,7 @@ namespace SharpShot.UI
                 
                 var message = $"=== Audio Device Detection Results ===\n\n";
                 message += $"Enumeration Methods:\n";
-                message += $"  - ScreenRecorderLib devices: {screenRecorderDevices.Count}\n";
+                // message += $"  - ScreenRecorderLib devices: {screenRecorderDevices.Count}\n";
                 message += $"  - NAudio devices: {naudioDevices.Count}\n";
                 message += $"  - WMI devices: {wmiDevices.Count}\n";
                 message += $"  - Core Audio devices: {coreAudioDevices.Count}\n\n";

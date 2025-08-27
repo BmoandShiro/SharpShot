@@ -50,6 +50,13 @@ namespace SharpShot.UI
         private readonly Stack<List<UIElement>> _redoStack = new();
         private readonly Stack<Bitmap> _bitmapRedoStack = new();
         
+        // Drag functionality for toolbars
+        private bool _isDraggingBottomToolbar = false;
+        private bool _isDraggingColorPicker = false;
+        private Point _dragStartPoint;
+        private Point _bottomToolbarStartPosition;
+        private Point _colorPickerStartPosition;
+        
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
         public bool ImageCopied { get; private set; } = false;
@@ -119,6 +126,20 @@ namespace SharpShot.UI
             
             // Save initial state for undo/redo
             SaveStateForUndo();
+            
+            // Update undo/redo button states
+            UpdateUndoRedoButtonStates();
+            
+            // Ensure theme-aware button styles are applied after window is loaded
+            if (_settingsService?.CurrentSettings?.IconColor != null)
+            {
+                var themeColorStr = _settingsService.CurrentSettings.IconColor;
+                if (System.Windows.Media.ColorConverter.ConvertFromString(themeColorStr) is System.Windows.Media.Color themeColor)
+                {
+                    var brush = new SolidColorBrush(themeColor);
+                    UpdateButtonStyleColors(brush);
+                }
+            }
         }
 
         private void ApplyThemeSettings()
@@ -244,7 +265,7 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to update separator colors: {ex.Message}");
             }
-                }
+        }
         
         private void UpdateButtonStyleColors(SolidColorBrush brush)
         {
@@ -254,6 +275,8 @@ namespace SharpShot.UI
                 // Create dynamic styles for all the editor buttons
                 var themeColor = brush.Color;
                 var hoverBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(32, themeColor.R, themeColor.G, themeColor.B));
+                
+                System.Diagnostics.Debug.WriteLine($"Applying theme-aware button styles with color: {themeColor}");
                 
                 // Apply theme-aware styling to all editor buttons
                 UndoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
@@ -271,6 +294,8 @@ namespace SharpShot.UI
                 PenButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 TextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 HighlightButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                
+                System.Diagnostics.Debug.WriteLine("All button styles updated with theme-aware styling");
             }
             catch (Exception ex)
             {
@@ -280,13 +305,16 @@ namespace SharpShot.UI
         
         private void CenterImageOnScreen()
         {
-            var screenWidth = SystemParameters.PrimaryScreenWidth;
-            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            // Get the bounds of the selected monitor for editor display
+            var selectedMonitorBounds = GetSelectedMonitorBounds();
+            
+            var screenWidth = selectedMonitorBounds.Width;
+            var screenHeight = selectedMonitorBounds.Height;
             
             var imageWidth = _originalBitmap.Width;
             var imageHeight = _originalBitmap.Height;
             
-            // Center the image on screen
+            // Center the image on the selected monitor
             Canvas.SetLeft(ScreenshotImage, (screenWidth - imageWidth) / 2);
             Canvas.SetTop(ScreenshotImage, (screenHeight - imageHeight) / 2);
             
@@ -295,6 +323,101 @@ namespace SharpShot.UI
             Canvas.SetTop(OverlayCanvas, (screenHeight - imageHeight) / 2);
             OverlayCanvas.Width = imageWidth;
             OverlayCanvas.Height = imageHeight;
+            
+            // Use Windows API to force the window to the correct monitor
+            ForceWindowToMonitor(selectedMonitorBounds);
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int left, top, right, bottom;
+        }
+
+        private void ForceWindowToMonitor(System.Drawing.Rectangle targetMonitorBounds)
+        {
+            try
+            {
+                // Get the window handle
+                var windowHandle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                
+                // Set the window to normal state to allow positioning
+                WindowState = WindowState.Normal;
+                
+                // Make the window fill the entire selected monitor
+                Width = targetMonitorBounds.Width;
+                Height = targetMonitorBounds.Height;
+                
+                // Position the window to cover the entire selected monitor
+                Left = targetMonitorBounds.X;
+                Top = targetMonitorBounds.Y;
+                
+                // Use Windows API to ensure the window is on the correct monitor
+                const uint SWP_NOZORDER = 0x0004;
+                const uint SWP_SHOWWINDOW = 0x0040;
+                
+                SetWindowPos(
+                    windowHandle,
+                    IntPtr.Zero,
+                    (int)Left,
+                    (int)Top,
+                    (int)Width,
+                    (int)Height,
+                    SWP_NOZORDER | SWP_SHOWWINDOW
+                );
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to force window to monitor: {ex.Message}");
+            }
+        }
+
+        private System.Drawing.Rectangle GetSelectedMonitorBounds()
+        {
+            if (_settingsService?.CurrentSettings?.ScreenshotEditorDisplayMonitor == null)
+            {
+                // Fallback to primary screen if no setting
+                return System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+            }
+
+            var selectedMonitor = _settingsService.CurrentSettings.ScreenshotEditorDisplayMonitor;
+            var screens = System.Windows.Forms.Screen.AllScreens;
+
+            if (selectedMonitor == "Primary Monitor")
+            {
+                return System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+            }
+
+            // Check if it's a specific monitor
+            if (selectedMonitor.StartsWith("Monitor "))
+            {
+                var monitorNumber = selectedMonitor.Replace("Monitor ", "").Replace(" (Primary)", "");
+                if (int.TryParse(monitorNumber, out int monitorIndex) && monitorIndex > 0 && monitorIndex <= screens.Length)
+                {
+                    return screens[monitorIndex - 1].Bounds;
+                }
+            }
+
+            // Fallback to primary screen
+            return System.Windows.Forms.Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
         }
 
         private BitmapSource ConvertBitmapToBitmapSource(Bitmap bitmap)
@@ -865,50 +988,114 @@ namespace SharpShot.UI
             // Clear redo stacks when new action is performed
             _redoStack.Clear();
             _bitmapRedoStack.Clear();
+            
+            // Update button states
+            UpdateUndoRedoButtonStates();
+            
+            System.Diagnostics.Debug.WriteLine($"State saved for undo - UI elements: {currentState.Count}, Undo stack: {_undoStack.Count}, Redo stack cleared");
         }
 
         private void UndoButton_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"Undo clicked - Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            
             if (_undoStack.Count > 0 && _bitmapUndoStack.Count > 0)
             {
-                // Save current state to redo stack
-                var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
-                var currentBitmap = FinalBitmap ?? _originalBitmap;
-                _redoStack.Push(currentUIState);
-                _bitmapRedoStack.Push(new Bitmap(currentBitmap));
-                
-                // Restore previous state
-                var previousUIState = _undoStack.Pop();
-                var previousBitmap = _bitmapUndoStack.Pop();
-                
-                // Restore UI elements
-                RestoreState(previousUIState);
-                
-                // Restore bitmap
-                RestoreBitmapState(previousBitmap);
+                try
+                {
+                    // Save current state to redo stack
+                    var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
+                    var currentBitmap = FinalBitmap ?? _originalBitmap;
+                    _redoStack.Push(currentUIState);
+                    _bitmapRedoStack.Push(new Bitmap(currentBitmap));
+                    
+                    System.Diagnostics.Debug.WriteLine($"Current state saved to redo - UI elements: {currentUIState.Count}");
+                    
+                    // Restore previous state
+                    var previousUIState = _undoStack.Pop();
+                    var previousBitmap = _bitmapUndoStack.Pop();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Restoring previous state - UI elements: {previousUIState.Count}");
+                    
+                    // Restore UI elements
+                    RestoreState(previousUIState);
+                    
+                    // Restore bitmap
+                    RestoreBitmapState(previousBitmap);
+                    
+                    // Update button states
+                    UpdateUndoRedoButtonStates();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Undo completed - New undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Undo failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Undo failed - insufficient items. Undo: {_undoStack.Count}, BitmapUndo: {_bitmapUndoStack.Count}");
             }
         }
 
         private void RedoButton_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine($"Redo clicked - Undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+            
             if (_redoStack.Count > 0 && _bitmapRedoStack.Count > 0)
             {
-                // Save current state to undo stack
-                var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
-                var currentBitmap = FinalBitmap ?? _originalBitmap;
-                _undoStack.Push(currentUIState);
-                _bitmapUndoStack.Push(new Bitmap(currentBitmap));
-                
-                // Restore next state
-                var nextUIState = _redoStack.Pop();
-                var nextBitmap = _bitmapRedoStack.Pop();
-                
-                // Restore UI elements
-                RestoreState(nextUIState);
-                
-                // Restore bitmap
-                RestoreBitmapState(nextBitmap);
+                try
+                {
+                    // Save current state to undo stack
+                    var currentUIState = OverlayCanvas.Children.Cast<UIElement>().ToList();
+                    var currentBitmap = FinalBitmap ?? _originalBitmap;
+                    _undoStack.Push(currentUIState);
+                    _bitmapUndoStack.Push(new Bitmap(currentBitmap));
+                    
+                    System.Diagnostics.Debug.WriteLine($"Current state saved to undo - UI elements: {currentUIState.Count}");
+                    
+                    // Restore next state
+                    var nextUIState = _redoStack.Pop();
+                    var nextBitmap = _bitmapRedoStack.Pop();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Restoring next state - UI elements: {nextUIState.Count}");
+                    
+                    // Restore UI elements
+                    RestoreState(nextUIState);
+                    
+                    // Restore bitmap
+                    RestoreBitmapState(nextBitmap);
+                    
+                    // Update button states
+                    UpdateUndoRedoButtonStates();
+                    
+                    System.Diagnostics.Debug.WriteLine($"Redo completed - New undo stack: {_undoStack.Count}, Redo stack: {_redoStack.Count}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Redo failed: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                }
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Redo failed - insufficient items. Redo: {_redoStack.Count}, BitmapRedo: {_bitmapRedoStack.Count}");
+            }
+        }
+
+        private void UpdateUndoRedoButtonStates()
+        {
+            // Update button enabled states based on stack contents
+            UndoButton.IsEnabled = _undoStack.Count > 0;
+            RedoButton.IsEnabled = _redoStack.Count > 0;
+            
+            // Update button opacity for visual feedback
+            UndoButton.Opacity = _undoStack.Count > 0 ? 1.0 : 0.5;
+            RedoButton.Opacity = _redoStack.Count > 0 ? 1.0 : 0.5;
+            
+            System.Diagnostics.Debug.WriteLine($"Button states updated - Undo enabled: {UndoButton.IsEnabled} (stack: {_undoStack.Count}), Redo enabled: {RedoButton.IsEnabled} (stack: {_redoStack.Count})");
         }
 
         private void RestoreState(List<UIElement> state)
@@ -944,23 +1131,26 @@ namespace SharpShot.UI
         {
             try
             {
+                // Instead of trying to copy here (which fails in MSIX), 
+                // just close the editor and let the main window handle the copy
+                // The main window already has the edited bitmap and its copy method works
+                
+                System.Diagnostics.Debug.WriteLine("Editor copy button clicked - closing editor to let main window handle copy");
+                
+                // Set the final bitmap so the main window can access it
                 var finalBitmap = RenderToBitmap();
                 FinalBitmap = finalBitmap;
                 
-                // Copy to clipboard
-                using var stream = new MemoryStream();
-                finalBitmap.Save(stream, ImageFormat.Png);
-                stream.Position = 0;
-                
-                var bitmapSource = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-                Clipboard.SetImage(bitmapSource);
-                
+                // Mark that we want to copy
                 ImageCopied = true;
+                
+                // Close the editor - the main window will handle the copy operation
                 Close();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to copy image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Failed to prepare copy: {ex.Message}");
+                MessageBox.Show($"Failed to prepare copy: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -974,11 +1164,20 @@ namespace SharpShot.UI
                 var filePath = _screenshotService.SaveScreenshot(finalBitmap);
                 ImageSaved = true;
                 
-                MessageBox.Show($"Screenshot saved to: {filePath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Check if popups are disabled
+                if (_settingsService?.CurrentSettings?.DisableAllPopups == true)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Screenshot saved (popup disabled): {filePath}");
+                }
+                else
+                {
+                    MessageBox.Show($"Screenshot saved to: {filePath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
                 Close();
             }
             catch (Exception ex)
             {
+                // Always show error messages regardless of popup setting
                 MessageBox.Show($"Failed to save image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -1244,5 +1443,167 @@ namespace SharpShot.UI
                 _previewBitmap = null; // Clear the preview bitmap after finalization
             }
         }
+
+        #region Toolbar Drag Functionality
+
+        private void BottomToolbar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                _isDraggingBottomToolbar = true;
+                _dragStartPoint = e.GetPosition(this);
+                
+                // Calculate current position based on alignment and margin
+                var currentLeft = 0.0;
+                var currentTop = 0.0;
+                
+                if (BottomToolbarBorder.HorizontalAlignment == HorizontalAlignment.Center)
+                {
+                    currentLeft = (ActualWidth - BottomToolbarBorder.ActualWidth) / 2;
+                }
+                else if (BottomToolbarBorder.HorizontalAlignment == HorizontalAlignment.Left)
+                {
+                    currentLeft = BottomToolbarBorder.Margin.Left;
+                }
+                else if (BottomToolbarBorder.HorizontalAlignment == HorizontalAlignment.Right)
+                {
+                    currentLeft = ActualWidth - BottomToolbarBorder.ActualWidth - BottomToolbarBorder.Margin.Right;
+                }
+                
+                if (BottomToolbarBorder.VerticalAlignment == VerticalAlignment.Bottom)
+                {
+                    currentTop = ActualHeight - BottomToolbarBorder.ActualHeight - BottomToolbarBorder.Margin.Bottom;
+                }
+                else if (BottomToolbarBorder.VerticalAlignment == VerticalAlignment.Top)
+                {
+                    currentTop = BottomToolbarBorder.Margin.Top;
+                }
+                else if (BottomToolbarBorder.VerticalAlignment == VerticalAlignment.Center)
+                {
+                    currentTop = (ActualHeight - BottomToolbarBorder.ActualHeight) / 2;
+                }
+                
+                _bottomToolbarStartPosition = new Point(currentLeft, currentTop);
+                BottomToolbarBorder.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void BottomToolbar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingBottomToolbar)
+            {
+                _isDraggingBottomToolbar = false;
+                BottomToolbarBorder.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        private void BottomToolbar_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingBottomToolbar && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentPoint = e.GetPosition(this);
+                var deltaX = currentPoint.X - _dragStartPoint.X;
+                var deltaY = currentPoint.Y - _dragStartPoint.Y;
+
+                // Calculate new position
+                var newLeft = _bottomToolbarStartPosition.X + deltaX;
+                var newTop = _bottomToolbarStartPosition.Y + deltaY;
+
+                // Constrain to window bounds with some padding
+                var padding = 10.0;
+                var maxLeft = ActualWidth - BottomToolbarBorder.ActualWidth - padding;
+                var maxTop = ActualHeight - BottomToolbarBorder.ActualHeight - padding;
+                newLeft = Math.Max(padding, Math.Min(newLeft, maxLeft));
+                newTop = Math.Max(padding, Math.Min(newTop, maxTop));
+
+                // Update position by changing alignment and margin
+                BottomToolbarBorder.HorizontalAlignment = HorizontalAlignment.Left;
+                BottomToolbarBorder.VerticalAlignment = VerticalAlignment.Top;
+                BottomToolbarBorder.Margin = new Thickness(newLeft, newTop, 0, 0);
+            }
+        }
+
+        private void ColorPicker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                _isDraggingColorPicker = true;
+                _dragStartPoint = e.GetPosition(this);
+                
+                // Calculate current position based on alignment and margin
+                var currentLeft = 0.0;
+                var currentTop = 0.0;
+                
+                if (ColorPickerPanel.HorizontalAlignment == HorizontalAlignment.Center)
+                {
+                    currentLeft = (ActualWidth - ColorPickerPanel.ActualWidth) / 2;
+                }
+                else if (ColorPickerPanel.HorizontalAlignment == HorizontalAlignment.Left)
+                {
+                    currentLeft = ColorPickerPanel.Margin.Left;
+                }
+                else if (ColorPickerPanel.HorizontalAlignment == HorizontalAlignment.Right)
+                {
+                    currentLeft = ActualWidth - ColorPickerPanel.ActualWidth - ColorPickerPanel.Margin.Right;
+                }
+                
+                if (ColorPickerPanel.VerticalAlignment == VerticalAlignment.Center)
+                {
+                    currentTop = (ActualHeight - ColorPickerPanel.ActualHeight) / 2;
+                }
+                else if (ColorPickerPanel.VerticalAlignment == VerticalAlignment.Top)
+                {
+                    currentTop = ColorPickerPanel.Margin.Top;
+                }
+                else if (ColorPickerPanel.VerticalAlignment == VerticalAlignment.Bottom)
+                {
+                    currentTop = ActualHeight - ColorPickerPanel.ActualHeight - ColorPickerPanel.Margin.Bottom;
+                }
+                
+                _colorPickerStartPosition = new Point(currentLeft, currentTop);
+                ColorPickerPanel.CaptureMouse();
+                e.Handled = true;
+            }
+        }
+
+        private void ColorPicker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (_isDraggingColorPicker)
+            {
+                _isDraggingColorPicker = false;
+                ColorPickerPanel.ReleaseMouseCapture();
+                e.Handled = true;
+            }
+        }
+
+        private void ColorPicker_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (_isDraggingColorPicker && e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentPoint = e.GetPosition(this);
+                var deltaX = currentPoint.X - _dragStartPoint.X;
+                var deltaY = currentPoint.Y - _dragStartPoint.Y;
+
+                // Calculate new position
+                var newLeft = _colorPickerStartPosition.X + deltaX;
+                var newTop = _colorPickerStartPosition.Y + deltaY;
+
+                // Constrain to window bounds with some padding
+                var padding = 10.0;
+                var maxLeft = ActualWidth - ColorPickerPanel.ActualWidth - padding;
+                var maxTop = ActualHeight - ColorPickerPanel.ActualHeight - padding;
+                newLeft = Math.Max(padding, Math.Min(newLeft, maxLeft));
+                newTop = Math.Max(padding, Math.Min(newTop, maxTop));
+
+                // Update position by changing alignment and margin
+                ColorPickerPanel.HorizontalAlignment = HorizontalAlignment.Left;
+                ColorPickerPanel.VerticalAlignment = VerticalAlignment.Top;
+                ColorPickerPanel.Margin = new Thickness(newLeft, newTop, 0, 0);
+            }
+        }
+
+        #endregion
     }
 }
