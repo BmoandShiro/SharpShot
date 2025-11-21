@@ -613,12 +613,19 @@
                               Margin="0,0,0,10"/>
                    
                    <Button x:Name="AddBoundaryBoxButton"
-                          Content="Add Boundary Box"
+                          Style="{StaticResource ModernButtonStyle}"
                           Click="AddBoundaryBoxButton_Click"
                           Width="150"
-                          Height="30"
+                          Height="32"
                           Margin="0,0,0,10"
-                          HorizontalAlignment="Left"/>
+                          HorizontalAlignment="Left">
+                        <TextBlock Text="Add Boundary Box" 
+                                   Foreground="#FFFF8C00" 
+                                   FontSize="12" 
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
                    
                    <ScrollViewer MaxHeight="200"
                                 VerticalScrollBarVisibility="Auto"

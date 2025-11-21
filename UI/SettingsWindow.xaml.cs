@@ -1179,19 +1179,39 @@ namespace SharpShot.UI
             
             var editButton = new Button
             {
-                Content = "Edit",
                 Width = 60,
-                Height = 25,
-                Margin = new Thickness(5, 0, 5, 0)
+                Height = 32,
+                Margin = new Thickness(5, 0, 5, 0),
+                Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0)
             };
+            var editText = new TextBlock
+            {
+                Text = "Edit",
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00)),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            editButton.Content = editText;
             
             var deleteButton = new Button
             {
-                Content = "Delete",
                 Width = 60,
-                Height = 25,
-                Margin = new Thickness(5, 0, 0, 0)
+                Height = 32,
+                Margin = new Thickness(5, 0, 0, 0),
+                Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0)
             };
+            var deleteText = new TextBlock
+            {
+                Text = "Delete",
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00)),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            deleteButton.Content = deleteText;
             
             editButton.Click += (s, e) => EditBoundaryBox(box);
             deleteButton.Click += (s, e) => DeleteBoundaryBox(box);
@@ -1586,6 +1606,33 @@ namespace SharpShot.UI
                     browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
                     if (browseButton.Content is TextBlock browseText)
                         browseText.Foreground = brush;
+                }
+                
+                // Update Add Boundary Box button with dynamic hover effects
+                if (AddBoundaryBoxButton != null)
+                {
+                    AddBoundaryBoxButton.Style = CreateModernButtonStyle(color, 150.0, 32.0);
+                    if (AddBoundaryBoxButton.Content is TextBlock addBoundaryText)
+                        addBoundaryText.Foreground = brush;
+                }
+                
+                // Update Edit and Delete buttons in boundary box list
+                if (MagnifierBoundaryBoxList != null)
+                {
+                    foreach (var child in MagnifierBoundaryBoxList.Children)
+                    {
+                        if (child is StackPanel panel)
+                        {
+                            foreach (var panelChild in panel.Children)
+                            {
+                                if (panelChild is Button btn && btn.Content is TextBlock text && (text.Text == "Edit" || text.Text == "Delete"))
+                                {
+                                    btn.Style = CreateModernButtonStyle(color, 60.0, 32.0);
+                                    text.Foreground = brush;
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 // Update CloseSettingsButton (X button) with dynamic hover effects
