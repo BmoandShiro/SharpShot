@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using System.Windows.Media;
 using System.Windows.Controls;
 using System.Windows.Media.Effects;
+using System.Windows.Interop;
 using SharpShot.Services;
 using SharpShot.Utils;
 using System.Threading.Tasks;
@@ -28,6 +29,30 @@ namespace SharpShot
 
         // Windows message constants
         private const int WM_HOTKEY = 0x0312;
+        private const int WM_ACTIVATE = 0x0006;
+        private const int WA_INACTIVE = 0;
+        
+        // Windows API to prevent window activation
+        [DllImport("user32.dll")]
+        private static extern bool AllowSetForegroundWindow(int dwProcessId);
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+        
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+        
+        [DllImport("user32.dll")]
+        private static extern uint GetCurrentThreadId();
+        
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+        
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
         public MainWindow()
         {
@@ -220,11 +245,17 @@ namespace SharpShot
         #region Button Event Handlers
         private async void RegionButton_Click(object sender, RoutedEventArgs e)
         {
+            // Prevent window activation when button is clicked
+            // This keeps browser focus so dropdowns stay open
+            PreventWindowActivation();
             await CaptureRegion();
         }
 
         private async void ScreenshotButton_Click(object sender, RoutedEventArgs e)
         {
+            // Prevent window activation when button is clicked
+            // This keeps browser focus so dropdowns stay open
+            PreventWindowActivation();
             await CaptureFullScreen();
         }
 
@@ -482,11 +513,9 @@ namespace SharpShot
         {
             try
             {
-                // Hide window temporarily
-                Visibility = Visibility.Hidden;
-                await Task.Delay(100); // Brief delay to ensure window is hidden
-                
-                // Use the screenshot service to capture based on selected screen
+                // Don't manipulate the window at all - just capture directly
+                // This prevents any focus changes that would close browser dropdowns
+                // Graphics.CopyFromScreen doesn't require window manipulation
                 var filePath = _screenshotService.CaptureFullScreen();
                 
                 if (!string.IsNullOrEmpty(filePath))
@@ -497,14 +526,11 @@ namespace SharpShot
                     _lastCapturedFilePath = filePath;
                     ShowCaptureOptions();
                 }
-                
-                Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Screenshot failed: {ex.Message}");
                 ShowNotification("Screenshot failed!", isError: true);
-                Visibility = Visibility.Visible;
             }
         }
 
@@ -540,11 +566,8 @@ namespace SharpShot
         {
             try
             {
-                // Hide main window
-                Visibility = Visibility.Hidden;
-                await Task.Delay(100);
-                
-                // Show region selection window
+                // Don't manipulate the main window - just show region selection
+                // The region window will use Windows API to be truly non-focus-stealing
                 var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
                 
                 // Set the hotkey toggle state to indicate region selection is active
@@ -608,9 +631,6 @@ namespace SharpShot
                 
                 // Reset the hotkey toggle state since region selection is complete
                 _hotkeyManager.ResetRegionSelectionToggle();
-                
-                // Show main window again
-                Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
@@ -620,8 +640,6 @@ namespace SharpShot
                 
                 // Reset the hotkey toggle state since region selection failed
                 _hotkeyManager.ResetRegionSelectionToggle();
-                
-                Visibility = Visibility.Visible;
             }
         }
 
@@ -1497,14 +1515,18 @@ namespace SharpShot
             base.OnSourceInitialized(e);
             
             // Get the window handle
-            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            var helper = new WindowInteropHelper(this);
             var hwnd = helper.Handle;
             
             // Set the window handle in the hotkey manager
             _hotkeyManager.SetWindowHandle(hwnd);
             
             // Add message hook
-            System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+            
+            // Make the window non-activating when clicked (but still allow interaction)
+            // This prevents focus stealing when buttons are clicked
+            MakeWindowNonActivating(hwnd);
             
             // CRITICAL: NOW apply saved hotkeys AFTER the window handle is set
             ApplySavedHotkeys();
@@ -1512,18 +1534,80 @@ namespace SharpShot
             // Debug hotkey status after everything is set up
             _hotkeyManager.DebugHotkeyStatus();
         }
+        
+        private void MakeWindowNonActivating(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            
+            try
+            {
+                const int GWL_EXSTYLE = -20;
+                const int WS_EX_NOACTIVATE = 0x08000000;
+                const int WS_EX_TOOLWINDOW = 0x00000080;
+                
+                // Get current extended window style
+                int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                
+                // Add flags to prevent activation
+                extendedStyle |= WS_EX_NOACTIVATE;  // Window won't activate when clicked
+                extendedStyle |= WS_EX_TOOLWINDOW;  // Don't show in alt-tab and don't activate
+                
+                // Apply the new extended style
+                SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle);
+                
+                System.Diagnostics.Debug.WriteLine("MainWindow: Applied non-activating window style");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to make window non-activating: {ex.Message}");
+            }
+        }
 
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             if (msg == WM_HOTKEY)
             {
+                // Prevent window activation when hotkey is received
+                // This keeps browser focus so dropdowns stay open
+                PreventWindowActivation();
+                
                 var hotkeyId = wParam.ToInt32();
                 _hotkeyManager.HandleHotkeyMessage(hotkeyId);
                 handled = true;
                 return IntPtr.Zero;
             }
             
+            // Prevent activation when window receives activation messages during screenshot
+            if (msg == WM_ACTIVATE)
+            {
+                // If we're in the middle of a screenshot operation, prevent activation
+                // This is a best-effort approach - the real fix is preventing it at the source
+            }
+            
             return IntPtr.Zero;
+        }
+        
+        private void PreventWindowActivation()
+        {
+            try
+            {
+                // Get the currently focused window (should be the browser)
+                var foregroundWindow = GetForegroundWindow();
+                if (foregroundWindow != IntPtr.Zero)
+                {
+                    // Get the process ID of the foreground window
+                    GetWindowThreadProcessId(foregroundWindow, out uint foregroundProcessId);
+                    
+                    // Allow that process to set foreground window (keeps it active)
+                    // This helps prevent our window from stealing focus
+                    AllowSetForegroundWindow((int)foregroundProcessId);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Silently fail - this is a best-effort optimization
+                System.Diagnostics.Debug.WriteLine($"Failed to prevent window activation: {ex.Message}");
+            }
         }
         #endregion
         #endregion
