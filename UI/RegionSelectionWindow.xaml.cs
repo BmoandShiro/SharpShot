@@ -4,19 +4,54 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 using SharpShot.Services;
 using Point = System.Windows.Point;
 
 namespace SharpShot.UI
 {
-            public partial class RegionSelectionWindow : Window
-        {
-            private readonly ScreenshotService _screenshotService;
-            private readonly SettingsService? _settingsService;
-            private static RegionSelectionWindow? _activeInstance;
-            
-            // Event to notify when region selection is canceled
-            public event Action? OnRegionSelectionCanceled;
+    public partial class RegionSelectionWindow : Window
+    {
+        // Windows API constants for non-focus-stealing window
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+        private const int WS_EX_TRANSPARENT = 0x00000020;
+        private const int WS_EX_LAYERED = 0x00080000;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
+        
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        
+        [DllImport("user32.dll")]
+        private static extern bool SetLayeredWindowAttributes(IntPtr hwnd, uint crKey, byte bAlpha, uint dwFlags);
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetCapture(IntPtr hWnd);
+        
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetCapture();
+        
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_SHOWWINDOW = 0x0040;
+        
+        private readonly ScreenshotService _screenshotService;
+        private readonly SettingsService? _settingsService;
+        private static RegionSelectionWindow? _activeInstance;
+        
+        // Event to notify when region selection is canceled
+        public event Action? OnRegionSelectionCanceled;
         
         public static void CancelActiveInstance()
         {
@@ -59,7 +94,12 @@ namespace SharpShot.UI
             // Position and size the window to cover all monitors
             PositionWindowForAllMonitors();
             
-            // Setup event handlers
+            // Setup event handlers - use Preview events to capture before browser
+            PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
+            PreviewMouseLeftButtonUp += OnPreviewMouseLeftButtonUp;
+            PreviewMouseMove += OnPreviewMouseMove;
+            
+            // Also keep the canvas handlers as backup
             SelectionCanvas.MouseLeftButtonDown += OnMouseLeftButtonDown;
             SelectionCanvas.MouseLeftButtonUp += OnMouseLeftButtonUp;
             SelectionCanvas.MouseMove += OnMouseMove;
@@ -79,35 +119,9 @@ namespace SharpShot.UI
             // Also try to capture keyboard input at the window level
             PreviewKeyUp += (s, e) => { }; // Empty handler to ensure keyboard capture
             
-            // Ensure window gets focus when activated and maintains it
-            Activated += (s, e) => 
-            {
-                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow activated - setting focus");
-                Focus();
-                // Force focus again after a short delay to ensure it sticks
-                Dispatcher.BeginInvoke(new Action(() => Focus()), System.Windows.Threading.DispatcherPriority.Loaded);
-            };
-            
-            // Also ensure focus when the window is shown
-            Loaded += (s, e) =>
-            {
-                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow loaded - setting focus");
-                Focus();
-            };
-            
-            // Ensure focus when the window becomes visible
-            IsVisibleChanged += (s, e) =>
-            {
-                if (IsVisible)
-                {
-                    System.Diagnostics.Debug.WriteLine("RegionSelectionWindow became visible - setting focus");
-                    Focus();
-                }
-            };
-            
-            // Debug focus events
-            GotFocus += (s, e) => System.Diagnostics.Debug.WriteLine("RegionSelectionWindow got focus");
-            LostFocus += (s, e) => System.Diagnostics.Debug.WriteLine("RegionSelectionWindow lost focus");
+            // Window has ShowActivated="False" in XAML to prevent stealing focus
+            // This prevents browser dropdowns from closing when region selection starts
+            // We don't force focus here to maintain browser focus
             
             // Test keyboard input by showing a message
             System.Diagnostics.Debug.WriteLine("RegionSelectionWindow constructor completed - testing keyboard input");
@@ -127,6 +141,22 @@ namespace SharpShot.UI
             // Initialize magnifier
             InitializeMagnifier();
             
+            // Capture mouse input immediately when window is loaded
+            // This ensures mouse clicks go to our overlay, not the browser
+            Loaded += (sender, e) =>
+            {
+                CaptureMouseInput();
+            };
+            
+            // Also capture when window becomes visible
+            IsVisibleChanged += (sender, e) =>
+            {
+                if (IsVisible)
+                {
+                    CaptureMouseInput();
+                }
+            };
+            
             // Handle window closed event
             Closed += (sender, e) =>
             {
@@ -135,6 +165,64 @@ namespace SharpShot.UI
                     _activeInstance = null;
                 }
             };
+        }
+        
+        private void CaptureMouseInput()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                // Make window topmost so it receives mouse messages even when browser has focus
+                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                
+                // Capture all mouse input to this window
+                // This ensures clicks go to our overlay even when browser has focus
+                SetCapture(hwnd);
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow: Mouse capture set and window made topmost");
+            }
+        }
+        
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            
+            // Use Windows API to make this window truly non-focus-stealing
+            // This prevents browser dropdowns from closing when region selection starts
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                // Get current extended window style
+                int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                
+                // Add flags to prevent focus stealing
+                // WS_EX_NOACTIVATE: Window won't activate when clicked (keeps browser focus)
+                // WS_EX_TOOLWINDOW: Don't show in taskbar and don't activate
+                // Note: We DON'T use WS_EX_TRANSPARENT because we need to capture mouse clicks
+                extendedStyle |= WS_EX_NOACTIVATE;  // Window won't activate when clicked
+                extendedStyle |= WS_EX_TOOLWINDOW;   // Don't show in taskbar and don't activate
+                
+                // Apply the new extended style
+                SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle);
+                
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow: Applied non-focus-stealing window style");
+                
+                // Capture mouse input immediately after window is initialized
+                // This ensures mouse clicks go to our overlay, not the browser
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    CaptureMouseInput();
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+        }
+        
+        protected override void OnClosed(EventArgs e)
+        {
+            // Ensure mouse capture is released when window closes
+            ReleaseCapture();
+            
+            // Ensure magnifier is cleaned up when window closes
+            StopMagnifier();
+            base.OnClosed(e);
         }
 
         private Rectangle GetVirtualDesktopBounds()
@@ -249,8 +337,98 @@ namespace SharpShot.UI
             }
         }
 
+        private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // Intercept mouse down at window level before browser gets it
+            e.Handled = true; // Prevent event from reaching browser
+            
+            // Capture mouse input immediately
+            CaptureMouseInput();
+            
+            // Convert to canvas coordinates and handle
+            var canvasPoint = e.GetPosition(SelectionCanvas);
+            _startPoint = canvasPoint;
+            _isSelecting = true;
+            SelectionRect.Visibility = Visibility.Visible;
+            
+            System.Windows.Controls.Canvas.SetLeft(SelectionRect, _startPoint.X);
+            System.Windows.Controls.Canvas.SetTop(SelectionRect, _startPoint.Y);
+            SelectionRect.Width = 0;
+            SelectionRect.Height = 0;
+        }
+        
+        private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            // Intercept mouse up at window level
+            e.Handled = true; // Prevent event from reaching browser
+            
+            if (!_isSelecting) return;
+            
+            // Release mouse capture
+            ReleaseCapture();
+            
+            _isSelecting = false;
+            
+            var endPoint = e.GetPosition(SelectionCanvas);
+            
+            var x = Math.Min(_startPoint.X, endPoint.X);
+            var y = Math.Min(_startPoint.Y, endPoint.Y);
+            var width = Math.Abs(endPoint.X - _startPoint.X);
+            var height = Math.Abs(endPoint.Y - _startPoint.Y);
+            
+            if (width > 10 && height > 10)
+            {
+                // Convert window coordinates to screen coordinates
+                var screenX = (int)(Left + x);
+                var screenY = (int)(Top + y);
+                
+                SelectedRegion = new Rectangle(screenX, screenY, (int)width, (int)height);
+                
+                // If in recording mode, just close the window with the selected region
+                // If in screenshot mode, capture the region and launch editor
+                if (_isRecordingMode)
+                {
+                    // For recording, just close the window - the calling code will handle the recording
+                    Close();
+                }
+                else
+                {
+                    // For screenshot capture, proceed with normal behavior
+                    CaptureRegion();
+                }
+            }
+            else
+            {
+                SelectionRect.Visibility = Visibility.Collapsed;
+            }
+        }
+        
+        private void OnPreviewMouseMove(object sender, MouseEventArgs e)
+        {
+            if (!_isSelecting) return;
+            
+            // Intercept mouse move at window level
+            e.Handled = true; // Prevent event from reaching browser
+            
+            var currentPoint = e.GetPosition(SelectionCanvas);
+            
+            var x = Math.Min(_startPoint.X, currentPoint.X);
+            var y = Math.Min(_startPoint.Y, currentPoint.Y);
+            var width = Math.Abs(currentPoint.X - _startPoint.X);
+            var height = Math.Abs(currentPoint.Y - _startPoint.Y);
+            
+            System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
+            System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
+            SelectionRect.Width = width;
+            SelectionRect.Height = height;
+        }
+        
         private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // Mouse capture is already set when window loaded
+            // Just ensure it's still active
+            CaptureMouseInput();
+            
             _startPoint = e.GetPosition(SelectionCanvas);
             _isSelecting = true;
             SelectionRect.Visibility = Visibility.Visible;
@@ -266,6 +444,9 @@ namespace SharpShot.UI
         private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (!_isSelecting) return;
+            
+            // Release mouse capture
+            ReleaseCapture();
             
             _isSelecting = false;
             
@@ -338,13 +519,6 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine("ESC key pressed - canceling region selection");
                 e.Handled = true; // Mark as handled to prevent other handlers from processing it
-                
-                // Ensure we have focus before processing ESC
-                if (!IsFocused)
-                {
-                    System.Diagnostics.Debug.WriteLine("Window not focused, forcing focus before processing ESC");
-                    Focus();
-                }
                 
                 // Reset the hotkey toggle state when ESC is pressed
                 if (_activeInstance == this)
@@ -453,13 +627,6 @@ namespace SharpShot.UI
                 System.Diagnostics.Debug.WriteLine($"Editor launch exception: {ex.Message}");
                 Close();
             }
-        }
-        
-        protected override void OnClosed(EventArgs e)
-        {
-            // Ensure magnifier is cleaned up when window closes
-            StopMagnifier();
-            base.OnClosed(e);
         }
     }
 } 
