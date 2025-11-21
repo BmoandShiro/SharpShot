@@ -209,6 +209,9 @@ namespace SharpShot.UI
             // Populate editor display monitor dropdown
             PopulateEditorDisplayMonitorDropdown();
             
+            // Populate magnifier stationary monitor dropdown BEFORE loading settings
+            PopulateMagnifierStationaryMonitorDropdown();
+            
             LoadSettings();
             
             // Add event handlers for sliders
@@ -261,9 +264,6 @@ namespace SharpShot.UI
             MagnifierZoomPanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
             MagnifierModePanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
             UpdateMagnifierStationaryPanelVisibility();
-            
-            // Populate monitor dropdown for stationary mode
-            PopulateMagnifierStationaryMonitorDropdown();
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -438,24 +438,66 @@ namespace SharpShot.UI
             // Load stationary settings
             if (MagnifierStationaryXSlider != null)
             {
-                MagnifierStationaryXSlider.Value = _originalSettings.MagnifierStationaryX;
+                // Ensure Maximum is explicitly set before setting Value
+                MagnifierStationaryXSlider.Maximum = 100;
+                MagnifierStationaryXSlider.Minimum = 0;
+                double xValue = Math.Max(0, Math.Min(100, _originalSettings.MagnifierStationaryX));
+                MagnifierStationaryXSlider.Value = xValue;
+                // Update text display immediately
+                if (MagnifierStationaryXText != null)
+                {
+                    MagnifierStationaryXText.Text = ((int)xValue).ToString();
+                }
             }
             if (MagnifierStationaryYSlider != null)
             {
-                MagnifierStationaryYSlider.Value = _originalSettings.MagnifierStationaryY;
+                // Ensure Maximum is explicitly set before setting Value
+                MagnifierStationaryYSlider.Maximum = 100;
+                MagnifierStationaryYSlider.Minimum = 0;
+                double yValue = Math.Max(0, Math.Min(100, _originalSettings.MagnifierStationaryY));
+                MagnifierStationaryYSlider.Value = yValue;
+                // Update text display immediately
+                if (MagnifierStationaryYText != null)
+                {
+                    MagnifierStationaryYText.Text = ((int)yValue).ToString();
+                }
             }
             
-            if (MagnifierStationaryMonitorComboBox != null)
+            // Load monitor selection - ensure dropdown is populated and has items
+            if (MagnifierStationaryMonitorComboBox != null && MagnifierStationaryMonitorComboBox.Items.Count > 0)
             {
                 string monitor = _originalSettings.MagnifierStationaryMonitor ?? "Primary Monitor";
+                bool found = false;
+                
+                // Try exact match first
                 foreach (System.Windows.Controls.ComboBoxItem item in MagnifierStationaryMonitorComboBox.Items)
                 {
                     if (item.Content?.ToString() == monitor)
                     {
                         MagnifierStationaryMonitorComboBox.SelectedItem = item;
+                        found = true;
+                        System.Diagnostics.Debug.WriteLine($"Found and selected monitor: {monitor}");
                         break;
                     }
                 }
+                
+                // If not found, default to "Primary Monitor"
+                if (!found)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Monitor '{monitor}' not found in dropdown, defaulting to Primary Monitor");
+                    foreach (System.Windows.Controls.ComboBoxItem item in MagnifierStationaryMonitorComboBox.Items)
+                    {
+                        if (item.Content?.ToString() == "Primary Monitor")
+                        {
+                            MagnifierStationaryMonitorComboBox.SelectedItem = item;
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (MagnifierStationaryMonitorComboBox != null)
+            {
+                System.Diagnostics.Debug.WriteLine("MagnifierStationaryMonitorComboBox is null or has no items");
             }
             
             // Load theme customization settings
@@ -745,7 +787,15 @@ namespace SharpShot.UI
                 }
                 if (MagnifierStationaryMonitorComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem monitorItem)
                 {
-                    _originalSettings.MagnifierStationaryMonitor = monitorItem.Content?.ToString() ?? "Primary Monitor";
+                    string selectedMonitor = monitorItem.Content?.ToString() ?? "Primary Monitor";
+                    _originalSettings.MagnifierStationaryMonitor = selectedMonitor;
+                    System.Diagnostics.Debug.WriteLine($"Saving magnifier stationary monitor: {selectedMonitor}");
+                }
+                else
+                {
+                    // If no selection, default to Primary Monitor
+                    _originalSettings.MagnifierStationaryMonitor = "Primary Monitor";
+                    System.Diagnostics.Debug.WriteLine("No monitor selected, defaulting to Primary Monitor");
                 }
                 
                 // Save theme customization settings
@@ -926,6 +976,12 @@ namespace SharpShot.UI
                 var isPrimary = screen.Primary;
                 var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
                 MagnifierStationaryMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = monitorName });
+            }
+            
+            // If no selection exists, select "Primary Monitor" by default
+            if (MagnifierStationaryMonitorComboBox.SelectedItem == null && MagnifierStationaryMonitorComboBox.Items.Count > 0)
+            {
+                MagnifierStationaryMonitorComboBox.SelectedIndex = 0;
             }
         }
         

@@ -29,8 +29,17 @@ namespace SharpShot.UI
         [DllImport("user32.dll")]
         private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
         
+        [DllImport("user32.dll")]
+        private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        
+        [DllImport("user32.dll")]
+        private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        
         private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const int MDT_EFFECTIVE_DPI = 0;
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
         
         [DllImport("gdi32.dll")]
         private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
@@ -88,6 +97,32 @@ namespace SharpShot.UI
 
             // Update zoom level text
             ZoomLevelText.Text = $"{_zoomLevel:F1}x";
+            
+            // Setup non-focus-stealing window properties
+            SourceInitialized += MagnifierWindow_SourceInitialized;
+        }
+        
+        private void MagnifierWindow_SourceInitialized(object? sender, EventArgs e)
+        {
+            // Apply Windows API flags to prevent the magnifier window from stealing focus
+            // This prevents browser dropdowns from closing when the magnifier is shown
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero)
+            {
+                // Get current extended window style
+                int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                
+                // Add flags to prevent activation
+                // WS_EX_NOACTIVATE: Window won't activate when shown/clicked
+                // WS_EX_TOOLWINDOW: Don't show in taskbar and don't activate
+                extendedStyle |= WS_EX_NOACTIVATE;
+                extendedStyle |= WS_EX_TOOLWINDOW;
+                
+                // Apply the new extended style
+                SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle);
+                
+                System.Diagnostics.Debug.WriteLine("MagnifierWindow: Applied non-focus-stealing window style");
+            }
         }
         
         public void SetMode(string mode, string stationaryMonitor = null, double? stationaryX = null, double? stationaryY = null)
@@ -490,7 +525,8 @@ namespace SharpShot.UI
             Dispatcher.Invoke(() =>
             {
                 Show();
-                Activate();
+                // Don't call Activate() - this would steal focus and close browser dropdowns
+                // The window is already topmost and will be visible without activation
             });
         }
         
@@ -524,24 +560,43 @@ namespace SharpShot.UI
             if (_stationaryMonitor == "Primary Monitor")
             {
                 targetScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Using Primary Monitor");
             }
             else
             {
-                // Try to find monitor by name (format: "Monitor 1", "Monitor 2", etc.)
-                foreach (var screen in allScreens)
+                // Parse monitor name (format: "Monitor 1", "Monitor 2", "Monitor 1 (Primary)", etc.)
+                // Extract the monitor number from the name
+                int monitorIndex = -1;
+                
+                // Try to extract number from "Monitor X" or "Monitor X (Primary)"
+                var match = System.Text.RegularExpressions.Regex.Match(_stationaryMonitor, @"Monitor\s+(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int monitorNumber))
                 {
-                    // For now, use primary if not found - could enhance with better monitor identification
-                    if (screen.Primary)
-                    {
-                        targetScreen = screen;
-                        break;
-                    }
+                    // Monitor numbers in UI are 1-based, but array is 0-based
+                    monitorIndex = monitorNumber - 1;
+                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Parsed monitor number {monitorNumber} (index {monitorIndex}) from '{_stationaryMonitor}'");
+                }
+                
+                // Use the parsed index to get the correct screen
+                if (monitorIndex >= 0 && monitorIndex < allScreens.Length)
+                {
+                    targetScreen = allScreens[monitorIndex];
+                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Selected monitor at index {monitorIndex}: Bounds=({targetScreen.Bounds.X}, {targetScreen.Bounds.Y}, {targetScreen.Bounds.Width}x{targetScreen.Bounds.Height})");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Could not parse monitor name '{_stationaryMonitor}' or index {monitorIndex} is out of range (have {allScreens.Length} screens)");
                 }
             }
             
-            if (targetScreen == null && allScreens.Length > 0)
+            // Fallback to primary screen if we couldn't find the target
+            if (targetScreen == null)
             {
-                targetScreen = allScreens[0];
+                if (allScreens.Length > 0)
+                {
+                    targetScreen = System.Windows.Forms.Screen.PrimaryScreen ?? allScreens[0];
+                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Falling back to primary screen or first screen");
+                }
             }
             
             if (targetScreen != null)
