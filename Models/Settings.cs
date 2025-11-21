@@ -29,6 +29,8 @@ namespace SharpShot.Models
         private string _magnifierStationaryMonitor = "Primary Monitor";
         private double _magnifierStationaryX = 100;
         private double _magnifierStationaryY = 100;
+        private List<string> _magnifierAutoStationaryMonitors = new List<string>(); // Monitors that should use stationary in Auto mode
+        private List<MagnifierBoundaryBox> _magnifierBoundaryBoxes = new List<MagnifierBoundaryBox>(); // Boundary boxes for magnifier detection
         private string _screenshotEditorDisplayMonitor = string.Empty;
         private bool _disableAllPopups;
 
@@ -55,6 +57,8 @@ namespace SharpShot.Models
             MagnifierStationaryMonitor = "Primary Monitor"; // Default to primary monitor for stationary mode
             MagnifierStationaryX = 100; // Default X position for stationary mode
             MagnifierStationaryY = 100; // Default Y position for stationary mode
+            MagnifierAutoStationaryMonitors = new List<string>(); // Default: no monitors auto-switch to stationary
+            MagnifierBoundaryBoxes = new List<MagnifierBoundaryBox>(); // Default: no boundary boxes
             ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
             DisableAllPopups = false; // Default to false - show popups
             
@@ -188,6 +192,18 @@ namespace SharpShot.Models
             set => SetProperty(ref _magnifierStationaryY, value);
         }
 
+        public List<string> MagnifierAutoStationaryMonitors
+        {
+            get => _magnifierAutoStationaryMonitors;
+            set => SetProperty(ref _magnifierAutoStationaryMonitors, value);
+        }
+
+        public List<MagnifierBoundaryBox> MagnifierBoundaryBoxes
+        {
+            get => _magnifierBoundaryBoxes;
+            set => SetProperty(ref _magnifierBoundaryBoxes, value);
+        }
+
         public string ScreenshotEditorDisplayMonitor
         {
             get => _screenshotEditorDisplayMonitor;
@@ -214,5 +230,13 @@ namespace SharpShot.Models
             OnPropertyChanged(propertyName);
             return true;
         }
+    }
+    
+    public class MagnifierBoundaryBox
+    {
+        public string Name { get; set; } = "";
+        public string MonitorId { get; set; } = "";
+        public System.Drawing.Rectangle Bounds { get; set; }
+        public bool Enabled { get; set; } = true;
     }
 } 

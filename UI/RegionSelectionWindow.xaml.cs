@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
@@ -281,7 +282,8 @@ namespace SharpShot.UI
                 var stationaryMonitor = _settingsService?.CurrentSettings?.MagnifierStationaryMonitor ?? "Primary Monitor";
                 var stationaryX = _settingsService?.CurrentSettings?.MagnifierStationaryX ?? 100;
                 var stationaryY = _settingsService?.CurrentSettings?.MagnifierStationaryY ?? 100;
-                _magnifier = new MagnifierWindow(zoomLevel, mode, stationaryMonitor, stationaryX, stationaryY);
+                var autoStationaryMonitors = _settingsService?.CurrentSettings?.MagnifierAutoStationaryMonitors ?? new List<string>();
+                _magnifier = new MagnifierWindow(zoomLevel, mode, stationaryMonitor, stationaryX, stationaryY, autoStationaryMonitors, _settingsService);
                 
                 // Create timer for updating magnifier
                 _magnifierTimer = new System.Windows.Threading.DispatcherTimer

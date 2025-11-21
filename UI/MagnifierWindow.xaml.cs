@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows;
 using System.Windows.Interop;
@@ -6,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using SharpShot.Services;
 
 namespace SharpShot.UI
 {
@@ -19,6 +21,22 @@ namespace SharpShot.UI
         private string _stationaryMonitor = "Primary Monitor"; // Monitor for stationary mode
         private double _stationaryX = 100, _stationaryY = 100; // Stationary position
         private string _mode = "Follow"; // "Follow", "Stationary", "Auto"
+        private List<string> _autoStationaryMonitors = new List<string>(); // Monitors that should use stationary in Auto mode
+        private Services.SettingsService _settingsService; // Reference to settings service for dynamic updates
+        
+        // Cached monitor information for efficient boundary-based detection
+        private class MonitorInfo
+        {
+            public System.Drawing.Rectangle Bounds;
+            public double DpiScale;
+            public bool IsPrimary;
+        }
+        private List<MonitorInfo> _monitorCache = new List<MonitorInfo>();
+        private bool _monitorCacheInitialized = false;
+        
+        // Cache mapping of monitor handles to screen indices for reliable DPI-aware detection
+        private Dictionary<IntPtr, int> _monitorHandleToIndex = new Dictionary<IntPtr, int>();
+        private bool _monitorHandleCacheInitialized = false;
         
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);
@@ -30,12 +48,28 @@ namespace SharpShot.UI
         private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
         
         [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+        
+        [DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+        
+        [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         
         private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
+        private const int MONITOR_DEFAULTTOPRIMARY = 0x00000001;
+        
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public int Size;
+            public System.Drawing.Rectangle Monitor;
+            public System.Drawing.Rectangle WorkArea;
+            public uint Flags;
+        }
         private const int MDT_EFFECTIVE_DPI = 0;
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_NOACTIVATE = 0x08000000;
@@ -74,7 +108,7 @@ namespace SharpShot.UI
         
         private const uint SRCCOPY = 0x00CC0020;
         
-        public MagnifierWindow(double zoomLevel = 2.0, string mode = "Follow", string stationaryMonitor = "Primary Monitor", double stationaryX = 100, double stationaryY = 100)
+        public MagnifierWindow(double zoomLevel = 2.0, string mode = "Follow", string stationaryMonitor = "Primary Monitor", double stationaryX = 100, double stationaryY = 100, List<string> autoStationaryMonitors = null, Services.SettingsService settingsService = null)
         {
             InitializeComponent();
 
@@ -94,12 +128,62 @@ namespace SharpShot.UI
             _stationaryX = stationaryX;
             _stationaryY = stationaryY;
             _isStationary = (mode == "Stationary");
+            _autoStationaryMonitors = autoStationaryMonitors ?? new List<string>();
+            _settingsService = settingsService;
 
             // Update zoom level text
             ZoomLevelText.Text = $"{_zoomLevel:F1}x";
             
             // Setup non-focus-stealing window properties
             SourceInitialized += MagnifierWindow_SourceInitialized;
+            
+            // Initialize monitor cache for efficient boundary-based detection
+            InitializeMonitorCache();
+        }
+        
+        private void InitializeMonitorCache()
+        {
+            _monitorCache.Clear();
+            _monitorHandleToIndex.Clear();
+            var allScreens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Build cache in same order as Screen.AllScreens to ensure index matching
+            for (int i = 0; i < allScreens.Length; i++)
+            {
+                var screen = allScreens[i];
+                if (screen != null)
+                {
+                    var bounds = screen.Bounds;
+                    
+                    // Get monitor handle for this screen by checking a point in the center
+                    // This creates a reliable mapping that works regardless of DPI scaling
+                    POINT centerPoint = new POINT 
+                    { 
+                        X = bounds.X + bounds.Width / 2, 
+                        Y = bounds.Y + bounds.Height / 2 
+                    };
+                    IntPtr hMonitor = MonitorFromPoint(centerPoint, MONITOR_DEFAULTTONEAREST);
+                    
+                    // Store the mapping
+                    if (hMonitor != IntPtr.Zero)
+                    {
+                        _monitorHandleToIndex[hMonitor] = i;
+                    }
+                    
+                    // Get DPI for this monitor
+                    double dpiScale = GetDpiScaleForPosition(centerPoint.X, centerPoint.Y);
+                    
+                    _monitorCache.Add(new MonitorInfo
+                    {
+                        Bounds = bounds,
+                        DpiScale = dpiScale,
+                        IsPrimary = screen.Primary
+                    });
+                }
+            }
+            
+            _monitorCacheInitialized = true;
+            _monitorHandleCacheInitialized = true;
         }
         
         private void MagnifierWindow_SourceInitialized(object? sender, EventArgs e)
@@ -136,6 +220,17 @@ namespace SharpShot.UI
                 _stationaryX = stationaryX.Value;
             if (stationaryY.HasValue)
                 _stationaryY = stationaryY.Value;
+            
+            // Reinitialize monitor cache when mode changes to ensure it's up to date
+            if (mode == "Auto")
+            {
+                InitializeMonitorCache();
+            }
+        }
+        
+        public void SetAutoStationaryMonitors(List<string> monitors)
+        {
+            _autoStationaryMonitors = monitors ?? new List<string>();
         }
         
         public void UpdateMagnifier()
@@ -147,17 +242,176 @@ namespace SharpShot.UI
                 
                 // Determine if we should use stationary mode
                 bool useStationary = _isStationary;
+                string? boundaryBoxMonitor = null; // Store which monitor the boundary box is on (declared outside if block for scope)
+                bool foundBoundaryBox = false; // Track if we found a boundary box (declared outside if block for scope)
+                
                 if (_mode == "Auto")
                 {
-                    // Auto mode: use stationary if cursor is on a non-100% scaled monitor
-                    double dpiScale = GetDpiScaleForPosition(cursorPos.X, cursorPos.Y);
-                    useStationary = (Math.Abs(dpiScale - 1.0) > 0.01); // Not 100% scaling
+                    // Auto mode: use stationary if cursor is on a monitor that's in the auto-stationary list
+                    // Read current monitor list from settings service if available (for dynamic updates)
+                    List<string> currentAutoStationaryMonitors = _autoStationaryMonitors;
+                    if (_settingsService?.CurrentSettings?.MagnifierAutoStationaryMonitors != null)
+                    {
+                        currentAutoStationaryMonitors = _settingsService.CurrentSettings.MagnifierAutoStationaryMonitors;
+                    }
+                    
+                    // First check boundary boxes (for DPI-scaled monitors that don't detect correctly)
+                    // Also check if boundary boxes are selected in the auto-stationary list
+                    int monitorIndex = -1;
+                    var boundaryBoxes = _settingsService?.CurrentSettings?.MagnifierBoundaryBoxes;
+                    if (boundaryBoxes != null && boundaryBoxes.Count > 0)
+                    {
+                        // Check each boundary box - it should be enabled AND in the selected monitors list
+                        foreach (var box in boundaryBoxes)
+                        {
+                            var boxId = $"BoundaryBox:{box.Name}";
+                            // Check if this boundary box is selected in auto-stationary monitors
+                            bool isSelected = currentAutoStationaryMonitors.Contains(boxId);
+                            
+                            // Also check the Enabled property for backward compatibility
+                            if (!box.Enabled && !isSelected) continue;
+                            
+                            var boundary = box.Bounds;
+                            // Check if cursor is within this boundary box
+                            if (cursorPos.X >= boundary.X && 
+                                cursorPos.X < boundary.X + boundary.Width &&
+                                cursorPos.Y >= boundary.Y && 
+                                cursorPos.Y < boundary.Y + boundary.Height)
+                            {
+                                // If cursor is in a selected boundary box, use stationary mode
+                                useStationary = true;
+                                foundBoundaryBox = true;
+                                
+                                // Find which monitor this boundary box is on
+                                var allScreens = System.Windows.Forms.Screen.AllScreens;
+                                var centerX = boundary.X + boundary.Width / 2;
+                                var centerY = boundary.Y + boundary.Height / 2;
+                                
+                                for (int i = 0; i < allScreens.Length; i++)
+                                {
+                                    if (allScreens[i].Bounds.Contains(centerX, centerY))
+                                    {
+                                        boundaryBoxMonitor = $"Monitor {i + 1}";
+                                        monitorIndex = i;
+                                        break;
+                                    }
+                                }
+                                
+                                // If we couldn't find the monitor by center, try the cursor position
+                                if (boundaryBoxMonitor == null)
+                                {
+                                    for (int i = 0; i < allScreens.Length; i++)
+                                    {
+                                        if (allScreens[i].Bounds.Contains(cursorPos.X, cursorPos.Y))
+                                        {
+                                            boundaryBoxMonitor = $"Monitor {i + 1}";
+                                            monitorIndex = i;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // If no manual boundary matched, use automatic detection
+                    if (monitorIndex < 0)
+                    {
+                        try
+                        {
+                            var screenPoint = new System.Drawing.Point(cursorPos.X, cursorPos.Y);
+                            var screen = System.Windows.Forms.Screen.FromPoint(screenPoint);
+                            
+                            if (screen != null)
+                            {
+                                // Find the index of this screen in Screen.AllScreens
+                                var allScreens = System.Windows.Forms.Screen.AllScreens;
+                                for (int i = 0; i < allScreens.Length; i++)
+                                {
+                                    if (allScreens[i] == screen)
+                                    {
+                                        monitorIndex = i;
+                                        break;
+                                    }
+                                }
+                                
+                                // If direct reference comparison fails, match by bounds
+                                if (monitorIndex < 0)
+                                {
+                                    for (int i = 0; i < allScreens.Length; i++)
+                                    {
+                                        var s = allScreens[i];
+                                        if (s.Bounds.X == screen.Bounds.X &&
+                                            s.Bounds.Y == screen.Bounds.Y &&
+                                            s.Bounds.Width == screen.Bounds.Width &&
+                                            s.Bounds.Height == screen.Bounds.Height)
+                                        {
+                                            monitorIndex = i;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // If Screen.FromPoint fails, fall back to boundary check
+                        }
+                        
+                        // Fallback: if Screen.FromPoint fails, use boundary check
+                        if (monitorIndex < 0)
+                        {
+                            var allScreens = System.Windows.Forms.Screen.AllScreens;
+                            for (int i = 0; i < allScreens.Length; i++)
+                            {
+                                var screen = allScreens[i];
+                                var bounds = screen.Bounds;
+                                
+                                // Check if cursor is within this monitor's boundaries
+                                if (cursorPos.X >= bounds.X && 
+                                    cursorPos.X < bounds.X + bounds.Width &&
+                                    cursorPos.Y >= bounds.Y && 
+                                    cursorPos.Y < bounds.Y + bounds.Height)
+                                {
+                                    monitorIndex = i;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Only check monitor-based stationary if we didn't find a boundary box
+                    if (!foundBoundaryBox)
+                    {
+                        if (monitorIndex >= 0)
+                        {
+                            // Check if this monitor is in the auto-stationary list
+                            // Monitor IDs are "Monitor 1", "Monitor 2", etc. (1-based)
+                            string monitorId = $"Monitor {monitorIndex + 1}";
+                            useStationary = currentAutoStationaryMonitors.Contains(monitorId);
+                        }
+                        else
+                        {
+                            // Fallback: if monitor not found, don't use stationary
+                            useStationary = false;
+                        }
+                    }
                 }
                 
                 // Position magnifier
                 if (useStationary)
                 {
-                    PositionMagnifierStationary();
+                    // If we're in a boundary box, use the monitor that the boundary box is on
+                    if (boundaryBoxMonitor != null)
+                    {
+                        PositionMagnifierStationary(boundaryBoxMonitor);
+                    }
+                    else
+                    {
+                        PositionMagnifierStationary();
+                    }
                 }
                 else
                 {
@@ -551,13 +805,14 @@ namespace SharpShot.UI
             return null;
         }
         
-        private void PositionMagnifierStationary()
+        private void PositionMagnifierStationary(string? overrideMonitor = null)
         {
-            // Find the monitor specified for stationary mode
+            // Find the monitor specified for stationary mode (or use override if provided)
+            string monitorToUse = overrideMonitor ?? _stationaryMonitor;
             System.Windows.Forms.Screen targetScreen = null;
             var allScreens = System.Windows.Forms.Screen.AllScreens;
             
-            if (_stationaryMonitor == "Primary Monitor")
+            if (monitorToUse == "Primary Monitor" || string.IsNullOrEmpty(monitorToUse))
             {
                 targetScreen = System.Windows.Forms.Screen.PrimaryScreen;
                 System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Using Primary Monitor");
@@ -569,12 +824,12 @@ namespace SharpShot.UI
                 int monitorIndex = -1;
                 
                 // Try to extract number from "Monitor X" or "Monitor X (Primary)"
-                var match = System.Text.RegularExpressions.Regex.Match(_stationaryMonitor, @"Monitor\s+(\d+)");
+                var match = System.Text.RegularExpressions.Regex.Match(monitorToUse, @"Monitor\s+(\d+)");
                 if (match.Success && int.TryParse(match.Groups[1].Value, out int monitorNumber))
                 {
                     // Monitor numbers in UI are 1-based, but array is 0-based
                     monitorIndex = monitorNumber - 1;
-                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Parsed monitor number {monitorNumber} (index {monitorIndex}) from '{_stationaryMonitor}'");
+                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Parsed monitor number {monitorNumber} (index {monitorIndex}) from '{monitorToUse}'");
                 }
                 
                 // Use the parsed index to get the correct screen
@@ -585,7 +840,7 @@ namespace SharpShot.UI
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Could not parse monitor name '{_stationaryMonitor}' or index {monitorIndex} is out of range (have {allScreens.Length} screens)");
+                    System.Diagnostics.Debug.WriteLine($"PositionMagnifierStationary: Could not parse monitor name '{monitorToUse}' or index {monitorIndex} is out of range (have {allScreens.Length} screens)");
                 }
             }
             

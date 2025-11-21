@@ -238,6 +238,12 @@ namespace SharpShot.UI
                 MagnifierModeComboBox.SelectionChanged += MagnifierModeComboBox_SelectionChanged;
             }
             
+            // Populate auto mode monitor list
+            PopulateMagnifierAutoMonitorList();
+            
+            // Populate boundary box list
+            PopulateMagnifierBoundaryBoxList();
+            
             // Add event handlers for stationary position sliders
             if (MagnifierStationaryXSlider != null)
             {
@@ -798,6 +804,33 @@ namespace SharpShot.UI
                     System.Diagnostics.Debug.WriteLine("No monitor selected, defaulting to Primary Monitor");
                 }
                 
+                // Save auto mode monitor selections (including boundary boxes)
+                if (MagnifierAutoMonitorList != null)
+                {
+                    var selectedMonitors = new List<string>();
+                    foreach (System.Windows.Controls.CheckBox checkBox in MagnifierAutoMonitorList.Children.OfType<System.Windows.Controls.CheckBox>())
+                    {
+                        if (checkBox.IsChecked == true)
+                        {
+                            string monitorId = checkBox.Tag?.ToString() ?? "";
+                            if (!string.IsNullOrEmpty(monitorId))
+                            {
+                                selectedMonitors.Add(monitorId);
+                            }
+                        }
+                    }
+                    _originalSettings.MagnifierAutoStationaryMonitors = selectedMonitors;
+                    System.Diagnostics.Debug.WriteLine($"Saving auto mode stationary monitors: {string.Join(", ", selectedMonitors)}");
+                    
+                    // Also update boundary box Enabled states based on checkboxes
+                    var boundaryBoxes = _originalSettings.MagnifierBoundaryBoxes ?? new List<Models.MagnifierBoundaryBox>();
+                    foreach (var box in boundaryBoxes)
+                    {
+                        var boxId = $"BoundaryBox:{box.Name}";
+                        box.Enabled = selectedMonitors.Contains(boxId);
+                    }
+                }
+                
                 // Save theme customization settings
                 _originalSettings.IconColor = IconColorTextBox.Text;
                 _originalSettings.HoverOpacity = HoverOpacitySlider.Value;
@@ -879,6 +912,18 @@ namespace SharpShot.UI
             target.MagnifierStationaryMonitor = source.MagnifierStationaryMonitor;
             target.MagnifierStationaryX = source.MagnifierStationaryX;
             target.MagnifierStationaryY = source.MagnifierStationaryY;
+            target.MagnifierAutoStationaryMonitors = source.MagnifierAutoStationaryMonitors != null 
+                ? new List<string>(source.MagnifierAutoStationaryMonitors) 
+                : new List<string>();
+            target.MagnifierBoundaryBoxes = source.MagnifierBoundaryBoxes != null
+                ? new List<Models.MagnifierBoundaryBox>(source.MagnifierBoundaryBoxes.Select(b => new Models.MagnifierBoundaryBox
+                {
+                    Name = b.Name,
+                    MonitorId = b.MonitorId,
+                    Bounds = b.Bounds,
+                    Enabled = b.Enabled
+                }))
+                : new List<Models.MagnifierBoundaryBox>();
             target.ScreenshotEditorDisplayMonitor = source.ScreenshotEditorDisplayMonitor;
             
             // Copy hotkeys
@@ -991,17 +1036,332 @@ namespace SharpShot.UI
             {
                 string mode = selectedItem.Tag?.ToString() ?? "Follow";
                 bool showStationary = (mode == "Stationary" || mode == "Auto");
+                bool showAutoMode = (mode == "Auto");
+                
                 MagnifierStationaryPanel.Visibility = showStationary ? Visibility.Visible : Visibility.Collapsed;
+                MagnifierAutoModePanel.Visibility = showAutoMode ? Visibility.Visible : Visibility.Collapsed;
             }
             else
             {
                 MagnifierStationaryPanel.Visibility = Visibility.Collapsed;
+                MagnifierAutoModePanel.Visibility = Visibility.Collapsed;
             }
         }
         
         private void MagnifierModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             UpdateMagnifierStationaryPanelVisibility();
+        }
+        
+        private void PopulateMagnifierAutoMonitorList()
+        {
+            if (MagnifierAutoMonitorList == null) return;
+            
+            // Clear existing items
+            MagnifierAutoMonitorList.Children.Clear();
+            
+            // Get all screens
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Get currently selected monitors from settings
+            var selectedMonitors = _originalSettings.MagnifierAutoStationaryMonitors ?? new List<string>();
+            
+            // Add checkbox for each monitor
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                var isPrimary = screen.Primary;
+                var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
+                var monitorId = $"Monitor {i + 1}"; // Use consistent ID format
+                
+                var checkBox = new System.Windows.Controls.CheckBox
+                {
+                    Content = monitorName,
+                    Foreground = System.Windows.Media.Brushes.White,
+                    Margin = new Thickness(0, 5, 0, 5),
+                    IsChecked = selectedMonitors.Contains(monitorId) || selectedMonitors.Contains(monitorName)
+                };
+                
+                // Store monitor identifier in Tag for easy retrieval
+                checkBox.Tag = monitorId;
+                
+                MagnifierAutoMonitorList.Children.Add(checkBox);
+            }
+            
+            // Add checkboxes for boundary boxes
+            var boundaryBoxes = _originalSettings.MagnifierBoundaryBoxes ?? new List<Models.MagnifierBoundaryBox>();
+            foreach (var box in boundaryBoxes)
+            {
+                // Use the boundary box name as the identifier
+                var boxId = $"BoundaryBox:{box.Name}";
+                
+                var checkBox = new System.Windows.Controls.CheckBox
+                {
+                    Content = box.Name,
+                    Foreground = System.Windows.Media.Brushes.LightBlue,
+                    Margin = new Thickness(15, 5, 0, 5), // Indent boundary boxes slightly
+                    IsChecked = selectedMonitors.Contains(boxId) || box.Enabled
+                };
+                
+                // Store boundary box identifier in Tag
+                checkBox.Tag = boxId;
+                
+                // Update the box's Enabled property when checkbox is toggled
+                checkBox.Checked += (s, e) => 
+                {
+                    box.Enabled = true;
+                    // Also add to selected monitors list if not already there
+                    if (!selectedMonitors.Contains(boxId))
+                    {
+                        selectedMonitors.Add(boxId);
+                    }
+                };
+                checkBox.Unchecked += (s, e) => 
+                {
+                    box.Enabled = false;
+                    // Remove from selected monitors list
+                    selectedMonitors.Remove(boxId);
+                };
+                
+                MagnifierAutoMonitorList.Children.Add(checkBox);
+            }
+        }
+        
+        private void PopulateMagnifierBoundaryBoxList()
+        {
+            if (MagnifierBoundaryBoxList == null) return;
+            
+            // Clear existing items
+            MagnifierBoundaryBoxList.Children.Clear();
+            
+            var boundaryBoxes = _originalSettings.MagnifierBoundaryBoxes ?? new List<Models.MagnifierBoundaryBox>();
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            foreach (var box in boundaryBoxes)
+            {
+                var panel = CreateBoundaryBoxPanel(box, screens);
+                MagnifierBoundaryBoxList.Children.Add(panel);
+            }
+        }
+        
+        private StackPanel CreateBoundaryBoxPanel(Models.MagnifierBoundaryBox box, System.Windows.Forms.Screen[] screens)
+        {
+            var panel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 5, 0, 5)
+            };
+            
+            var checkBox = new CheckBox
+            {
+                IsChecked = box.Enabled,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
+            checkBox.Checked += (s, e) => box.Enabled = true;
+            checkBox.Unchecked += (s, e) => box.Enabled = false;
+            
+            var nameText = new TextBlock
+            {
+                Text = box.Name + ":",
+                Foreground = System.Windows.Media.Brushes.White,
+                VerticalAlignment = VerticalAlignment.Center,
+                Width = 120
+            };
+            
+            var boundsText = new TextBlock
+            {
+                Text = $"{box.Bounds.X},{box.Bounds.Y} {box.Bounds.Width}x{box.Bounds.Height}",
+                Foreground = System.Windows.Media.Brushes.LightGray,
+                VerticalAlignment = VerticalAlignment.Center,
+                Width = 150
+            };
+            
+            var editButton = new Button
+            {
+                Content = "Edit",
+                Width = 60,
+                Height = 25,
+                Margin = new Thickness(5, 0, 5, 0)
+            };
+            
+            var deleteButton = new Button
+            {
+                Content = "Delete",
+                Width = 60,
+                Height = 25,
+                Margin = new Thickness(5, 0, 0, 0)
+            };
+            
+            editButton.Click += (s, e) => EditBoundaryBox(box);
+            deleteButton.Click += (s, e) => DeleteBoundaryBox(box);
+            
+            panel.Children.Add(checkBox);
+            panel.Children.Add(nameText);
+            panel.Children.Add(boundsText);
+            panel.Children.Add(editButton);
+            panel.Children.Add(deleteButton);
+            
+            return panel;
+        }
+        
+        private void AddBoundaryBoxButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Get virtual desktop bounds to cover all monitors
+                var allScreens = System.Windows.Forms.Screen.AllScreens;
+                System.Drawing.Rectangle virtualBounds;
+                
+                if (allScreens.Length == 0)
+                {
+                    var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                    virtualBounds = primaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+                }
+                else
+                {
+                    int minX = int.MaxValue, minY = int.MaxValue;
+                    int maxX = int.MinValue, maxY = int.MinValue;
+                    
+                    foreach (var screen in allScreens)
+                    {
+                        if (screen != null)
+                        {
+                            minX = Math.Min(minX, screen.Bounds.X);
+                            minY = Math.Min(minY, screen.Bounds.Y);
+                            maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                            maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+                        }
+                    }
+                    
+                    virtualBounds = new System.Drawing.Rectangle(minX, minY, maxX - minX, maxY - minY);
+                }
+                
+                // Hide settings window
+                this.Hide();
+                
+                try
+                {
+                    // Create boundary selection window covering all monitors
+                    var boundaryWindow = new BoundarySelectionWindow(virtualBounds, "All Monitors");
+                    bool? result = boundaryWindow.ShowDialog();
+                    
+                    // Show settings window again
+                    this.Show();
+                    this.Activate();
+                    
+                    // Check result or SelectedBoundary (in case DialogResult wasn't set)
+                    if ((result == true || boundaryWindow.SelectedBoundary.HasValue) && boundaryWindow.SelectedBoundary.HasValue)
+                    {
+                        // Create new boundary box (independent entity, not tied to a monitor)
+                        if (_originalSettings.MagnifierBoundaryBoxes == null)
+                        {
+                            _originalSettings.MagnifierBoundaryBoxes = new List<Models.MagnifierBoundaryBox>();
+                        }
+                        
+                        var newBox = new Models.MagnifierBoundaryBox
+                        {
+                            Name = $"Boundary Box {_originalSettings.MagnifierBoundaryBoxes.Count + 1}",
+                            MonitorId = "", // Empty - boundary boxes are independent entities
+                            Bounds = boundaryWindow.SelectedBoundary.Value,
+                            Enabled = true
+                        };
+                        
+                        _originalSettings.MagnifierBoundaryBoxes.Add(newBox);
+                        PopulateMagnifierBoundaryBoxList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    this.Show();
+                    this.Activate();
+                    System.Diagnostics.Debug.WriteLine($"Failed to create boundary box: {ex.Message}");
+                    MessageBox.Show($"Failed to create boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to add boundary box: {ex.Message}");
+                MessageBox.Show($"Failed to add boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                this.Show();
+            }
+        }
+        
+        private void EditBoundaryBox(Models.MagnifierBoundaryBox box)
+        {
+            try
+            {
+                // Get virtual desktop bounds to cover all monitors
+                var allScreens = System.Windows.Forms.Screen.AllScreens;
+                System.Drawing.Rectangle virtualBounds;
+                
+                if (allScreens.Length == 0)
+                {
+                    var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
+                    virtualBounds = primaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1080);
+                }
+                else
+                {
+                    int minX = int.MaxValue, minY = int.MaxValue;
+                    int maxX = int.MinValue, maxY = int.MinValue;
+                    
+                    foreach (var screen in allScreens)
+                    {
+                        if (screen != null)
+                        {
+                            minX = Math.Min(minX, screen.Bounds.X);
+                            minY = Math.Min(minY, screen.Bounds.Y);
+                            maxX = Math.Max(maxX, screen.Bounds.X + screen.Bounds.Width);
+                            maxY = Math.Max(maxY, screen.Bounds.Y + screen.Bounds.Height);
+                        }
+                    }
+                    
+                    virtualBounds = new System.Drawing.Rectangle(minX, minY, maxX - minX, maxY - minY);
+                }
+                
+                this.Hide();
+                
+                try
+                {
+                    // Create boundary selection window covering all monitors
+                    var boundaryWindow = new BoundarySelectionWindow(virtualBounds, "All Monitors");
+                    bool? result = boundaryWindow.ShowDialog();
+                    this.Show();
+                    this.Activate();
+                    
+                    // Check result or SelectedBoundary (in case DialogResult wasn't set)
+                    if ((result == true || boundaryWindow.SelectedBoundary.HasValue) && boundaryWindow.SelectedBoundary.HasValue)
+                    {
+                        var selectedBounds = boundaryWindow.SelectedBoundary.Value;
+                        box.Bounds = selectedBounds;
+                        // Keep MonitorId empty - boundary boxes are independent entities
+                        
+                        PopulateMagnifierBoundaryBoxList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    this.Show();
+                    this.Activate();
+                    System.Diagnostics.Debug.WriteLine($"Failed to edit boundary box: {ex.Message}");
+                    MessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to edit boundary box: {ex.Message}");
+                MessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                this.Show();
+            }
+        }
+        
+        private void DeleteBoundaryBox(Models.MagnifierBoundaryBox box)
+        {
+            if (_originalSettings.MagnifierBoundaryBoxes != null)
+            {
+                _originalSettings.MagnifierBoundaryBoxes.Remove(box);
+                PopulateMagnifierBoundaryBoxList();
+            }
         }
         
         private void PopulateEditorDisplayMonitorDropdown()
