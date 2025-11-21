@@ -216,14 +216,54 @@ namespace SharpShot.UI
             DropShadowOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
             
             // Add event handler for magnifier checkbox
-            EnableMagnifierCheckBox.Checked += (s, e) => MagnifierZoomPanel.Visibility = Visibility.Visible;
-            EnableMagnifierCheckBox.Unchecked += (s, e) => MagnifierZoomPanel.Visibility = Visibility.Collapsed;
+            EnableMagnifierCheckBox.Checked += (s, e) => 
+            {
+                MagnifierZoomPanel.Visibility = Visibility.Visible;
+                MagnifierModePanel.Visibility = Visibility.Visible;
+                UpdateMagnifierStationaryPanelVisibility();
+            };
+            EnableMagnifierCheckBox.Unchecked += (s, e) => 
+            {
+                MagnifierZoomPanel.Visibility = Visibility.Collapsed;
+                MagnifierModePanel.Visibility = Visibility.Collapsed;
+                MagnifierStationaryPanel.Visibility = Visibility.Collapsed;
+            };
+            
+            // Add event handlers for magnifier mode
+            if (MagnifierModeComboBox != null)
+            {
+                MagnifierModeComboBox.SelectionChanged += MagnifierModeComboBox_SelectionChanged;
+            }
+            
+            // Add event handlers for stationary position sliders
+            if (MagnifierStationaryXSlider != null)
+            {
+                MagnifierStationaryXSlider.ValueChanged += (s, e) => 
+                {
+                    if (MagnifierStationaryXText != null)
+                        MagnifierStationaryXText.Text = ((int)MagnifierStationaryXSlider.Value).ToString();
+                };
+            }
+            if (MagnifierStationaryYSlider != null)
+            {
+                MagnifierStationaryYSlider.ValueChanged += (s, e) => 
+                {
+                    if (MagnifierStationaryYText != null)
+                        MagnifierStationaryYText.Text = ((int)MagnifierStationaryYSlider.Value).ToString();
+                };
+            }
             
             // Add event handler for color wheel text box
             IconColorTextBox.TextChanged += IconColorTextBox_TextChanged;
             
             // Set initial visibility
-            MagnifierZoomPanel.Visibility = _originalSettings.EnableMagnifier ? Visibility.Visible : Visibility.Collapsed;
+            bool magnifierEnabled = _originalSettings.EnableMagnifier;
+            MagnifierZoomPanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
+            MagnifierModePanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
+            UpdateMagnifierStationaryPanelVisibility();
+            
+            // Populate monitor dropdown for stationary mode
+            PopulateMagnifierStationaryMonitorDropdown();
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -376,6 +416,43 @@ namespace SharpShot.UI
                     if (item.Content?.ToString() == zoomText)
                     {
                         MagnifierZoomComboBox.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+            
+            // Load magnifier mode
+            if (MagnifierModeComboBox != null)
+            {
+                string mode = _originalSettings.MagnifierMode ?? "Follow";
+                foreach (System.Windows.Controls.ComboBoxItem item in MagnifierModeComboBox.Items)
+                {
+                    if (item.Tag?.ToString() == mode)
+                    {
+                        MagnifierModeComboBox.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+            
+            // Load stationary settings
+            if (MagnifierStationaryXSlider != null)
+            {
+                MagnifierStationaryXSlider.Value = _originalSettings.MagnifierStationaryX;
+            }
+            if (MagnifierStationaryYSlider != null)
+            {
+                MagnifierStationaryYSlider.Value = _originalSettings.MagnifierStationaryY;
+            }
+            
+            if (MagnifierStationaryMonitorComboBox != null)
+            {
+                string monitor = _originalSettings.MagnifierStationaryMonitor ?? "Primary Monitor";
+                foreach (System.Windows.Controls.ComboBoxItem item in MagnifierStationaryMonitorComboBox.Items)
+                {
+                    if (item.Content?.ToString() == monitor)
+                    {
+                        MagnifierStationaryMonitorComboBox.SelectedItem = item;
                         break;
                     }
                 }
@@ -651,6 +728,26 @@ namespace SharpShot.UI
                     }
                 }
                 
+                // Save magnifier mode
+                if (MagnifierModeComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem modeItem)
+                {
+                    _originalSettings.MagnifierMode = modeItem.Tag?.ToString() ?? "Follow";
+                }
+                
+                // Save stationary settings
+                if (MagnifierStationaryXSlider != null)
+                {
+                    _originalSettings.MagnifierStationaryX = MagnifierStationaryXSlider.Value;
+                }
+                if (MagnifierStationaryYSlider != null)
+                {
+                    _originalSettings.MagnifierStationaryY = MagnifierStationaryYSlider.Value;
+                }
+                if (MagnifierStationaryMonitorComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem monitorItem)
+                {
+                    _originalSettings.MagnifierStationaryMonitor = monitorItem.Content?.ToString() ?? "Primary Monitor";
+                }
+                
                 // Save theme customization settings
                 _originalSettings.IconColor = IconColorTextBox.Text;
                 _originalSettings.HoverOpacity = HoverOpacitySlider.Value;
@@ -728,6 +825,10 @@ namespace SharpShot.UI
             target.EnableMagnifier = source.EnableMagnifier;
             target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
+            target.MagnifierMode = source.MagnifierMode;
+            target.MagnifierStationaryMonitor = source.MagnifierStationaryMonitor;
+            target.MagnifierStationaryX = source.MagnifierStationaryX;
+            target.MagnifierStationaryY = source.MagnifierStationaryY;
             target.ScreenshotEditorDisplayMonitor = source.ScreenshotEditorDisplayMonitor;
             
             // Copy hotkeys
@@ -805,6 +906,48 @@ namespace SharpShot.UI
             }
         }
 
+        private void PopulateMagnifierStationaryMonitorDropdown()
+        {
+            if (MagnifierStationaryMonitorComboBox == null) return;
+            
+            // Clear existing items
+            MagnifierStationaryMonitorComboBox.Items.Clear();
+            
+            // Get all screens
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            
+            // Add primary monitor option first
+            MagnifierStationaryMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Primary Monitor" });
+            
+            // Add individual monitors
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                var isPrimary = screen.Primary;
+                var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
+                MagnifierStationaryMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = monitorName });
+            }
+        }
+        
+        private void UpdateMagnifierStationaryPanelVisibility()
+        {
+            if (MagnifierModeComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
+            {
+                string mode = selectedItem.Tag?.ToString() ?? "Follow";
+                bool showStationary = (mode == "Stationary" || mode == "Auto");
+                MagnifierStationaryPanel.Visibility = showStationary ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                MagnifierStationaryPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+        
+        private void MagnifierModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            UpdateMagnifierStationaryPanelVisibility();
+        }
+        
         private void PopulateEditorDisplayMonitorDropdown()
         {
             // Clear existing items

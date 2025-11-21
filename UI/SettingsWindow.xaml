@@ -492,6 +492,91 @@
                        <ComboBoxItem Content="10.0x"/>
                    </ComboBox>
                </StackPanel>
+               
+               <!-- Magnifier Mode -->
+               <StackPanel x:Name="MagnifierModePanel"
+                          Margin="0,0,0,20"
+                          Visibility="Collapsed">
+                   <TextBlock Text="Magnifier Mode:"
+                              Foreground="White"
+                              VerticalAlignment="Center"
+                              Margin="0,0,0,5"/>
+                   <ComboBox x:Name="MagnifierModeComboBox"
+                             Width="200"
+                             Style="{StaticResource DarkComboBoxStyle}"
+                             SelectionChanged="MagnifierModeComboBox_SelectionChanged">
+                       <ComboBoxItem Content="Follow Cursor" Tag="Follow"/>
+                       <ComboBoxItem Content="Stationary" Tag="Stationary"/>
+                       <ComboBoxItem Content="Auto (Stationary on non-100% monitors)" Tag="Auto"/>
+                   </ComboBox>
+               </StackPanel>
+               
+               <!-- Stationary Magnifier Settings -->
+               <StackPanel x:Name="MagnifierStationaryPanel"
+                          Margin="0,0,0,20"
+                          Visibility="Collapsed">
+                   <TextBlock Text="Stationary Magnifier Settings:"
+                              Foreground="White"
+                              FontWeight="SemiBold"
+                              Margin="0,0,0,10"/>
+                   
+                   <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                       <TextBlock Text="Monitor:"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"
+                                  Width="80"/>
+                       <ComboBox x:Name="MagnifierStationaryMonitorComboBox"
+                                 Width="200"
+                                 Style="{StaticResource DarkComboBoxStyle}"/>
+                   </StackPanel>
+                   
+                   <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                       <TextBlock Text="Position X (%):"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"
+                                  Width="100"/>
+                       <Slider x:Name="MagnifierStationaryXSlider"
+                               Minimum="0"
+                               Maximum="100"
+                               Value="50"
+                               Width="200"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+                       <TextBlock x:Name="MagnifierStationaryXText"
+                                  Text="50"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Width="40"/>
+                   </StackPanel>
+                   
+                   <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                       <TextBlock Text="Position Y (%):"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"
+                                  Width="100"/>
+                       <Slider x:Name="MagnifierStationaryYSlider"
+                               Minimum="0"
+                               Maximum="100"
+                               Value="50"
+                               Width="200"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+                       <TextBlock x:Name="MagnifierStationaryYText"
+                                  Text="50"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Width="40"/>
+                   </StackPanel>
+                   
+                   <TextBlock Text="Position is relative to the selected monitor (0% = top/left, 100% = bottom/right)"
+                              Foreground="#FF888888"
+                              FontSize="11"
+                              TextWrapping="Wrap"
+                              Margin="0,5,0,0"/>
+               </StackPanel>
 
                 <!-- Theme Customization Section -->
                 <TextBlock Text="Theme Customization:" 

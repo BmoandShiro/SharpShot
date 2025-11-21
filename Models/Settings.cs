@@ -25,6 +25,10 @@ namespace SharpShot.Models
         private bool _autoCopyScreenshots;
         private bool _enableMagnifier;
         private double _magnifierZoomLevel;
+        private string _magnifierMode = "Follow"; // "Follow", "Stationary", "Auto"
+        private string _magnifierStationaryMonitor = "Primary Monitor";
+        private double _magnifierStationaryX = 100;
+        private double _magnifierStationaryY = 100;
         private string _screenshotEditorDisplayMonitor = string.Empty;
         private bool _disableAllPopups;
 
@@ -47,6 +51,10 @@ namespace SharpShot.Models
             AutoCopyScreenshots = false; // Default to false - user must manually copy
             EnableMagnifier = true; // Default to true - magnifier helps with precise selection
             MagnifierZoomLevel = 2.0; // Default to 2x zoom
+            MagnifierMode = "Follow"; // Default to follow cursor
+            MagnifierStationaryMonitor = "Primary Monitor"; // Default to primary monitor for stationary mode
+            MagnifierStationaryX = 100; // Default X position for stationary mode
+            MagnifierStationaryY = 100; // Default Y position for stationary mode
             ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
             DisableAllPopups = false; // Default to false - show popups
             
@@ -154,6 +162,30 @@ namespace SharpShot.Models
         {
             get => _magnifierZoomLevel;
             set => SetProperty(ref _magnifierZoomLevel, value);
+        }
+
+        public string MagnifierMode
+        {
+            get => _magnifierMode;
+            set => SetProperty(ref _magnifierMode, value);
+        }
+
+        public string MagnifierStationaryMonitor
+        {
+            get => _magnifierStationaryMonitor;
+            set => SetProperty(ref _magnifierStationaryMonitor, value);
+        }
+
+        public double MagnifierStationaryX
+        {
+            get => _magnifierStationaryX;
+            set => SetProperty(ref _magnifierStationaryX, value);
+        }
+
+        public double MagnifierStationaryY
+        {
+            get => _magnifierStationaryY;
+            set => SetProperty(ref _magnifierStationaryY, value);
         }
 
         public string ScreenshotEditorDisplayMonitor

@@ -15,9 +15,22 @@ namespace SharpShot.UI
         private int _captureSize; // Size of area to capture around cursor (calculated based on zoom)
         private double _zoomLevel = 2.0; // Default zoom level
         private double _currentX, _currentY; // Track current magnifier position
+        private bool _isStationary = false; // Whether magnifier is in stationary mode
+        private string _stationaryMonitor = "Primary Monitor"; // Monitor for stationary mode
+        private double _stationaryX = 100, _stationaryY = 100; // Stationary position
+        private string _mode = "Follow"; // "Follow", "Stationary", "Auto"
         
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);
+        
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+        
+        private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
+        private const int MDT_EFFECTIVE_DPI = 0;
         
         [DllImport("gdi32.dll")]
         private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
@@ -52,7 +65,7 @@ namespace SharpShot.UI
         
         private const uint SRCCOPY = 0x00CC0020;
         
-                public MagnifierWindow(double zoomLevel = 2.0)
+        public MagnifierWindow(double zoomLevel = 2.0, string mode = "Follow", string stationaryMonitor = "Primary Monitor", double stationaryX = 100, double stationaryY = 100)
         {
             InitializeComponent();
 
@@ -66,8 +79,28 @@ namespace SharpShot.UI
             Width = MagnifierSize;
             Height = MagnifierSize;
 
+            // Set mode and stationary settings
+            _mode = mode;
+            _stationaryMonitor = stationaryMonitor;
+            _stationaryX = stationaryX;
+            _stationaryY = stationaryY;
+            _isStationary = (mode == "Stationary");
+
             // Update zoom level text
             ZoomLevelText.Text = $"{_zoomLevel:F1}x";
+        }
+        
+        public void SetMode(string mode, string stationaryMonitor = null, double? stationaryX = null, double? stationaryY = null)
+        {
+            _mode = mode;
+            _isStationary = (mode == "Stationary");
+            
+            if (stationaryMonitor != null)
+                _stationaryMonitor = stationaryMonitor;
+            if (stationaryX.HasValue)
+                _stationaryX = stationaryX.Value;
+            if (stationaryY.HasValue)
+                _stationaryY = stationaryY.Value;
         }
         
         public void UpdateMagnifier()
@@ -77,10 +110,26 @@ namespace SharpShot.UI
                 // Get current cursor position
                 GetCursorPos(out POINT cursorPos);
                 
-                // Position magnifier first to know where it will be
-                PositionMagnifier(cursorPos.X, cursorPos.Y);
+                // Determine if we should use stationary mode
+                bool useStationary = _isStationary;
+                if (_mode == "Auto")
+                {
+                    // Auto mode: use stationary if cursor is on a non-100% scaled monitor
+                    double dpiScale = GetDpiScaleForPosition(cursorPos.X, cursorPos.Y);
+                    useStationary = (Math.Abs(dpiScale - 1.0) > 0.01); // Not 100% scaling
+                }
                 
-                // Calculate capture area around cursor
+                // Position magnifier
+                if (useStationary)
+                {
+                    PositionMagnifierStationary();
+                }
+                else
+                {
+                    PositionMagnifier(cursorPos.X, cursorPos.Y);
+                }
+                
+                // Calculate capture area around cursor (always capture around cursor, not magnifier position)
                 int captureX = cursorPos.X - _captureSize / 2;
                 int captureY = cursorPos.Y - _captureSize / 2;
 
@@ -464,6 +513,92 @@ namespace SharpShot.UI
                 }
             }
             return null;
+        }
+        
+        private void PositionMagnifierStationary()
+        {
+            // Find the monitor specified for stationary mode
+            System.Windows.Forms.Screen targetScreen = null;
+            var allScreens = System.Windows.Forms.Screen.AllScreens;
+            
+            if (_stationaryMonitor == "Primary Monitor")
+            {
+                targetScreen = System.Windows.Forms.Screen.PrimaryScreen;
+            }
+            else
+            {
+                // Try to find monitor by name (format: "Monitor 1", "Monitor 2", etc.)
+                foreach (var screen in allScreens)
+                {
+                    // For now, use primary if not found - could enhance with better monitor identification
+                    if (screen.Primary)
+                    {
+                        targetScreen = screen;
+                        break;
+                    }
+                }
+            }
+            
+            if (targetScreen == null && allScreens.Length > 0)
+            {
+                targetScreen = allScreens[0];
+            }
+            
+            if (targetScreen != null)
+            {
+                var bounds = targetScreen.Bounds;
+                // Convert logical position to physical pixels
+                // For now, treat _stationaryX/Y as percentage of screen (0-100)
+                double physicalX = bounds.X + (bounds.Width * _stationaryX / 100.0);
+                double physicalY = bounds.Y + (bounds.Height * _stationaryY / 100.0);
+                
+                // Ensure magnifier stays within screen bounds
+                physicalX = Math.Max(bounds.X, Math.Min(bounds.X + bounds.Width - MagnifierSize, physicalX));
+                physicalY = Math.Max(bounds.Y, Math.Min(bounds.Y + bounds.Height - MagnifierSize, physicalY));
+                
+                _currentX = physicalX;
+                _currentY = physicalY;
+                
+                Dispatcher.Invoke(() =>
+                {
+                    Left = physicalX;
+                    Top = physicalY;
+                    if (WindowState == WindowState.Normal)
+                    {
+                        UpdateLayout();
+                    }
+                });
+            }
+        }
+        
+        private double GetDpiScaleForPosition(int x, int y)
+        {
+            try
+            {
+                // Get the monitor handle for the given position
+                POINT pt = new POINT { X = x, Y = y };
+                IntPtr hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+                
+                if (hMonitor != IntPtr.Zero)
+                {
+                    // Get DPI for the monitor
+                    uint dpiX, dpiY;
+                    int result = GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out dpiX, out dpiY);
+                    
+                    if (result == 0) // Success
+                    {
+                        // Convert DPI to scaling factor (96 DPI = 100% = 1.0, 216 DPI = 225% = 2.25)
+                        return dpiX / 96.0;
+                    }
+                }
+            }
+            catch
+            {
+                // If DPI API fails, fall back to default
+            }
+            
+            // Default to 1.0 (100% scaling) if we can't determine DPI
+            return 1.0;
         }
     }
 } 

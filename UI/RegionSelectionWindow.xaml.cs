@@ -189,7 +189,11 @@ namespace SharpShot.UI
             try
             {
                 var zoomLevel = _settingsService?.CurrentSettings?.MagnifierZoomLevel ?? 2.0;
-                _magnifier = new MagnifierWindow(zoomLevel);
+                var mode = _settingsService?.CurrentSettings?.MagnifierMode ?? "Follow";
+                var stationaryMonitor = _settingsService?.CurrentSettings?.MagnifierStationaryMonitor ?? "Primary Monitor";
+                var stationaryX = _settingsService?.CurrentSettings?.MagnifierStationaryX ?? 100;
+                var stationaryY = _settingsService?.CurrentSettings?.MagnifierStationaryY ?? 100;
+                _magnifier = new MagnifierWindow(zoomLevel, mode, stationaryMonitor, stationaryX, stationaryY);
                 
                 // Create timer for updating magnifier
                 _magnifierTimer = new System.Windows.Threading.DispatcherTimer
