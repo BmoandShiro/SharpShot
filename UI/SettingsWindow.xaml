@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SharpShot.UI"
         Title="SharpShot Settings"
-        Height="700" Width="500"
+        Height="700" Width="600"
         Style="{StaticResource DarkWindowStyle}"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"

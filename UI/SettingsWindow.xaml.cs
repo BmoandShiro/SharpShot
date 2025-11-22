@@ -1270,7 +1270,8 @@ namespace SharpShot.UI
                 Text = $"{box.Bounds.X},{box.Bounds.Y} {box.Bounds.Width}x{box.Bounds.Height}",
                 Foreground = System.Windows.Media.Brushes.LightGray,
                 VerticalAlignment = VerticalAlignment.Center,
-                Width = 150
+                Width = 140,
+                TextTrimming = TextTrimming.CharacterEllipsis
             };
             
             var editButton = new Button
@@ -1295,7 +1296,7 @@ namespace SharpShot.UI
             {
                 Width = 60,
                 Height = 32,
-                Margin = new Thickness(5, 0, 0, 0),
+                Margin = new Thickness(5, 0, 5, 0),
                 Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0)
             };
             var deleteText = new TextBlock
