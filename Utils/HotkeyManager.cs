@@ -398,8 +398,34 @@ namespace SharpShot.Utils
             // Check if we have 3 presses within the timeout window
             if (_hotkeyPressCounts[actionName] >= 3)
             {
-                System.Diagnostics.Debug.WriteLine($"Triple-click detected for {actionName}, executing action");
-                action?.Invoke();
+                System.Diagnostics.Debug.WriteLine($"Triple-click detected for {actionName}");
+                
+                // Special handling for region selection - implement toggle behavior
+                if (actionName == "ScreenshotRegion")
+                {
+                    // Check if there's already an active region selection
+                    if (_hotkeyToggleStates.ContainsKey(actionName) && _hotkeyToggleStates[actionName])
+                    {
+                        // There's already an active region selection - cancel it
+                        System.Diagnostics.Debug.WriteLine("Triple-click while region selection is active - canceling existing instance");
+                        OnRegionCaptureCanceled?.Invoke();
+                        
+                        // Reset the toggle state
+                        _hotkeyToggleStates[actionName] = false;
+                    }
+                    else
+                    {
+                        // No active region selection - start it
+                        System.Diagnostics.Debug.WriteLine("Triple-click - starting region selection");
+                        _hotkeyToggleStates[actionName] = true;
+                        action?.Invoke();
+                    }
+                }
+                else
+                {
+                    // Normal behavior for other actions
+                    action?.Invoke();
+                }
                 
                 // Reset counter after successful triple-click
                 _hotkeyPressCounts[actionName] = 0;
