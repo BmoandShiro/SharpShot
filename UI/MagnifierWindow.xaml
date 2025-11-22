@@ -22,10 +22,14 @@
             <!-- Magnified content area -->
             <Border x:Name="MagnifierContent"
                     Background="Transparent"
-                    Margin="4">
+                    Margin="2"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch">
                 <Image x:Name="MagnifiedImage"
-                       Stretch="Uniform"
-                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                       Stretch="Fill"
+                       RenderOptions.BitmapScalingMode="HighQuality"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Stretch"/>
             </Border>
             
             <!-- Crosshair overlay -->

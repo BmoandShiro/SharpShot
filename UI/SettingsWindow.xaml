@@ -460,23 +460,23 @@
                
                <!-- Magnifier Zoom Level -->
                <StackPanel x:Name="MagnifierZoomPanel"
-                          Orientation="Horizontal" 
                           Margin="0,0,0,20"
                           Visibility="Collapsed">
-                   <TextBlock Text="Magnifier Zoom Level:"
-                              Foreground="White"
-                              VerticalAlignment="Center"
-                              Margin="0,0,10,0"/>
-                   <ComboBox x:Name="MagnifierZoomComboBox"
-                             Width="80"
-                             Style="{StaticResource DarkComboBoxStyle}">
-                       <ComboBoxItem Content="0.5x"/>
-                       <ComboBoxItem Content="1.0x"/>
-                       <ComboBoxItem Content="1.5x"/>
-                       <ComboBoxItem Content="2.0x"/>
-                       <ComboBoxItem Content="2.5x"/>
-                       <ComboBoxItem Content="3.0x"/>
-                       <ComboBoxItem Content="3.5x"/>
+                   <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                       <TextBlock Text="Magnifier Zoom Level:"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"/>
+                       <ComboBox x:Name="MagnifierZoomComboBox"
+                                 Width="80"
+                                 Style="{StaticResource DarkComboBoxStyle}">
+                           <ComboBoxItem Content="0.5x"/>
+                           <ComboBoxItem Content="1.0x"/>
+                           <ComboBoxItem Content="1.5x"/>
+                           <ComboBoxItem Content="2.0x"/>
+                           <ComboBoxItem Content="2.5x"/>
+                           <ComboBoxItem Content="3.0x"/>
+                           <ComboBoxItem Content="3.5x"/>
                        <ComboBoxItem Content="4.0x"/>
                        <ComboBoxItem Content="4.5x"/>
                        <ComboBoxItem Content="5.0x"/>
@@ -491,6 +491,54 @@
                        <ComboBoxItem Content="9.5x"/>
                        <ComboBoxItem Content="10.0x"/>
                    </ComboBox>
+                   </StackPanel>
+                   
+                   <!-- Magnifier Size (Stationary Mode) -->
+                   <StackPanel x:Name="MagnifierSizeStationaryPanel"
+                              Orientation="Horizontal" 
+                              Margin="0,0,0,10"
+                              Visibility="Collapsed">
+                       <TextBlock Text="Magnifier Size (Stationary):"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"
+                                  Width="180"/>
+                       <Slider x:Name="MagnifierSizeSlider"
+                               Minimum="100"
+                               Maximum="400"
+                               TickFrequency="50"
+                               IsSnapToTickEnabled="True"
+                               Width="200"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+                       <TextBlock x:Name="MagnifierSizeText"
+                                  Text="200px"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Width="60"/>
+                   </StackPanel>
+                   
+                   <!-- Magnifier Size (Follow Cursor/Auto Mode) -->
+                   <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                       <TextBlock Text="Magnifier Size (Follow/Auto):"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"
+                                  Width="180"/>
+                       <Slider x:Name="MagnifierFollowSizeSlider"
+                               Minimum="100"
+                               Maximum="200"
+                               TickFrequency="25"
+                               IsSnapToTickEnabled="True"
+                               Width="200"
+                               VerticalAlignment="Center"
+                               Margin="0,0,10,0"/>
+                       <TextBlock x:Name="MagnifierFollowSizeText"
+                                  Text="200px"
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Width="60"/>
+                   </StackPanel>
                </StackPanel>
                
                <!-- Magnifier Mode -->

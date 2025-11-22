@@ -427,6 +427,32 @@ namespace SharpShot.UI
                 }
             }
             
+            // Load magnifier size (stationary)
+            if (MagnifierSizeSlider != null)
+            {
+                MagnifierSizeSlider.Value = _originalSettings.MagnifierSize;
+                UpdateMagnifierSizeText();
+            }
+            
+            // Add event handler for magnifier size slider (stationary)
+            if (MagnifierSizeSlider != null)
+            {
+                MagnifierSizeSlider.ValueChanged += (s, e) => UpdateMagnifierSizeText();
+            }
+            
+            // Load magnifier follow size
+            if (MagnifierFollowSizeSlider != null)
+            {
+                MagnifierFollowSizeSlider.Value = _originalSettings.MagnifierFollowSize;
+                UpdateMagnifierFollowSizeText();
+            }
+            
+            // Add event handler for magnifier follow size slider
+            if (MagnifierFollowSizeSlider != null)
+            {
+                MagnifierFollowSizeSlider.ValueChanged += (s, e) => UpdateMagnifierFollowSizeText();
+            }
+            
             // Load magnifier mode
             if (MagnifierModeComboBox != null)
             {
@@ -776,6 +802,18 @@ namespace SharpShot.UI
                     }
                 }
                 
+                // Save magnifier size (stationary)
+                if (MagnifierSizeSlider != null)
+                {
+                    _originalSettings.MagnifierSize = (int)MagnifierSizeSlider.Value;
+                }
+                
+                // Save magnifier follow size
+                if (MagnifierFollowSizeSlider != null)
+                {
+                    _originalSettings.MagnifierFollowSize = (int)MagnifierFollowSizeSlider.Value;
+                }
+                
                 // Save magnifier mode
                 if (MagnifierModeComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem modeItem)
                 {
@@ -908,6 +946,8 @@ namespace SharpShot.UI
             target.EnableMagnifier = source.EnableMagnifier;
             target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
+            target.MagnifierSize = source.MagnifierSize;
+            target.MagnifierFollowSize = source.MagnifierFollowSize;
             target.MagnifierMode = source.MagnifierMode;
             target.MagnifierStationaryMonitor = source.MagnifierStationaryMonitor;
             target.MagnifierStationaryX = source.MagnifierStationaryX;
@@ -1030,6 +1070,22 @@ namespace SharpShot.UI
             }
         }
         
+        private void UpdateMagnifierSizeText()
+        {
+            if (MagnifierSizeSlider != null && MagnifierSizeText != null)
+            {
+                MagnifierSizeText.Text = $"{(int)MagnifierSizeSlider.Value}px";
+            }
+        }
+        
+        private void UpdateMagnifierFollowSizeText()
+        {
+            if (MagnifierFollowSizeSlider != null && MagnifierFollowSizeText != null)
+            {
+                MagnifierFollowSizeText.Text = $"{(int)MagnifierFollowSizeSlider.Value}px";
+            }
+        }
+        
         private void UpdateMagnifierStationaryPanelVisibility()
         {
             if (MagnifierModeComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
@@ -1040,6 +1096,12 @@ namespace SharpShot.UI
                 
                 MagnifierStationaryPanel.Visibility = showStationary ? Visibility.Visible : Visibility.Collapsed;
                 MagnifierAutoModePanel.Visibility = showAutoMode ? Visibility.Visible : Visibility.Collapsed;
+                
+                // Show stationary size slider only for Stationary mode, follow size slider for Follow/Auto
+                if (MagnifierSizeStationaryPanel != null)
+                {
+                    MagnifierSizeStationaryPanel.Visibility = (mode == "Stationary") ? Visibility.Visible : Visibility.Collapsed;
+                }
             }
             else
             {

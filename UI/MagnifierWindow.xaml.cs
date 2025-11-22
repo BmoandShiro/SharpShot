@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -13,7 +14,7 @@ namespace SharpShot.UI
 {
     public partial class MagnifierWindow : Window
     {
-        private const int MagnifierSize = 200;
+        private int _magnifierSize = 200; // Size of the magnifier window (can be changed via settings)
         private int _captureSize; // Size of area to capture around cursor (calculated based on zoom)
         private double _zoomLevel = 2.0; // Default zoom level
         private double _currentX, _currentY; // Track current magnifier position
@@ -114,13 +115,31 @@ namespace SharpShot.UI
 
             // Set zoom level
             _zoomLevel = Math.Max(0.5, Math.Min(10.0, zoomLevel)); // Clamp between 0.5x and 10x
+            
+            // Get magnifier size from settings if available
+            // For follow cursor mode, use MagnifierFollowSize (max 200), for stationary use MagnifierSize
+            if (settingsService?.CurrentSettings != null)
+            {
+                if (mode == "Stationary")
+                {
+                    _magnifierSize = settingsService.CurrentSettings.MagnifierSize;
+                }
+                else
+                {
+                    // Follow cursor or Auto mode: use follow size (capped at 200)
+                    _magnifierSize = Math.Min(200, settingsService.CurrentSettings.MagnifierFollowSize);
+                }
+            }
 
             // Calculate capture size based on zoom level
-            _captureSize = (int)(MagnifierSize / _zoomLevel);
+            _captureSize = (int)(_magnifierSize / _zoomLevel);
 
             // Set window size
-            Width = MagnifierSize;
-            Height = MagnifierSize;
+            Width = _magnifierSize;
+            Height = _magnifierSize;
+            
+            // Update crosshair positions based on magnifier size
+            UpdateCrosshair();
 
             // Set mode and stationary settings
             _mode = mode;
@@ -220,6 +239,25 @@ namespace SharpShot.UI
                 _stationaryX = stationaryX.Value;
             if (stationaryY.HasValue)
                 _stationaryY = stationaryY.Value;
+            
+            // Update magnifier size from settings if available
+            // Use appropriate size based on mode
+            if (_settingsService?.CurrentSettings != null)
+            {
+                if (mode == "Stationary")
+                {
+                    _magnifierSize = _settingsService.CurrentSettings.MagnifierSize;
+                }
+                else
+                {
+                    // Follow cursor or Auto mode: use follow size (capped at 200)
+                    _magnifierSize = Math.Min(200, _settingsService.CurrentSettings.MagnifierFollowSize);
+                }
+                Width = _magnifierSize;
+                Height = _magnifierSize;
+                _captureSize = (int)(_magnifierSize / _zoomLevel);
+                UpdateCrosshair();
+            }
             
             // Reinitialize monitor cache when mode changes to ensure it's up to date
             if (mode == "Auto")
@@ -400,6 +438,37 @@ namespace SharpShot.UI
                     }
                 }
                 
+                // Check if magnifier size has changed and update if needed
+                // Use different size based on mode: stationary uses MagnifierSize, follow/auto uses MagnifierFollowSize (max 200)
+                if (_settingsService?.CurrentSettings != null)
+                {
+                    int newSize;
+                    if (useStationary)
+                    {
+                        // Stationary mode: use full size setting
+                        newSize = _settingsService.CurrentSettings.MagnifierSize;
+                    }
+                    else
+                    {
+                        // Follow cursor or auto (follow mode): use follow size (capped at 200)
+                        newSize = Math.Min(200, _settingsService.CurrentSettings.MagnifierFollowSize);
+                    }
+                    
+                    if (newSize != _magnifierSize)
+                    {
+                        _magnifierSize = newSize;
+                        _captureSize = (int)(_magnifierSize / _zoomLevel);
+                        UpdateCrosshair();
+                    }
+                }
+                
+                // Ensure window size is set BEFORE positioning (critical for proper image display)
+                Dispatcher.Invoke(() =>
+                {
+                    Width = _magnifierSize;
+                    Height = _magnifierSize;
+                });
+                
                 // Position magnifier
                 if (useStationary)
                 {
@@ -447,10 +516,17 @@ namespace SharpShot.UI
                     // Convert to WPF ImageSource
                     var imageSource = ConvertBitmapToImageSource(capturedBitmap);
                     
-                    // Update the magnified image
+                    // Update the magnified image (use same simple logic as stationary mode)
                     Dispatcher.Invoke(() =>
                     {
+                        // Window size is already set before positioning, so use simple calculation
+                        // Border has 2px margin on each side = 4px total
+                        double displaySize = _magnifierSize - 4;
+                        
+                        // Ensure image fills the entire available space
                         MagnifiedImage.Source = imageSource;
+                        MagnifiedImage.Width = displaySize;
+                        MagnifiedImage.Height = displaySize;
                     });
                     
                     // Clean up
@@ -487,8 +563,8 @@ namespace SharpShot.UI
                 // Calculate magnifier bounds in screen coordinates (including border)
                 int magnifierLeft = (int)_currentX - 2; // Include border
                 int magnifierTop = (int)_currentY - 2; // Include border
-                int magnifierRight = magnifierLeft + MagnifierSize + 4; // Include border
-                int magnifierBottom = magnifierTop + MagnifierSize + 4; // Include border
+                int magnifierRight = magnifierLeft + _magnifierSize + 4; // Include border
+                int magnifierBottom = magnifierTop + _magnifierSize + 4; // Include border
                 
                 // Calculate intersection with capture area
                 int intersectLeft = Math.Max(x, magnifierLeft);
@@ -577,6 +653,7 @@ namespace SharpShot.UI
         
         private void PositionMagnifier(int cursorX, int cursorY)
         {
+            // Window size is already set in UpdateMagnifier before this is called
             // Get virtual desktop bounds (all monitors combined) instead of just primary screen
             var virtualDesktopBounds = GetVirtualDesktopBounds();
             
@@ -596,7 +673,7 @@ namespace SharpShot.UI
             
             // Calculate position to place magnifier farther from cursor to avoid self-capture
             double magnifierX = cursorX + 50; // Increased offset to the right
-            double magnifierY = cursorY - MagnifierSize / 2; // Center vertically
+            double magnifierY = cursorY - _magnifierSize / 2; // Center vertically
             
             System.Diagnostics.Debug.WriteLine($"Initial magnifier position: ({magnifierX}, {magnifierY})");
             
@@ -608,9 +685,9 @@ namespace SharpShot.UI
                 var monitorLeftEdge = monitorBounds.X;
                 
                 // If magnifier would go off the right edge of current monitor, try left side
-                if (magnifierX + MagnifierSize > monitorRightEdge)
+                if (magnifierX + _magnifierSize > monitorRightEdge)
                 {
-                    magnifierX = cursorX - MagnifierSize - 50; // Place to the left with increased offset
+                    magnifierX = cursorX - _magnifierSize - 50; // Place to the left with increased offset
                     System.Diagnostics.Debug.WriteLine($"Switched to left side: {magnifierX}");
                     
                     // Ensure left side is still within current monitor bounds
@@ -629,10 +706,10 @@ namespace SharpShot.UI
                     System.Diagnostics.Debug.WriteLine($"Switched to right side: {magnifierX}");
                     
                     // Ensure right side is still within current monitor bounds
-                    if (magnifierX + MagnifierSize > monitorRightEdge)
+                    if (magnifierX + _magnifierSize > monitorRightEdge)
                     {
                         // If right side is also off-screen, position at monitor edge with small margin
-                        magnifierX = monitorRightEdge - MagnifierSize - 10;
+                        magnifierX = monitorRightEdge - _magnifierSize - 10;
                         System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor right edge: {magnifierX}");
                     }
                 }
@@ -640,9 +717,9 @@ namespace SharpShot.UI
             else
             {
                 // Fallback to virtual desktop bounds if current screen detection fails
-                if (magnifierX + MagnifierSize > virtualDesktopBounds.X + virtualDesktopBounds.Width)
+                if (magnifierX + _magnifierSize > virtualDesktopBounds.X + virtualDesktopBounds.Width)
                 {
-                    magnifierX = cursorX - MagnifierSize - 50; // Place to the left instead with increased offset
+                    magnifierX = cursorX - _magnifierSize - 50; // Place to the left instead with increased offset
                     System.Diagnostics.Debug.WriteLine($"Switched to left side: {magnifierX}");
                 }
                 
@@ -661,9 +738,9 @@ namespace SharpShot.UI
                 magnifierY = virtualDesktopBounds.Y;
                 System.Diagnostics.Debug.WriteLine($"Adjusted Y to virtual desktop top: {magnifierY}");
             }
-            else if (magnifierY + MagnifierSize > virtualDesktopBounds.Y + virtualDesktopBounds.Height)
+            else if (magnifierY + _magnifierSize > virtualDesktopBounds.Y + virtualDesktopBounds.Height)
             {
-                magnifierY = virtualDesktopBounds.Y + virtualDesktopBounds.Height - MagnifierSize;
+                magnifierY = virtualDesktopBounds.Y + virtualDesktopBounds.Height - _magnifierSize;
                 System.Diagnostics.Debug.WriteLine($"Adjusted Y to virtual desktop bottom: {magnifierY}");
             }
             
@@ -687,9 +764,9 @@ namespace SharpShot.UI
                         magnifierX = monitorBounds.X + 10; // Small margin from left edge
                         System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor left edge: {magnifierX}");
                     }
-                    if (magnifierX + MagnifierSize > monitorBounds.X + monitorBounds.Width)
+                    if (magnifierX + _magnifierSize > monitorBounds.X + monitorBounds.Width)
                     {
-                        magnifierX = monitorBounds.X + monitorBounds.Width - MagnifierSize - 10; // Small margin from right edge
+                        magnifierX = monitorBounds.X + monitorBounds.Width - _magnifierSize - 10; // Small margin from right edge
                         System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor right edge: {magnifierX}");
                     }
                     if (magnifierY < monitorBounds.Y)
@@ -697,9 +774,9 @@ namespace SharpShot.UI
                         magnifierY = monitorBounds.Y + 10; // Small margin from top edge
                         System.Diagnostics.Debug.WriteLine($"Adjusted Y to monitor top edge: {magnifierY}");
                     }
-                    if (magnifierY + MagnifierSize > monitorBounds.Y + monitorBounds.Height)
+                    if (magnifierY + _magnifierSize > monitorBounds.Y + monitorBounds.Height)
                     {
-                        magnifierY = monitorBounds.Y + monitorBounds.Height - MagnifierSize - 10; // Small margin from bottom edge
+                        magnifierY = monitorBounds.Y + monitorBounds.Height - _magnifierSize - 10; // Small margin from bottom edge
                         System.Diagnostics.Debug.WriteLine($"Adjusted Y to monitor bottom edge: {magnifierY}");
                     }
                 }
@@ -711,7 +788,7 @@ namespace SharpShot.UI
             _currentX = magnifierX;
             _currentY = magnifierY;
             
-            // Update window position
+            // Update window position (size is already set in UpdateMagnifier)
             Dispatcher.Invoke(() =>
             {
                 // Ensure the window can be positioned at negative coordinates (for top monitors)
@@ -779,6 +856,8 @@ namespace SharpShot.UI
             Dispatcher.Invoke(() =>
             {
                 Show();
+                // Update crosshair after window is shown to ensure elements are loaded
+                UpdateCrosshair();
                 // Don't call Activate() - this would steal focus and close browser dropdowns
                 // The window is already topmost and will be visible without activation
             });
@@ -803,6 +882,33 @@ namespace SharpShot.UI
                 }
             }
             return null;
+        }
+        
+        private void UpdateCrosshair()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (HorizontalLine == null || VerticalLine == null || CenterDot == null)
+                    return;
+                
+                double center = _magnifierSize / 2.0;
+                
+                // Update horizontal line (centered vertically, full width)
+                HorizontalLine.X1 = 0;
+                HorizontalLine.Y1 = center;
+                HorizontalLine.X2 = _magnifierSize;
+                HorizontalLine.Y2 = center;
+                
+                // Update vertical line (centered horizontally, full height)
+                VerticalLine.X1 = center;
+                VerticalLine.Y1 = 0;
+                VerticalLine.X2 = center;
+                VerticalLine.Y2 = _magnifierSize;
+                
+                // Update center dot (4x4 pixel dot, centered)
+                Canvas.SetLeft(CenterDot, center - 2);
+                Canvas.SetTop(CenterDot, center - 2);
+            });
         }
         
         private void PositionMagnifierStationary(string? overrideMonitor = null)
@@ -863,8 +969,8 @@ namespace SharpShot.UI
                 double physicalY = bounds.Y + (bounds.Height * _stationaryY / 100.0);
                 
                 // Ensure magnifier stays within screen bounds
-                physicalX = Math.Max(bounds.X, Math.Min(bounds.X + bounds.Width - MagnifierSize, physicalX));
-                physicalY = Math.Max(bounds.Y, Math.Min(bounds.Y + bounds.Height - MagnifierSize, physicalY));
+                physicalX = Math.Max(bounds.X, Math.Min(bounds.X + bounds.Width - _magnifierSize, physicalX));
+                physicalY = Math.Max(bounds.Y, Math.Min(bounds.Y + bounds.Height - _magnifierSize, physicalY));
                 
                 _currentX = physicalX;
                 _currentY = physicalY;

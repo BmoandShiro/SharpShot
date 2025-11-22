@@ -25,6 +25,8 @@ namespace SharpShot.Models
         private bool _autoCopyScreenshots;
         private bool _enableMagnifier;
         private double _magnifierZoomLevel;
+        private int _magnifierSize = 200; // Size of the magnifier window in pixels (for stationary mode)
+        private int _magnifierFollowSize = 200; // Size of the magnifier window in pixels (for follow cursor/auto modes, max 200)
         private string _magnifierMode = "Follow"; // "Follow", "Stationary", "Auto"
         private string _magnifierStationaryMonitor = "Primary Monitor";
         private double _magnifierStationaryX = 100;
@@ -53,6 +55,8 @@ namespace SharpShot.Models
             AutoCopyScreenshots = false; // Default to false - user must manually copy
             EnableMagnifier = true; // Default to true - magnifier helps with precise selection
             MagnifierZoomLevel = 2.0; // Default to 2x zoom
+            MagnifierSize = 200; // Default to 200x200 pixels (for stationary mode)
+            MagnifierFollowSize = 200; // Default to 200x200 pixels (for follow cursor/auto modes, max 200)
             MagnifierMode = "Follow"; // Default to follow cursor
             MagnifierStationaryMonitor = "Primary Monitor"; // Default to primary monitor for stationary mode
             MagnifierStationaryX = 100; // Default X position for stationary mode
@@ -166,6 +170,18 @@ namespace SharpShot.Models
         {
             get => _magnifierZoomLevel;
             set => SetProperty(ref _magnifierZoomLevel, value);
+        }
+
+        public int MagnifierSize
+        {
+            get => _magnifierSize;
+            set => SetProperty(ref _magnifierSize, value);
+        }
+
+        public int MagnifierFollowSize
+        {
+            get => _magnifierFollowSize;
+            set => SetProperty(ref _magnifierFollowSize, Math.Min(200, value)); // Cap at 200 for follow cursor mode
         }
 
         public string MagnifierMode
