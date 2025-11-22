@@ -479,7 +479,23 @@ namespace SharpShot
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
+            // Temporarily disable Topmost so window can minimize properly to taskbar
+            Topmost = false;
             WindowState = WindowState.Minimized;
+            
+            // Re-enable Topmost when window is restored
+            StateChanged += MainWindow_StateChanged;
+        }
+        
+        private void MainWindow_StateChanged(object? sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Normal)
+            {
+                // Re-enable Topmost when restored
+                Topmost = true;
+                // Remove the event handler to avoid multiple subscriptions
+                StateChanged -= MainWindow_StateChanged;
+            }
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -1548,14 +1564,16 @@ namespace SharpShot
                 // Get current extended window style
                 int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
                 
-                // Add flags to prevent activation
+                // Add flag to prevent activation, but DON'T use WS_EX_TOOLWINDOW
+                // WS_EX_TOOLWINDOW prevents the window from showing in the taskbar
+                // We only want WS_EX_NOACTIVATE to prevent focus stealing while still showing in taskbar
                 extendedStyle |= WS_EX_NOACTIVATE;  // Window won't activate when clicked
-                extendedStyle |= WS_EX_TOOLWINDOW;  // Don't show in alt-tab and don't activate
+                // Do NOT set WS_EX_TOOLWINDOW - we want the window to show in taskbar
                 
                 // Apply the new extended style
                 SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle);
                 
-                System.Diagnostics.Debug.WriteLine("MainWindow: Applied non-activating window style");
+                System.Diagnostics.Debug.WriteLine("MainWindow: Applied non-activating window style (without TOOLWINDOW flag to allow taskbar visibility)");
             }
             catch (Exception ex)
             {
