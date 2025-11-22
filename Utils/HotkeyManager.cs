@@ -15,11 +15,20 @@ namespace SharpShot.Utils
         private readonly Dictionary<string, int> _hotkeyPressCounts;
         private readonly Dictionary<string, DateTime> _hotkeyLastPressTimes;
         private readonly Dictionary<string, bool> _hotkeyToggleStates;
+        private readonly Dictionary<string, string> _modifierHotkeys; // Track single modifier hotkeys that need hooks
         private int _nextHotkeyId = 1;
         private bool _isInitialized;
         private IntPtr _windowHandle;
+        private IntPtr _keyboardHookHandle = IntPtr.Zero;
+        private LowLevelKeyboardProc _keyboardProc;
         private const int TRIPLE_CLICK_TIMEOUT_MS = 500; // 500ms window for triple click
         private const int DOUBLE_CLICK_TIMEOUT_MS = 300; // 300ms window for double click
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_SHIFT = 0x10;
+        private const int VK_MENU = 0x12; // Alt key
 
         // Windows API imports
         [DllImport("user32.dll")]
@@ -31,6 +40,31 @@ namespace SharpShot.Utils
         [DllImport("kernel32.dll")]
         private static extern uint GetLastError();
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KBDLLHOOKSTRUCT
+        {
+            public uint vkCode;
+            public uint scanCode;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
         public HotkeyManager(SettingsService settingsService)
         {
             _settingsService = settingsService;
@@ -39,7 +73,9 @@ namespace SharpShot.Utils
             _hotkeyPressCounts = new Dictionary<string, int>();
             _hotkeyLastPressTimes = new Dictionary<string, DateTime>();
             _hotkeyToggleStates = new Dictionary<string, bool>();
+            _modifierHotkeys = new Dictionary<string, string>();
             _isInitialized = false;
+            _keyboardProc = KeyboardHookProc;
         }
         
         public void SetWindowHandle(IntPtr windowHandle)
@@ -93,10 +129,33 @@ namespace SharpShot.Utils
             {
                 var (modifiers, keyCode) = ParseHotkey(hotkeyString);
                 
-                // Prevent single modifier keys from being registered as global hotkeys
-                if (IsSingleModifierKey(hotkeyString))
+                // Check if triple-click is enabled for this action
+                bool tripleClickEnabled = _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault($"{actionName}TripleClick", "false") == "true";
+                
+                // Prevent single modifier keys from being registered as global hotkeys UNLESS triple-click is enabled
+                // Triple-click mode makes single modifiers safe since they require 3 presses
+                if (IsSingleModifierKey(hotkeyString) && !tripleClickEnabled)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Warning: Cannot register '{hotkeyString}' as a global hotkey for {actionName} - it would interfere with normal typing. Use combinations like 'Ctrl+Shift+A', 'F1', or 'Space' instead.");
+                    System.Diagnostics.Debug.WriteLine($"Warning: Cannot register '{hotkeyString}' as a global hotkey for {actionName} - it would interfere with normal typing. Use combinations like 'Ctrl+Shift+A', 'F1', or 'Space' instead. Or enable triple-click mode.");
+                    return;
+                }
+                
+                // For single modifier keys with triple-click enabled, use keyboard hook instead of RegisterHotKey
+                if (IsSingleModifierKey(hotkeyString) && tripleClickEnabled)
+                {
+                    // Store the modifier hotkey for hook-based detection
+                    _modifierHotkeys[actionName] = hotkeyString;
+                    System.Diagnostics.Debug.WriteLine($"Registered modifier hotkey (hook-based): {actionName} = {hotkeyString}, Triple-click enabled: {tripleClickEnabled}");
+                    
+                    // Install keyboard hook if not already installed
+                    if (_keyboardHookHandle == IntPtr.Zero)
+                    {
+                        InstallKeyboardHook();
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Keyboard hook already installed, added {actionName} = {hotkeyString} to tracking list");
+                    }
                     return;
                 }
                 
@@ -425,7 +484,146 @@ namespace SharpShot.Utils
             _hotkeyPressCounts.Clear();
             _hotkeyLastPressTimes.Clear();
             _hotkeyToggleStates.Clear();
+            
+            // Uninstall keyboard hook before clearing modifier hotkeys
+            if (_modifierHotkeys.Count > 0)
+            {
+                UninstallKeyboardHook();
+            }
+            _modifierHotkeys.Clear();
         }
+        
+        private void InstallKeyboardHook()
+        {
+            if (_keyboardHookHandle != IntPtr.Zero)
+            {
+                System.Diagnostics.Debug.WriteLine("Keyboard hook already installed");
+                return;
+            }
+            
+            using (var curProcess = System.Diagnostics.Process.GetCurrentProcess())
+            using (var curModule = curProcess.MainModule)
+            {
+                _keyboardHookHandle = SetWindowsHookEx(WH_KEYBOARD_LL, _keyboardProc,
+                    GetModuleHandle(curModule.ModuleName), 0);
+            }
+            
+            if (_keyboardHookHandle == IntPtr.Zero)
+            {
+                uint error = GetLastError();
+                System.Diagnostics.Debug.WriteLine($"Failed to install keyboard hook. Error code: {error}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"Keyboard hook installed successfully. Handle: {_keyboardHookHandle}, Tracking {_modifierHotkeys.Count} modifier hotkeys");
+                foreach (var kvp in _modifierHotkeys)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  - {kvp.Key}: {kvp.Value}");
+                }
+            }
+        }
+        
+        private void UninstallKeyboardHook()
+        {
+            if (_keyboardHookHandle != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(_keyboardHookHandle);
+                _keyboardHookHandle = IntPtr.Zero;
+                System.Diagnostics.Debug.WriteLine("Keyboard hook uninstalled");
+            }
+        }
+        
+        private IntPtr KeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            // Always call next hook first (required by Windows)
+            IntPtr result = CallNextHookEx(_keyboardHookHandle, nCode, wParam, lParam);
+            
+            if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN && _modifierHotkeys.Count > 0)
+            {
+                var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
+                uint vkCode = hookStruct.vkCode;
+                
+                // Check if any other modifier keys are currently pressed
+                // We only want to trigger if ONLY the target modifier is pressed
+                bool ctrlPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                bool shiftPressed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+                bool altPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+                
+                System.Diagnostics.Debug.WriteLine($"Hook: vkCode=0x{vkCode:X2}, Ctrl={ctrlPressed}, Shift={shiftPressed}, Alt={altPressed}, Tracking {_modifierHotkeys.Count} modifiers");
+                
+                // Check if this is a modifier key we're tracking
+                foreach (var kvp in _modifierHotkeys)
+                {
+                    string actionName = kvp.Key;
+                    string modifierName = kvp.Value;
+                    bool isTargetModifier = false;
+                    
+                    if (modifierName == "Ctrl" || modifierName == "Control")
+                    {
+                        isTargetModifier = (vkCode == VK_CONTROL || vkCode == 0xA2 || vkCode == 0xA3); // Left/Right Ctrl
+                    }
+                    else if (modifierName == "Shift")
+                    {
+                        isTargetModifier = (vkCode == VK_SHIFT || vkCode == 0xA0 || vkCode == 0xA1); // Left/Right Shift
+                    }
+                    else if (modifierName == "Alt")
+                    {
+                        isTargetModifier = (vkCode == VK_MENU || vkCode == 0xA4 || vkCode == 0xA5); // Left/Right Alt
+                    }
+                    
+                    if (isTargetModifier)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Hook: Matched {modifierName} for {actionName}");
+                        
+                        // Only trigger if ONLY the target modifier is pressed (no other modifiers)
+                        bool otherModifiersPressed = false;
+                        if (modifierName == "Ctrl" || modifierName == "Control")
+                        {
+                            otherModifiersPressed = shiftPressed || altPressed;
+                        }
+                        else if (modifierName == "Shift")
+                        {
+                            otherModifiersPressed = ctrlPressed || altPressed;
+                        }
+                        else if (modifierName == "Alt")
+                        {
+                            otherModifiersPressed = ctrlPressed || shiftPressed;
+                        }
+                        
+                        System.Diagnostics.Debug.WriteLine($"Hook: Other modifiers pressed: {otherModifiersPressed}");
+                        
+                        if (!otherModifiersPressed)
+                        {
+                            // Check if triple-click is enabled
+                            bool tripleClickEnabled = _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault($"{actionName}TripleClick", "false") == "true";
+                            
+                            System.Diagnostics.Debug.WriteLine($"Hook: Processing {modifierName} for {actionName}, triple-click enabled: {tripleClickEnabled}");
+                            
+                            if (tripleClickEnabled)
+                            {
+                                // Get the action and handle triple-click
+                                var action = GetActionForHotkey(actionName);
+                                if (action != null)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Hook: Calling HandleTripleClickAction for {actionName}");
+                                    HandleTripleClickAction(actionName, action);
+                                }
+                                else
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Hook: No action found for {actionName}");
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            return result;
+        }
+        
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
 
         public void UpdateHotkeys()
         {
@@ -444,6 +642,7 @@ namespace SharpShot.Utils
         public void Dispose()
         {
             UnregisterAllHotkeys();
+            UninstallKeyboardHook();
             _isInitialized = false;
         }
 
