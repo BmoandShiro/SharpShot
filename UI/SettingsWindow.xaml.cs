@@ -1242,19 +1242,43 @@ namespace SharpShot.UI
         
         private void FindAndUpdateButtons(DependencyObject parent, System.Windows.Media.Color color, System.Windows.Media.SolidColorBrush brush)
         {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            try
             {
-                var child = VisualTreeHelper.GetChild(parent, i);
+                if (parent == null) return;
                 
-                if (child is Button btn && btn.Content is TextBlock text && (text.Text == "Edit" || text.Text == "Delete"))
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
                 {
-                    btn.Style = CreateModernButtonStyle(color, 60.0, 32.0, allowDynamicWidth: true);
-                    text.Foreground = brush;
+                    var child = VisualTreeHelper.GetChild(parent, i);
+                    if (child == null) continue;
+                    
+                    if (child is Button btn)
+                    {
+                        // Check if button content is a TextBlock with Edit or Delete text
+                        if (btn.Content is TextBlock text && (text.Text == "Edit" || text.Text == "Delete"))
+                        {
+                            try
+                            {
+                                btn.Style = CreateModernButtonStyle(color, 60.0, 32.0, allowDynamicWidth: true);
+                                text.Foreground = brush;
+                                // Re-apply MinWidth and MaxWidth after style is set
+                                btn.MinWidth = 50;
+                                btn.MaxWidth = 80;
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error updating button style: {ex.Message}");
+                            }
+                        }
+                    }
+                    else if (child is Panel || child is ContentControl)
+                    {
+                        FindAndUpdateButtons(child, color, brush);
+                    }
                 }
-                else if (child is Panel || child is ContentControl)
-                {
-                    FindAndUpdateButtons(child, color, brush);
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in FindAndUpdateButtons: {ex.Message}");
             }
         }
         
@@ -1395,18 +1419,14 @@ namespace SharpShot.UI
                     virtualBounds = new System.Drawing.Rectangle(minX, minY, maxX - minX, maxY - minY);
                 }
                 
-                // Hide settings window
-                this.Hide();
-                
+                // Don't hide the settings window - just show the boundary window on top
+                // Hiding and showing breaks the dialog state when SettingsWindow is shown as ShowDialog()
                 try
                 {
                     // Create boundary selection window covering all monitors
                     var boundaryWindow = new BoundarySelectionWindow(virtualBounds, "All Monitors");
+                    boundaryWindow.Owner = this; // Set owner so it appears on top
                     bool? result = boundaryWindow.ShowDialog();
-                    
-                    // Show settings window again
-                    this.Show();
-                    this.Activate();
                     
                     // Check result or SelectedBoundary (in case DialogResult wasn't set)
                     if ((result == true || boundaryWindow.SelectedBoundary.HasValue) && boundaryWindow.SelectedBoundary.HasValue)
@@ -1427,12 +1447,12 @@ namespace SharpShot.UI
                         
                         _originalSettings.MagnifierBoundaryBoxes.Add(newBox);
                         PopulateMagnifierBoundaryBoxList();
+                        // Update theme colors to apply current theme to newly created buttons
+                        UpdateThemeColors();
                     }
                 }
                 catch (Exception ex)
                 {
-                    this.Show();
-                    this.Activate();
                     System.Diagnostics.Debug.WriteLine($"Failed to create boundary box: {ex.Message}");
                     MessageBox.Show($"Failed to create boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -1441,7 +1461,6 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to add boundary box: {ex.Message}");
                 MessageBox.Show($"Failed to add boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                this.Show();
             }
         }
         
@@ -1477,15 +1496,14 @@ namespace SharpShot.UI
                     virtualBounds = new System.Drawing.Rectangle(minX, minY, maxX - minX, maxY - minY);
                 }
                 
-                this.Hide();
-                
+                // Don't hide the settings window - just show the boundary window on top
+                // Hiding and showing breaks the dialog state when SettingsWindow is shown as ShowDialog()
                 try
                 {
                     // Create boundary selection window covering all monitors
                     var boundaryWindow = new BoundarySelectionWindow(virtualBounds, "All Monitors");
+                    boundaryWindow.Owner = this; // Set owner so it appears on top
                     bool? result = boundaryWindow.ShowDialog();
-                    this.Show();
-                    this.Activate();
                     
                     // Check result or SelectedBoundary (in case DialogResult wasn't set)
                     if ((result == true || boundaryWindow.SelectedBoundary.HasValue) && boundaryWindow.SelectedBoundary.HasValue)
@@ -1495,12 +1513,12 @@ namespace SharpShot.UI
                         // Keep MonitorId empty - boundary boxes are independent entities
                         
                         PopulateMagnifierBoundaryBoxList();
+                        // Update theme colors to apply current theme to newly created buttons
+                        UpdateThemeColors();
                     }
                 }
                 catch (Exception ex)
                 {
-                    this.Show();
-                    this.Activate();
                     System.Diagnostics.Debug.WriteLine($"Failed to edit boundary box: {ex.Message}");
                     MessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -1509,7 +1527,6 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to edit boundary box: {ex.Message}");
                 MessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                this.Show();
             }
         }
         
@@ -1519,6 +1536,8 @@ namespace SharpShot.UI
             {
                 _originalSettings.MagnifierBoundaryBoxes.Remove(box);
                 PopulateMagnifierBoundaryBoxList();
+                // Update theme colors to apply current theme to newly created buttons
+                UpdateThemeColors();
             }
         }
         
