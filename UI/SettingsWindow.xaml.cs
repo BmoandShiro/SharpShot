@@ -1086,6 +1086,40 @@ namespace SharpShot.UI
             }
         }
         
+        private void NestedScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            // Don't handle mouse wheel events in nested ScrollViewers
+            // Instead, let the main ScrollViewer handle them
+            // Find the main ScrollViewer and scroll it instead
+            var mainScrollViewer = FindMainScrollViewer(this);
+            if (mainScrollViewer != null)
+            {
+                double offset = mainScrollViewer.VerticalOffset - (e.Delta / 3.0);
+                double newOffset = Math.Max(0, Math.Min(offset, mainScrollViewer.ScrollableHeight));
+                mainScrollViewer.ScrollToVerticalOffset(newOffset);
+                e.Handled = true;
+            }
+        }
+        
+        private ScrollViewer FindMainScrollViewer(DependencyObject parent)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is ScrollViewer scrollViewer)
+                {
+                    // Check if this is the main ScrollViewer (has Grid.Row="1" or is at the root level)
+                    if (scrollViewer.Parent is Grid grid && Grid.GetRow(scrollViewer) == 1)
+                    {
+                        return scrollViewer;
+                    }
+                }
+                var result = FindMainScrollViewer(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+        
         private void UpdateMagnifierStationaryPanelVisibility()
         {
             if (MagnifierModeComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)

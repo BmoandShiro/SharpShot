@@ -637,7 +637,8 @@
                    
                    <ScrollViewer MaxHeight="200"
                                 VerticalScrollBarVisibility="Auto"
-                                Margin="0,0,0,10">
+                                Margin="0,0,0,10"
+                                PreviewMouseWheel="NestedScrollViewer_PreviewMouseWheel">
                        <StackPanel x:Name="MagnifierAutoMonitorList">
                            <!-- Checkboxes will be populated dynamically -->
                        </StackPanel>
@@ -677,7 +678,8 @@
                    
                    <ScrollViewer MaxHeight="200"
                                 VerticalScrollBarVisibility="Auto"
-                                Margin="0,0,0,10">
+                                Margin="0,0,0,10"
+                                PreviewMouseWheel="NestedScrollViewer_PreviewMouseWheel">
                        <StackPanel x:Name="MagnifierBoundaryBoxList">
                            <!-- Boundary boxes will be populated dynamically -->
                        </StackPanel>
