@@ -12,7 +12,7 @@ SharpShot includes OBS Studio for enhanced audio recording capabilities. OBS Stu
 
 ### 🖼️ Screenshot Functionality
 - **Full Screen Capture**: Capture entire screen with one click
-- **Region Selection**: Click-and-drag to select specific areas (coming soon)
+- **Region Selection**: Click-and-drag to select specific areas
 - **Multiple Formats**: Save as PNG, JPG, or BMP
 - **Copy to Clipboard**: Instantly copy screenshots to clipboard
 - **Visual Feedback**: Brief flash overlay when capturing
