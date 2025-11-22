@@ -1240,13 +1240,37 @@ namespace SharpShot.UI
             }
         }
         
-        private StackPanel CreateBoundaryBoxPanel(Models.MagnifierBoundaryBox box, System.Windows.Forms.Screen[] screens)
+        private void FindAndUpdateButtons(DependencyObject parent, System.Windows.Media.Color color, System.Windows.Media.SolidColorBrush brush)
         {
-            var panel = new StackPanel
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
             {
-                Orientation = Orientation.Horizontal,
+                var child = VisualTreeHelper.GetChild(parent, i);
+                
+                if (child is Button btn && btn.Content is TextBlock text && (text.Text == "Edit" || text.Text == "Delete"))
+                {
+                    btn.Style = CreateModernButtonStyle(color, 60.0, 32.0, allowDynamicWidth: true);
+                    text.Foreground = brush;
+                }
+                else if (child is Panel || child is ContentControl)
+                {
+                    FindAndUpdateButtons(child, color, brush);
+                }
+            }
+        }
+        
+        private Panel CreateBoundaryBoxPanel(Models.MagnifierBoundaryBox box, System.Windows.Forms.Screen[] screens)
+        {
+            // Use Grid for better responsive layout
+            var grid = new Grid
+            {
                 Margin = new Thickness(0, 5, 0, 5)
             };
+            
+            // Define columns: checkbox (auto), name (120), bounds (140*), buttons (auto)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Checkbox
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) }); // Name
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // Bounds (flexible)
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); // Buttons container
             
             var checkBox = new CheckBox
             {
@@ -1256,30 +1280,42 @@ namespace SharpShot.UI
             };
             checkBox.Checked += (s, e) => box.Enabled = true;
             checkBox.Unchecked += (s, e) => box.Enabled = false;
+            Grid.SetColumn(checkBox, 0);
             
             var nameText = new TextBlock
             {
                 Text = box.Name + ":",
                 Foreground = System.Windows.Media.Brushes.White,
                 VerticalAlignment = VerticalAlignment.Center,
-                Width = 120
+                Margin = new Thickness(0, 0, 5, 0)
             };
+            Grid.SetColumn(nameText, 1);
             
             var boundsText = new TextBlock
             {
                 Text = $"{box.Bounds.X},{box.Bounds.Y} {box.Bounds.Width}x{box.Bounds.Height}",
                 Foreground = System.Windows.Media.Brushes.LightGray,
                 VerticalAlignment = VerticalAlignment.Center,
-                Width = 140,
+                Margin = new Thickness(5, 0, 5, 0),
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
+            Grid.SetColumn(boundsText, 2);
+            
+            // Container for buttons that will shrink together
+            var buttonContainer = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Grid.SetColumn(buttonContainer, 3);
             
             var editButton = new Button
             {
-                Width = 60,
+                MinWidth = 50,
+                MaxWidth = 80,
                 Height = 32,
                 Margin = new Thickness(5, 0, 5, 0),
-                Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0)
+                Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0, allowDynamicWidth: true)
             };
             var editText = new TextBlock
             {
@@ -1294,11 +1330,13 @@ namespace SharpShot.UI
             
             var deleteButton = new Button
             {
-                Width = 60,
                 Height = 32,
                 Margin = new Thickness(5, 0, 5, 0),
-                Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0)
+                Style = CreateModernButtonStyle(System.Windows.Media.Color.FromRgb(0xFF, 0x8C, 0x00), 60.0, 32.0, allowDynamicWidth: true)
             };
+            // Set width constraints after style to ensure they're applied
+            deleteButton.MinWidth = 50;
+            deleteButton.MaxWidth = 80;
             var deleteText = new TextBlock
             {
                 Text = "Delete",
@@ -1313,13 +1351,16 @@ namespace SharpShot.UI
             editButton.Click += (s, e) => EditBoundaryBox(box);
             deleteButton.Click += (s, e) => DeleteBoundaryBox(box);
             
-            panel.Children.Add(checkBox);
-            panel.Children.Add(nameText);
-            panel.Children.Add(boundsText);
-            panel.Children.Add(editButton);
-            panel.Children.Add(deleteButton);
+            buttonContainer.Children.Add(editButton);
+            buttonContainer.Children.Add(deleteButton);
             
-            return panel;
+            grid.Children.Add(checkBox);
+            grid.Children.Add(nameText);
+            grid.Children.Add(boundsText);
+            grid.Children.Add(buttonContainer);
+            
+            // Return the grid directly - it's already a Panel
+            return grid;
         }
         
         private void AddBoundaryBoxButton_Click(object sender, RoutedEventArgs e)
@@ -1578,7 +1619,7 @@ namespace SharpShot.UI
             return style;
         }
 
-        private Style CreateModernButtonStyle(System.Windows.Media.Color themeColor, double width = 100.0, double height = 36.0)
+        private Style CreateModernButtonStyle(System.Windows.Media.Color themeColor, double width = 100.0, double height = 36.0, bool allowDynamicWidth = false)
         {
             var style = new Style(typeof(Button));
             
@@ -1591,7 +1632,18 @@ namespace SharpShot.UI
             style.Setters.Add(new Setter(Button.FontSizeProperty, 14.0));
             style.Setters.Add(new Setter(Button.FontWeightProperty, FontWeights.SemiBold));
             style.Setters.Add(new Setter(Button.CursorProperty, Cursors.Hand));
-            style.Setters.Add(new Setter(Button.WidthProperty, width));
+            
+            if (allowDynamicWidth)
+            {
+                // For dynamic buttons, set MinWidth and MaxWidth instead of fixed Width
+                // Don't set Width - let it be determined by content and constraints
+                style.Setters.Add(new Setter(Button.MinWidthProperty, width * 0.8));
+                style.Setters.Add(new Setter(Button.MaxWidthProperty, width * 1.3));
+            }
+            else
+            {
+                style.Setters.Add(new Setter(Button.WidthProperty, width));
+            }
             style.Setters.Add(new Setter(Button.HeightProperty, height));
             
             // Template
@@ -1718,16 +1770,11 @@ namespace SharpShot.UI
                 {
                     foreach (var child in MagnifierBoundaryBoxList.Children)
                     {
-                        if (child is StackPanel panel)
+                        // Handle both Grid (new) and StackPanel (old) layouts
+                        if (child is Panel panel)
                         {
-                            foreach (var panelChild in panel.Children)
-                            {
-                                if (panelChild is Button btn && btn.Content is TextBlock text && (text.Text == "Edit" || text.Text == "Delete"))
-                                {
-                                    btn.Style = CreateModernButtonStyle(color, 60.0, 32.0);
-                                    text.Foreground = brush;
-                                }
-                            }
+                            // Search for buttons in the panel and its children
+                            FindAndUpdateButtons(panel, color, brush);
                         }
                     }
                 }
