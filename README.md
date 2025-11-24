@@ -12,7 +12,7 @@ SharpShot includes OBS Studio for enhanced audio recording capabilities. OBS Stu
 
 ### 🖼️ Screenshot Functionality
 - **Full Screen Capture**: Capture entire screen with one click
-- **Region Selection**: Click-and-drag to select specific areas (coming soon)
+- **Region Selection**: Click-and-drag to select specific areas
 - **Multiple Formats**: Save as PNG, JPG, or BMP
 - **Copy to Clipboard**: Instantly copy screenshots to clipboard
 - **Visual Feedback**: Brief flash overlay when capturing
@@ -29,7 +29,7 @@ SharpShot includes OBS Studio for enhanced audio recording capabilities. OBS Stu
 - **Floating Toolbar**: Always-on-top, draggable toolbar
 - **Dark Theme**: Beautiful dark interface with accent colors
 - **Hover Effects**: Smooth animations and visual feedback
-- **Rounded Corners**: Modern, polished appearance
+
 
 ### ⚙️ Settings & Configuration
 - **Customizable Save Path**: Choose where to save files
@@ -38,7 +38,7 @@ SharpShot includes OBS Studio for enhanced audio recording capabilities. OBS Stu
 - **Audio Recording**: Toggle microphone recording
 - **Start Minimized**: Launch hidden in system tray
 
-### ⌨️ Global Hotkeys (Coming Soon)
+### ⌨️ Global Hotkeys
 - **Double Ctrl**: Region capture
 - **Ctrl+Shift+S**: Full screen capture
 - **Ctrl+Shift+R**: Toggle recording
