@@ -445,9 +445,10 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
                 <CheckBox x:Name="AutoCopyScreenshotsCheckBox" 
-                          Content="Auto-copy screenshots to clipboard" 
+                          Content="Auto-copy fullscreen and region screenshots to clipboard (failsafe after editor closes)" 
                           Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"/>
+                          Margin="0,0,0,10"
+                          ToolTip="Automatically copies screenshots to clipboard after the editor closes, as a failsafe if you didn't copy in the editor. Applies to both fullscreen and region screenshots."/>
                 <CheckBox x:Name="SkipEditorAndAutoCopyCheckBox"
                           Content="Skip editor and auto-copy for region screenshots"
                           Style="{StaticResource DarkCheckBoxStyle}"
