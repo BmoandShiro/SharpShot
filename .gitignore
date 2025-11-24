@@ -43,3 +43,7 @@ OBS-Studio/
 # SharpShot release distributions
 SharpShot*.zip
 SharpShot*.exe 
+/dist
+dist/LICENSE
+/SharpShot-Release-v1.2.5.1
+/dist

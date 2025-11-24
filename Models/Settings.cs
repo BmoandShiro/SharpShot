@@ -35,6 +35,7 @@ namespace SharpShot.Models
         private List<MagnifierBoundaryBox> _magnifierBoundaryBoxes = new List<MagnifierBoundaryBox>(); // Boundary boxes for magnifier detection
         private string _screenshotEditorDisplayMonitor = string.Empty;
         private bool _disableAllPopups;
+        private bool _skipEditorAndAutoCopy;
 
         public Settings()
         {
@@ -65,6 +66,7 @@ namespace SharpShot.Models
             MagnifierBoundaryBoxes = new List<MagnifierBoundaryBox>(); // Default: no boundary boxes
             ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
             DisableAllPopups = false; // Default to false - show popups
+            SkipEditorAndAutoCopy = false; // Default to false - show editor
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
@@ -230,6 +232,12 @@ namespace SharpShot.Models
         {
             get => _disableAllPopups;
             set => SetProperty(ref _disableAllPopups, value);
+        }
+
+        public bool SkipEditorAndAutoCopy
+        {
+            get => _skipEditorAndAutoCopy;
+            set => SetProperty(ref _skipEditorAndAutoCopy, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

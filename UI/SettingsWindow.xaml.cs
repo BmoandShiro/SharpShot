@@ -410,6 +410,7 @@ namespace SharpShot.UI
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
+            SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             
@@ -789,6 +790,7 @@ namespace SharpShot.UI
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
+                _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
                 
@@ -943,6 +945,7 @@ namespace SharpShot.UI
             target.DropShadowOpacity = source.DropShadowOpacity;
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
+            target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
             target.EnableMagnifier = source.EnableMagnifier;
             target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;

@@ -576,8 +576,32 @@ namespace SharpShot.UI
                     CapturedBitmap = new Bitmap(bitmap);
                     System.Diagnostics.Debug.WriteLine($"Captured region: {actualWidth}x{actualHeight} at ({actualX},{actualY})");
                     
-                    // Launch the screenshot editor
-                    LaunchEditor(CapturedBitmap);
+                    // Check if we should skip the editor and auto-copy
+                    if (_settingsService?.CurrentSettings?.SkipEditorAndAutoCopy == true)
+                    {
+                        // Skip editor, auto-copy to clipboard, and close
+                        try
+                        {
+                            _screenshotService.CopyToClipboard(CapturedBitmap);
+                            System.Diagnostics.Debug.WriteLine("Region screenshot copied to clipboard (editor skipped)");
+                            
+                            // Mark that copy was requested
+                            EditorCopyRequested = true;
+                            EditorActionCompleted = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to copy to clipboard: {ex.Message}");
+                            // Still close the window even if copy fails
+                        }
+                        
+                        Close();
+                    }
+                    else
+                    {
+                        // Launch the screenshot editor (normal behavior)
+                        LaunchEditor(CapturedBitmap);
+                    }
                 }
             }
             catch (Exception ex)
