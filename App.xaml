@@ -78,7 +78,7 @@
         <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
             <Setter Property="Background" Value="{StaticResource SecondaryBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8"/>
             <Setter Property="FontSize" Value="14"/>
@@ -155,7 +155,7 @@
                                     <Border x:Name="DropDownBorder"
                                             Background="{StaticResource SecondaryBrush}"
                                             BorderThickness="1"
-                                            BorderBrush="{StaticResource AccentBrush}"
+                                            BorderBrush="{DynamicResource AccentBrush}"
                                             CornerRadius="4"/>
                                     <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
                                         <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
