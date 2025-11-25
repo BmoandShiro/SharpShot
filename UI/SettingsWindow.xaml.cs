@@ -216,8 +216,20 @@ namespace SharpShot.UI
             LoadSettings();
             
             // Add event handlers for sliders
-            HoverOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
-            DropShadowOpacitySlider.ValueChanged += (s, e) => UpdateOpacityLabels();
+            HoverOpacitySlider.ValueChanged += (s, e) => 
+            {
+                UpdateOpacityLabels();
+                // Update in real-time
+                _originalSettings.HoverOpacity = HoverOpacitySlider.Value;
+                ApplyOpacityChanges();
+            };
+            DropShadowOpacitySlider.ValueChanged += (s, e) => 
+            {
+                UpdateOpacityLabels();
+                // Update in real-time
+                _originalSettings.DropShadowOpacity = DropShadowOpacitySlider.Value;
+                ApplyOpacityChanges();
+            };
             
             // Add event handler for magnifier checkbox
             EnableMagnifierCheckBox.Checked += (s, e) => 
@@ -1684,16 +1696,18 @@ namespace SharpShot.UI
             border.AppendChild(contentPresenter);
             template.VisualTree = border;
             
-            // Hover trigger
+            // Hover trigger with opacity from settings
             var hoverTrigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
-            var hoverColor = System.Windows.Media.Color.FromArgb(21, themeColor.R, themeColor.G, themeColor.B); // 21 = 0x15
+            var hoverOpacity = _originalSettings.HoverOpacity;
+            var hoverAlpha = (byte)(hoverOpacity * 255);
+            var hoverColor = System.Windows.Media.Color.FromArgb(hoverAlpha, themeColor.R, themeColor.G, themeColor.B);
             hoverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(hoverColor)));
             
             var dropShadow = new DropShadowEffect();
             dropShadow.Color = themeColor;
             dropShadow.BlurRadius = 8;
             dropShadow.ShadowDepth = 0;
-            dropShadow.Opacity = 0.2;
+            dropShadow.Opacity = _originalSettings.DropShadowOpacity;
             hoverTrigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
             
             // Pressed trigger
@@ -1751,16 +1765,18 @@ namespace SharpShot.UI
             border.AppendChild(contentPresenter);
             template.VisualTree = border;
             
-            // Hover trigger with dynamic theme color
+            // Hover trigger with dynamic theme color and opacity from settings
             var hoverTrigger = new Trigger { Property = Button.IsMouseOverProperty, Value = true };
-            var hoverColor = System.Windows.Media.Color.FromArgb(21, themeColor.R, themeColor.G, themeColor.B); // 21 = 0x15
+            var hoverOpacity = _originalSettings.HoverOpacity;
+            var hoverAlpha = (byte)(hoverOpacity * 255);
+            var hoverColor = System.Windows.Media.Color.FromArgb(hoverAlpha, themeColor.R, themeColor.G, themeColor.B);
             hoverTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush(hoverColor)));
             
             var dropShadow = new DropShadowEffect();
             dropShadow.Color = themeColor;
             dropShadow.BlurRadius = 12;
             dropShadow.ShadowDepth = 0;
-            dropShadow.Opacity = 0.25;
+            dropShadow.Opacity = _originalSettings.DropShadowOpacity;
             hoverTrigger.Setters.Add(new Setter(Button.EffectProperty, dropShadow));
             
             // Pressed trigger
@@ -1933,6 +1949,98 @@ namespace SharpShot.UI
             }
         }
 
+        private void ApplyOpacityChanges()
+        {
+            try
+            {
+                // Temporarily update the settings service so MainWindow can read the new values
+                _settingsService.CurrentSettings.HoverOpacity = _originalSettings.HoverOpacity;
+                _settingsService.CurrentSettings.DropShadowOpacity = _originalSettings.DropShadowOpacity;
+                
+                // Update buttons in this settings window with new opacity values
+                UpdateSettingsWindowButtonStyles();
+                
+                // Get the main window to apply opacity changes
+                var mainWindow = Application.Current.MainWindow as MainWindow;
+                if (mainWindow != null)
+                {
+                    // Apply the opacity changes immediately
+                    mainWindow.ApplyThemeSettings();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply opacity changes: {ex.Message}");
+            }
+        }
+        
+        private void UpdateSettingsWindowButtonStyles()
+        {
+            try
+            {
+                var iconColor = _originalSettings.IconColor;
+                if (string.IsNullOrEmpty(iconColor))
+                    iconColor = "#FFFF8C00"; // Default orange
+                
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
+                var brush = new System.Windows.Media.SolidColorBrush(color);
+                
+                // Update Cancel and Save buttons
+                if (CancelButton != null)
+                {
+                    CancelButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
+                    if (CancelButton.Content is TextBlock cancelText)
+                        cancelText.Foreground = brush;
+                }
+                if (SaveButton != null)
+                {
+                    SaveButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
+                    if (SaveButton.Content is TextBlock saveText)
+                        saveText.Foreground = brush;
+                }
+                
+                // Update Browse button
+                var browseButton = this.FindName("BrowseButton") as Button;
+                if (browseButton != null)
+                {
+                    browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
+                    if (browseButton.Content is TextBlock browseText)
+                        browseText.Foreground = brush;
+                }
+                
+                // Update Close button
+                if (CloseSettingsButton != null)
+                {
+                    CloseSettingsButton.Style = CreateCloseButtonStyle(color);
+                    CloseSettingsButton.Foreground = brush;
+                }
+                
+                // Update Add Boundary Box button
+                if (AddBoundaryBoxButton != null)
+                {
+                    AddBoundaryBoxButton.Style = CreateModernButtonStyle(color, 150.0, 32.0);
+                    if (AddBoundaryBoxButton.Content is TextBlock addBoundaryText)
+                        addBoundaryText.Foreground = brush;
+                }
+                
+                // Update Edit and Delete buttons in boundary box list
+                if (MagnifierBoundaryBoxList != null)
+                {
+                    foreach (var child in MagnifierBoundaryBoxList.Children)
+                    {
+                        if (child is Panel panel)
+                        {
+                            FindAndUpdateButtons(panel, color, brush);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to update settings window button styles: {ex.Message}");
+            }
+        }
+        
         private void ApplyThemeChanges()
         {
             try
