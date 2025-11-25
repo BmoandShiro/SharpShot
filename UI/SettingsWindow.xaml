@@ -510,6 +510,7 @@
                                   Margin="0,0,10,0"
                                   Width="180"/>
                        <Slider x:Name="MagnifierSizeSlider"
+                               Style="{StaticResource DarkSliderStyle}"
                                Minimum="100"
                                Maximum="400"
                                TickFrequency="50"
@@ -532,6 +533,7 @@
                                   Margin="0,0,10,0"
                                   Width="180"/>
                        <Slider x:Name="MagnifierFollowSizeSlider"
+                               Style="{StaticResource DarkSliderStyle}"
                                Minimum="100"
                                Maximum="200"
                                TickFrequency="25"
@@ -592,6 +594,7 @@
                                   Margin="0,0,10,0"
                                   Width="100"/>
                        <Slider x:Name="MagnifierStationaryXSlider"
+                               Style="{StaticResource DarkSliderStyle}"
                                Minimum="0"
                                Maximum="100"
                                Value="50"
@@ -612,6 +615,7 @@
                                   Margin="0,0,10,0"
                                   Width="100"/>
                        <Slider x:Name="MagnifierStationaryYSlider"
+                               Style="{StaticResource DarkSliderStyle}"
                                Minimum="0"
                                Maximum="100"
                                Value="50"
@@ -740,6 +744,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Slider x:Name="HoverOpacitySlider" 
+                            Style="{StaticResource DarkSliderStyle}"
                             Grid.Column="0"
                             Minimum="0" 
                             Maximum="1" 
@@ -767,6 +772,7 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Slider x:Name="DropShadowOpacitySlider" 
+                            Style="{StaticResource DarkSliderStyle}"
                             Grid.Column="0"
                             Minimum="0" 
                             Maximum="1" 

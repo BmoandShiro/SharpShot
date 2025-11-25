@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -1243,6 +1244,73 @@ namespace SharpShot.UI
             }
         }
         
+        private void UpdateSliderColors(System.Windows.Media.Color themeColor)
+        {
+            try
+            {
+                // Update all sliders by finding their visual elements and updating colors
+                UpdateSliderVisualTree(HoverOpacitySlider, themeColor);
+                UpdateSliderVisualTree(DropShadowOpacitySlider, themeColor);
+                UpdateSliderVisualTree(MagnifierSizeSlider, themeColor);
+                UpdateSliderVisualTree(MagnifierFollowSizeSlider, themeColor);
+                UpdateSliderVisualTree(MagnifierStationaryXSlider, themeColor);
+                UpdateSliderVisualTree(MagnifierStationaryYSlider, themeColor);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating slider colors: {ex.Message}");
+            }
+        }
+        
+        private void UpdateSliderVisualTree(Slider slider, System.Windows.Media.Color themeColor)
+        {
+            if (slider == null) return;
+            
+            try
+            {
+                // Force template to be applied
+                slider.ApplyTemplate();
+                
+                // Find the Track
+                var track = slider.Template?.FindName("PART_Track", slider) as Track;
+                if (track == null) return;
+                
+                // Update DecreaseRepeatButton (filled portion) - this uses DynamicResource so it should update automatically
+                // But we can force it here too
+                if (track.DecreaseRepeatButton is RepeatButton decreaseBtn)
+                {
+                    decreaseBtn.Background = new SolidColorBrush(themeColor);
+                }
+                
+                // Update Thumb
+                if (track.Thumb is Thumb thumb)
+                {
+                    // Find the Border in the thumb template
+                    thumb.ApplyTemplate();
+                    if (thumb.Template?.FindName("ThumbBorder", thumb) is Border thumbBorder)
+                    {
+                        thumbBorder.Background = new SolidColorBrush(themeColor);
+                        thumbBorder.BorderBrush = new SolidColorBrush(themeColor);
+                        // Update DropShadowEffect colors (both normal and hover)
+                        if (thumbBorder.Effect is DropShadowEffect effect)
+                        {
+                            effect.Color = themeColor;
+                        }
+                        // Also check for hover effect if it exists
+                        var hoverEffect = thumb.Template?.FindName("ThumbHoverDropShadow", thumb) as DropShadowEffect;
+                        if (hoverEffect != null)
+                        {
+                            hoverEffect.Color = themeColor;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating slider visual tree: {ex.Message}");
+            }
+        }
+        
         private void FindAndUpdateButtons(DependencyObject parent, System.Windows.Media.Color color, System.Windows.Media.SolidColorBrush brush)
         {
             try
@@ -1786,6 +1854,9 @@ namespace SharpShot.UI
                     if (AddBoundaryBoxButton.Content is TextBlock addBoundaryText)
                         addBoundaryText.Foreground = brush;
                 }
+                
+                // Update slider colors to match theme
+                UpdateSliderColors(color);
                 
                 // Update Edit and Delete buttons in boundary box list
                 if (MagnifierBoundaryBoxList != null)

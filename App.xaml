@@ -186,6 +186,144 @@
             <Setter Property="FontSize" Value="14"/>
         </Style>
         
+        <!-- Slider Style -->
+        <Style x:Key="DarkSliderStyle" TargetType="Slider">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFF8C00"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto" MinHeight="{TemplateBinding MinHeight}"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Track x:Name="PART_Track" Grid.Row="1" Focusable="False">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge"
+                                                  CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                                        <RepeatButton.Style>
+                                            <Style TargetType="RepeatButton">
+                                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Height" Value="4"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Background="{TemplateBinding Background}" 
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="2"
+                                                                    Height="{TemplateBinding Height}"/>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </RepeatButton.Style>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                                                <Setter Property="OverridesDefaultStyle" Value="True"/>
+                                                <Setter Property="Height" Value="16"/>
+                                                <Setter Property="Width" Value="16"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Thumb">
+                                                            <Border x:Name="ThumbBorder"
+                                                                    Background="{DynamicResource AccentBrush}"
+                                                                    BorderBrush="{DynamicResource AccentBrush}"
+                                                                    BorderThickness="2"
+                                                                    CornerRadius="8"
+                                                                    Width="{TemplateBinding Width}"
+                                                                    Height="{TemplateBinding Height}">
+                                                                <Border.Effect>
+                                                                    <DropShadowEffect x:Name="ThumbDropShadow"
+                                                                                    Color="#FFFF8C00" 
+                                                                                    BlurRadius="8" 
+                                                                                    ShadowDepth="0" 
+                                                                                    Opacity="0.4"/>
+                                                                </Border.Effect>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                                    <Setter TargetName="ThumbBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                                    <Setter TargetName="ThumbBorder" Property="Effect">
+                                                                        <Setter.Value>
+                                                                            <DropShadowEffect x:Name="ThumbHoverDropShadow"
+                                                                                            Color="#FFFF8C00" 
+                                                                                            BlurRadius="12" 
+                                                                                            ShadowDepth="0" 
+                                                                                            Opacity="0.6"/>
+                                                                        </Setter.Value>
+                                                                    </Setter>
+                                                                </Trigger>
+                                                                <Trigger Property="IsDragging" Value="True">
+                                                                    <Setter TargetName="ThumbBorder" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                                                    <Setter TargetName="ThumbBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge"
+                                                  CommandTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}">
+                                        <RepeatButton.Style>
+                                            <Style TargetType="RepeatButton">
+                                                <Setter Property="Background" Value="#FF3C3C3C"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Height" Value="4"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Background="{TemplateBinding Background}" 
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="2"
+                                                                    Height="{TemplateBinding Height}"/>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#FF404040"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </RepeatButton.Style>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Vertical">
+                                <Setter TargetName="PART_Track" Property="LayoutTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="-90"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
         <!-- Settings Button Style -->
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
