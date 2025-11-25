@@ -17,6 +17,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Management;
+using System.Reflection;
 
 // Windows Core Audio API imports
 [ComImport]
@@ -3484,5 +3485,6 @@ namespace SharpShot.UI
                 CheckForUpdatesButton.IsEnabled = true;
             }
         }
+
     }
 }

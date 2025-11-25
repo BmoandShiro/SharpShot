@@ -1018,36 +1018,68 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="2" 
-                    Orientation="Horizontal" 
-                    HorizontalAlignment="Right" 
-                    Margin="0,20,0,0">
-            <Button x:Name="CancelButton" 
-                    Style="{StaticResource ModernButtonStyle}"
-                    Click="CancelButton_Click"
-                    Margin="0,0,12,0"
-                    Width="100"
-                    Height="36">
-                <TextBlock Text="Cancel" 
-                           Foreground="#FFFF8C00" 
-                           FontSize="14" 
-                           FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
+        <!-- Buttons and Footer -->
+        <Grid Grid.Row="2" Margin="0,20,0,-18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Buttons -->
+            <StackPanel Grid.Row="0"
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right">
+                <Button x:Name="CancelButton" 
+                        Style="{StaticResource ModernButtonStyle}"
+                        Click="CancelButton_Click"
+                        Margin="0,0,12,0"
+                        Width="100"
+                        Height="36">
+                    <TextBlock Text="Cancel" 
+                               Foreground="#FFFF8C00" 
+                               FontSize="14" 
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+                <Button x:Name="SaveButton" 
+                        Style="{StaticResource ModernButtonStyle}"
+                        Click="SaveButton_Click"
+                        Width="100"
+                        Height="36">
+                    <TextBlock Text="Save" 
+                               Foreground="#FFFF8C00" 
+                               FontSize="14" 
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+            </StackPanel>
+            
+            <!-- Footer: Version and Credits (right-aligned, at absolute bottom in line with resize grip) -->
+            <StackPanel Grid.Row="1"
+                        Orientation="Horizontal" 
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,15,0">
+                <TextBlock x:Name="VersionTextBlock"
+                           Text="v1.2.5.4"
+                           Foreground="{StaticResource TextBrush}"
+                           FontSize="11"
+                           Opacity="0.6"
                            VerticalAlignment="Center"/>
-            </Button>
-            <Button x:Name="SaveButton" 
-                    Style="{StaticResource ModernButtonStyle}"
-                    Click="SaveButton_Click"
-                    Width="100"
-                    Height="36">
-                <TextBlock Text="Save" 
-                           Foreground="#FFFF8C00" 
-                           FontSize="14" 
-                           FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
+                <TextBlock Text=" • "
+                           Foreground="{StaticResource TextBrush}"
+                           FontSize="11"
+                           Opacity="0.6"
+                           VerticalAlignment="Center"
+                           Margin="4,0"/>
+                <TextBlock Text="Created by: BMOandShiro"
+                           Foreground="{StaticResource TextBrush}"
+                           FontSize="11"
+                           Opacity="0.6"
                            VerticalAlignment="Center"/>
-            </Button>
-        </StackPanel>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window> 
