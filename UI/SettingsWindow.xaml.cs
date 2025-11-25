@@ -1191,7 +1191,8 @@ namespace SharpShot.UI
                     Content = monitorName,
                     Foreground = System.Windows.Media.Brushes.White,
                     Margin = new Thickness(0, 5, 0, 5),
-                    IsChecked = selectedMonitors.Contains(monitorId) || selectedMonitors.Contains(monitorName)
+                    IsChecked = selectedMonitors.Contains(monitorId) || selectedMonitors.Contains(monitorName),
+                    Style = (Style)this.FindResource("DarkCheckBoxStyle")
                 };
                 
                 // Store monitor identifier in Tag for easy retrieval
@@ -1212,7 +1213,8 @@ namespace SharpShot.UI
                     Content = box.Name,
                     Foreground = System.Windows.Media.Brushes.LightBlue,
                     Margin = new Thickness(15, 5, 0, 5), // Indent boundary boxes slightly
-                    IsChecked = selectedMonitors.Contains(boxId) || box.Enabled
+                    IsChecked = selectedMonitors.Contains(boxId) || box.Enabled,
+                    Style = (Style)this.FindResource("DarkCheckBoxStyle")
                 };
                 
                 // Store boundary box identifier in Tag
@@ -1323,6 +1325,133 @@ namespace SharpShot.UI
             }
         }
         
+        private void UpdateCheckboxColors(System.Windows.Media.Color themeColor)
+        {
+            try
+            {
+                // Update all checkboxes by finding their visual elements and updating colors
+                // Only update if checkboxes exist and are loaded
+                if (GlobalHotkeysCheckBox != null && GlobalHotkeysCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(GlobalHotkeysCheckBox, themeColor);
+                if (StartMinimizedCheckBox != null && StartMinimizedCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(StartMinimizedCheckBox, themeColor);
+                if (AutoCopyScreenshotsCheckBox != null && AutoCopyScreenshotsCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(AutoCopyScreenshotsCheckBox, themeColor);
+                if (SkipEditorAndAutoCopyCheckBox != null && SkipEditorAndAutoCopyCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(SkipEditorAndAutoCopyCheckBox, themeColor);
+                if (EnableMagnifierCheckBox != null && EnableMagnifierCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
+                if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(DisableAllPopupsCheckBox, themeColor);
+                
+                // Update triple-click checkboxes (only if they exist)
+                if (ScreenshotRegionTripleClickCheckBox != null && ScreenshotRegionTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(ScreenshotRegionTripleClickCheckBox, themeColor);
+                if (ScreenshotFullscreenTripleClickCheckBox != null && ScreenshotFullscreenTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(ScreenshotFullscreenTripleClickCheckBox, themeColor);
+                if (RecordRegionTripleClickCheckBox != null && RecordRegionTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(RecordRegionTripleClickCheckBox, themeColor);
+                if (RecordFullscreenTripleClickCheckBox != null && RecordFullscreenTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(RecordFullscreenTripleClickCheckBox, themeColor);
+                if (CopyTripleClickCheckBox != null && CopyTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(CopyTripleClickCheckBox, themeColor);
+                if (SaveTripleClickCheckBox != null && SaveTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(SaveTripleClickCheckBox, themeColor);
+                
+                // Update checkboxes in boundary box list
+                if (MagnifierAutoMonitorList != null)
+                {
+                    foreach (var child in MagnifierAutoMonitorList.Children)
+                    {
+                        if (child is CheckBox cb && cb.IsLoaded)
+                        {
+                            UpdateCheckboxVisualTree(cb, themeColor);
+                        }
+                    }
+                }
+                
+                // Update checkboxes in boundary box list
+                if (MagnifierBoundaryBoxList != null)
+                {
+                    foreach (var child in MagnifierBoundaryBoxList.Children)
+                    {
+                        if (child is Panel panel)
+                        {
+                            FindAndUpdateCheckboxes(panel, themeColor);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating checkbox colors: {ex.Message}");
+            }
+        }
+        
+        private void UpdateCheckboxVisualTree(CheckBox checkbox, System.Windows.Media.Color themeColor)
+        {
+            if (checkbox == null) return;
+            
+            try
+            {
+                // Force template to be applied
+                checkbox.ApplyTemplate();
+                
+                // Update CheckBoxBorder
+                var border = checkbox.Template?.FindName("CheckBoxBorder", checkbox) as Border;
+                if (border != null)
+                {
+                    border.BorderBrush = new SolidColorBrush(themeColor);
+                    // Keep background dark (no fill on checked state)
+                    border.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(60, 60, 60));
+                    
+                    // Update drop shadow effect if it exists
+                    if (border.Effect is DropShadowEffect effect)
+                    {
+                        effect.Color = themeColor;
+                    }
+                }
+                
+                // Update CheckMark
+                var checkMark = checkbox.Template?.FindName("CheckMark", checkbox) as System.Windows.Shapes.Path;
+                if (checkMark != null)
+                {
+                    checkMark.Stroke = new SolidColorBrush(themeColor);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error updating checkbox visual tree: {ex.Message}");
+            }
+        }
+        
+        private void FindAndUpdateCheckboxes(DependencyObject parent, System.Windows.Media.Color themeColor)
+        {
+            try
+            {
+                if (parent == null) return;
+                
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+                {
+                    var child = VisualTreeHelper.GetChild(parent, i);
+                    if (child == null) continue;
+                    
+                    if (child is CheckBox cb && cb.IsLoaded)
+                    {
+                        UpdateCheckboxVisualTree(cb, themeColor);
+                    }
+                    else if (child is Panel || child is ContentControl)
+                    {
+                        FindAndUpdateCheckboxes(child, themeColor);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in FindAndUpdateCheckboxes: {ex.Message}");
+            }
+        }
+        
         private void FindAndUpdateButtons(DependencyObject parent, System.Windows.Media.Color color, System.Windows.Media.SolidColorBrush brush)
         {
             try
@@ -1383,7 +1512,8 @@ namespace SharpShot.UI
             {
                 IsChecked = box.Enabled,
                 VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 10, 0)
+                Margin = new Thickness(0, 0, 10, 0),
+                Style = (Style)this.FindResource("DarkCheckBoxStyle")
             };
             checkBox.Checked += (s, e) => box.Enabled = true;
             checkBox.Unchecked += (s, e) => box.Enabled = false;
@@ -1812,6 +1942,10 @@ namespace SharpShot.UI
                 var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
                 var brush = new System.Windows.Media.SolidColorBrush(color);
                 
+                // Update global resources so all DynamicResource bindings update automatically
+                Application.Current.Resources["AccentBrush"] = brush;
+                Application.Current.Resources["AccentColor"] = color;
+                
                 // Update colored text elements
                 if (SettingsHeader != null)
                     SettingsHeader.Foreground = brush;
@@ -1871,10 +2005,23 @@ namespace SharpShot.UI
                         addBoundaryText.Foreground = brush;
                 }
                 
-                // Update slider colors to match theme
-                UpdateSliderColors(color);
-                
-                // Update Edit and Delete buttons in boundary box list
+                 // Update slider colors to match theme
+                 UpdateSliderColors(color);
+                 
+                 // Update checkbox colors to match theme (only if window is loaded)
+                 if (IsLoaded)
+                 {
+                     try
+                     {
+                         UpdateCheckboxColors(color);
+                     }
+                     catch (Exception ex)
+                     {
+                         System.Diagnostics.Debug.WriteLine($"Error updating checkbox colors in UpdateThemeColors: {ex.Message}");
+                     }
+                 }
+                 
+                 // Update Edit and Delete buttons in boundary box list
                 if (MagnifierBoundaryBoxList != null)
                 {
                     foreach (var child in MagnifierBoundaryBoxList.Children)

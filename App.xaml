@@ -11,6 +11,7 @@
         <SolidColorBrush x:Key="TextBrush" Color="#FFFFFFFF"/>
         <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FF00D4AA"/>
         <SolidColorBrush x:Key="AccentBrush" Color="#FF00D4AA"/>
+        <Color x:Key="AccentColor">#FF00D4AA</Color>
         <SolidColorBrush x:Key="ErrorBrush" Color="#FFFF6B6B"/>
         <SolidColorBrush x:Key="SuccessBrush" Color="#FF4CAF50"/>
         <SolidColorBrush x:Key="WarningBrush" Color="#FFFF9800"/>
@@ -184,6 +185,87 @@
         <Style x:Key="DarkCheckBoxStyle" TargetType="CheckBox">
             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
             <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="CheckBoxBorder"
+                                    Grid.Column="0"
+                                    Width="18"
+                                    Height="18"
+                                    Background="#FF3C3C3C"
+                                    BorderBrush="{DynamicResource AccentBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="3"
+                                    Margin="0,0,8,0">
+                                <Border.Effect>
+                                    <DropShadowEffect Color="{DynamicResource AccentColor}"
+                                                      BlurRadius="4"
+                                                      ShadowDepth="0"
+                                                      Opacity="0.2"/>
+                                </Border.Effect>
+                                <Path x:Name="CheckMark"
+                                      Data="M 0 5 L 3 8 L 8 0"
+                                      Stroke="{DynamicResource AccentBrush}"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      Visibility="Collapsed"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      SnapsToDevicePixels="False"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1"
+                                            Content="{TemplateBinding Content}"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,0,0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="CheckBoxBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="{DynamicResource AccentColor}"
+                                                          BlurRadius="4"
+                                                          ShadowDepth="0"
+                                                          Opacity="0.4"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="False">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="CheckBoxBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="{DynamicResource AccentColor}"
+                                                          BlurRadius="4"
+                                                          ShadowDepth="0"
+                                                          Opacity="0.5"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="{DynamicResource AccentColor}"
+                                                          BlurRadius="6"
+                                                          ShadowDepth="0"
+                                                          Opacity="0.6"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         
         <!-- Slider Style -->
