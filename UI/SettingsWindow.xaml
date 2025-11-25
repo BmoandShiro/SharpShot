@@ -797,6 +797,49 @@
                            FontSize="16"
                            Margin="0,0,0,10"/>
                 
+                <!-- Updates -->
+                <TextBlock Text="Updates" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           FontSize="14"
+                           Margin="0,20,0,10"/>
+                
+                <CheckBox x:Name="EnableAutoUpdateCheckBox" 
+                          Content="Automatically check for updates"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
+                
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Check for updates manually:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" 
+                            x:Name="CheckForUpdatesButton"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Width="100"
+                            Height="36"
+                            Click="CheckForUpdatesButton_Click">
+                        <TextBlock Text="Check Now" 
+                                   Foreground="#FFFF8C00" 
+                                   FontSize="14" 
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+                
+                <TextBlock Name="UpdateStatusText"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextBrush}"
+                           FontSize="11"
+                           Margin="0,5,0,15"
+                           Visibility="Collapsed"/>
+
                 <!-- Hotkey Instructions -->
                 <TextBlock Text="Click on a hotkey field and press your desired key combination. Single modifier keys (Ctrl, Shift, Alt) will automatically enable triple-click mode."
                            Foreground="{StaticResource TextBrush}" 

@@ -36,6 +36,9 @@ namespace SharpShot.Models
         private string _screenshotEditorDisplayMonitor = string.Empty;
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
+        private bool _enableAutoUpdateCheck = true;
+        private string? _updateRepoOwner;
+        private string? _updateRepoName;
 
         public Settings()
         {
@@ -67,6 +70,9 @@ namespace SharpShot.Models
             ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
             DisableAllPopups = false; // Default to false - show popups
             SkipEditorAndAutoCopy = false; // Default to false - show editor
+            EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
+            UpdateRepoOwner = null; // Will use default from UpdateService
+            UpdateRepoName = null; // Will use default from UpdateService
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
@@ -238,6 +244,24 @@ namespace SharpShot.Models
         {
             get => _skipEditorAndAutoCopy;
             set => SetProperty(ref _skipEditorAndAutoCopy, value);
+        }
+
+        public bool EnableAutoUpdateCheck
+        {
+            get => _enableAutoUpdateCheck;
+            set => SetProperty(ref _enableAutoUpdateCheck, value);
+        }
+
+        public string? UpdateRepoOwner
+        {
+            get => _updateRepoOwner;
+            set => SetProperty(ref _updateRepoOwner, value);
+        }
+
+        public string? UpdateRepoName
+        {
+            get => _updateRepoName;
+            set => SetProperty(ref _updateRepoName, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

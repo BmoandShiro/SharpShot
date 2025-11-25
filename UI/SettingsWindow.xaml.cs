@@ -426,6 +426,7 @@ namespace SharpShot.UI
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
+            EnableAutoUpdateCheckBox.IsChecked = _originalSettings.EnableAutoUpdateCheck;
             
             // Load magnifier zoom level
             if (MagnifierZoomComboBox != null && MagnifierZoomComboBox.Items.Count > 0)
@@ -801,6 +802,7 @@ namespace SharpShot.UI
                     LogToFile("No input audio device selected");
                 }
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
+                _originalSettings.EnableAutoUpdateCheck = EnableAutoUpdateCheckBox.IsChecked ?? true;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
@@ -1988,6 +1990,14 @@ namespace SharpShot.UI
                         saveText.Foreground = brush;
                 }
                 
+                // Update Check for Updates button with dynamic hover effects
+                if (CheckForUpdatesButton != null)
+                {
+                    CheckForUpdatesButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
+                    if (CheckForUpdatesButton.Content is TextBlock checkUpdateText)
+                        checkUpdateText.Foreground = brush;
+                }
+                
                 // Update Browse button with dynamic hover effects
                 var browseButton = this.FindName("BrowseButton") as Button;
                 if (browseButton != null)
@@ -2144,6 +2154,14 @@ namespace SharpShot.UI
                     SaveButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
                     if (SaveButton.Content is TextBlock saveText)
                         saveText.Foreground = brush;
+                }
+                
+                // Update Check for Updates button
+                if (CheckForUpdatesButton != null)
+                {
+                    CheckForUpdatesButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
+                    if (CheckForUpdatesButton.Content is TextBlock checkUpdateText)
+                        checkUpdateText.Foreground = brush;
                 }
                 
                 // Update Browse button
@@ -3421,6 +3439,50 @@ namespace SharpShot.UI
         private void HideOBSSettings()
         {
             LogToFile("OBS recording engine deselected - hiding OBS-specific settings");
+        }
+
+        private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (App.UpdateService == null)
+            {
+                UpdateStatusText.Text = "Update service not available.";
+                UpdateStatusText.Visibility = Visibility.Visible;
+                return;
+            }
+
+            CheckForUpdatesButton.IsEnabled = false;
+            UpdateStatusText.Text = "Checking for updates...";
+            UpdateStatusText.Visibility = Visibility.Visible;
+            UpdateStatusText.Foreground = new SolidColorBrush(Colors.White);
+
+            try
+            {
+                var updateInfo = await App.UpdateService.CheckForUpdatesAsync(forceCheck: true);
+                
+                if (updateInfo != null)
+                {
+                    UpdateStatusText.Text = $"Update available: Version {updateInfo.Version}";
+                    UpdateStatusText.Foreground = new SolidColorBrush(Colors.LightGreen);
+                    
+                    // Show update window
+                    var updateWindow = new UpdateWindow(App.UpdateService, updateInfo);
+                    updateWindow.Show();
+                }
+                else
+                {
+                    UpdateStatusText.Text = "You are running the latest version.";
+                    UpdateStatusText.Foreground = new SolidColorBrush(Colors.LightGreen);
+                }
+            }
+            catch (Exception ex)
+            {
+                UpdateStatusText.Text = $"Error checking for updates: {ex.Message}";
+                UpdateStatusText.Foreground = new SolidColorBrush(Colors.Orange);
+            }
+            finally
+            {
+                CheckForUpdatesButton.IsEnabled = true;
+            }
         }
     }
 }
