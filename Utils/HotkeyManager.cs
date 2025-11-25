@@ -16,6 +16,7 @@ namespace SharpShot.Utils
         private readonly Dictionary<string, DateTime> _hotkeyLastPressTimes;
         private readonly Dictionary<string, bool> _hotkeyToggleStates;
         private readonly Dictionary<string, string> _modifierHotkeys; // Track single modifier hotkeys that need hooks
+        private readonly HashSet<uint> _heldKeys; // Track currently held keys to ignore key repeat
         private int _nextHotkeyId = 1;
         private bool _isInitialized;
         private IntPtr _windowHandle;
@@ -74,6 +75,7 @@ namespace SharpShot.Utils
             _hotkeyLastPressTimes = new Dictionary<string, DateTime>();
             _hotkeyToggleStates = new Dictionary<string, bool>();
             _modifierHotkeys = new Dictionary<string, string>();
+            _heldKeys = new HashSet<uint>();
             _isInitialized = false;
             _keyboardProc = KeyboardHookProc;
         }
@@ -517,6 +519,7 @@ namespace SharpShot.Utils
                 UninstallKeyboardHook();
             }
             _modifierHotkeys.Clear();
+            _heldKeys?.Clear();
         }
         
         private void InstallKeyboardHook()
@@ -564,83 +567,104 @@ namespace SharpShot.Utils
             // Always call next hook first (required by Windows)
             IntPtr result = CallNextHookEx(_keyboardHookHandle, nCode, wParam, lParam);
             
-            if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN && _modifierHotkeys.Count > 0)
+            if (nCode >= 0 && _modifierHotkeys.Count > 0)
             {
                 var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
                 uint vkCode = hookStruct.vkCode;
                 
-                // Check if any other modifier keys are currently pressed
-                // We only want to trigger if ONLY the target modifier is pressed
-                bool ctrlPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-                bool shiftPressed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-                bool altPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
-                
-                System.Diagnostics.Debug.WriteLine($"Hook: vkCode=0x{vkCode:X2}, Ctrl={ctrlPressed}, Shift={shiftPressed}, Alt={altPressed}, Tracking {_modifierHotkeys.Count} modifiers");
-                
-                // Check if this is a modifier key we're tracking
-                foreach (var kvp in _modifierHotkeys)
+                // Track key down/up to ignore key repeat (holds)
+                if (wParam == (IntPtr)WM_KEYDOWN)
                 {
-                    string actionName = kvp.Key;
-                    string modifierName = kvp.Value;
-                    bool isTargetModifier = false;
+                    // If key is already held, ignore this repeat event
+                    if (_heldKeys.Contains(vkCode))
+                    {
+                        return result; // Ignore key repeat
+                    }
+                    // Mark key as held
+                    _heldKeys.Add(vkCode);
+                }
+                else if (wParam == (IntPtr)WM_KEYUP)
+                {
+                    // Remove from held keys
+                    _heldKeys.Remove(vkCode);
+                }
+                
+                // Only process triple-click on key release (WM_KEYUP) to avoid counting holds
+                if (nCode >= 0 && wParam == (IntPtr)WM_KEYUP)
+                {
+                    // Check if any other modifier keys are currently pressed
+                    // We only want to trigger if ONLY the target modifier is pressed
+                    bool ctrlPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                    bool shiftPressed = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+                    bool altPressed = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
                     
-                    if (modifierName == "Ctrl" || modifierName == "Control")
-                    {
-                        isTargetModifier = (vkCode == VK_CONTROL || vkCode == 0xA2 || vkCode == 0xA3); // Left/Right Ctrl
-                    }
-                    else if (modifierName == "Shift")
-                    {
-                        isTargetModifier = (vkCode == VK_SHIFT || vkCode == 0xA0 || vkCode == 0xA1); // Left/Right Shift
-                    }
-                    else if (modifierName == "Alt")
-                    {
-                        isTargetModifier = (vkCode == VK_MENU || vkCode == 0xA4 || vkCode == 0xA5); // Left/Right Alt
-                    }
+                    System.Diagnostics.Debug.WriteLine($"Hook: vkCode=0x{vkCode:X2} (KEYUP), Ctrl={ctrlPressed}, Shift={shiftPressed}, Alt={altPressed}, Tracking {_modifierHotkeys.Count} modifiers");
                     
-                    if (isTargetModifier)
+                    // Check if this is a modifier key we're tracking
+                    foreach (var kvp in _modifierHotkeys)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Hook: Matched {modifierName} for {actionName}");
+                        string actionName = kvp.Key;
+                        string modifierName = kvp.Value;
+                        bool isTargetModifier = false;
                         
-                        // Only trigger if ONLY the target modifier is pressed (no other modifiers)
-                        bool otherModifiersPressed = false;
                         if (modifierName == "Ctrl" || modifierName == "Control")
                         {
-                            otherModifiersPressed = shiftPressed || altPressed;
+                            isTargetModifier = (vkCode == VK_CONTROL || vkCode == 0xA2 || vkCode == 0xA3); // Left/Right Ctrl
                         }
                         else if (modifierName == "Shift")
                         {
-                            otherModifiersPressed = ctrlPressed || altPressed;
+                            isTargetModifier = (vkCode == VK_SHIFT || vkCode == 0xA0 || vkCode == 0xA1); // Left/Right Shift
                         }
                         else if (modifierName == "Alt")
                         {
-                            otherModifiersPressed = ctrlPressed || shiftPressed;
+                            isTargetModifier = (vkCode == VK_MENU || vkCode == 0xA4 || vkCode == 0xA5); // Left/Right Alt
                         }
                         
-                        System.Diagnostics.Debug.WriteLine($"Hook: Other modifiers pressed: {otherModifiersPressed}");
-                        
-                        if (!otherModifiersPressed)
+                        if (isTargetModifier)
                         {
-                            // Check if triple-click is enabled
-                            bool tripleClickEnabled = _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault($"{actionName}TripleClick", "false") == "true";
+                            System.Diagnostics.Debug.WriteLine($"Hook: Matched {modifierName} for {actionName}");
                             
-                            System.Diagnostics.Debug.WriteLine($"Hook: Processing {modifierName} for {actionName}, triple-click enabled: {tripleClickEnabled}");
-                            
-                            if (tripleClickEnabled)
+                            // Only trigger if ONLY the target modifier is pressed (no other modifiers)
+                            bool otherModifiersPressed = false;
+                            if (modifierName == "Ctrl" || modifierName == "Control")
                             {
-                                // Get the action and handle triple-click
-                                var action = GetActionForHotkey(actionName);
-                                if (action != null)
+                                otherModifiersPressed = shiftPressed || altPressed;
+                            }
+                            else if (modifierName == "Shift")
+                            {
+                                otherModifiersPressed = ctrlPressed || altPressed;
+                            }
+                            else if (modifierName == "Alt")
+                            {
+                                otherModifiersPressed = ctrlPressed || shiftPressed;
+                            }
+                            
+                            System.Diagnostics.Debug.WriteLine($"Hook: Other modifiers pressed: {otherModifiersPressed}");
+                            
+                            if (!otherModifiersPressed)
+                            {
+                                // Check if triple-click is enabled
+                                bool tripleClickEnabled = _settingsService.CurrentSettings.Hotkeys.GetValueOrDefault($"{actionName}TripleClick", "false") == "true";
+                                
+                                System.Diagnostics.Debug.WriteLine($"Hook: Processing {modifierName} for {actionName}, triple-click enabled: {tripleClickEnabled}");
+                                
+                                if (tripleClickEnabled)
                                 {
-                                    System.Diagnostics.Debug.WriteLine($"Hook: Calling HandleTripleClickAction for {actionName}");
-                                    HandleTripleClickAction(actionName, action);
-                                }
-                                else
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"Hook: No action found for {actionName}");
+                                    // Get the action and handle triple-click (only on key release)
+                                    var action = GetActionForHotkey(actionName);
+                                    if (action != null)
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Hook: Calling HandleTripleClickAction for {actionName} (on key release)");
+                                        HandleTripleClickAction(actionName, action);
+                                    }
+                                    else
+                                    {
+                                        System.Diagnostics.Debug.WriteLine($"Hook: No action found for {actionName}");
+                                    }
                                 }
                             }
+                            break;
                         }
-                        break;
                     }
                 }
             }

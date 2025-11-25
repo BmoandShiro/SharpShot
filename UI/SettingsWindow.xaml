@@ -665,7 +665,7 @@
                               FontWeight="SemiBold"
                               Margin="0,10,0,10"/>
                    
-                   <TextBlock Text="If monitor detection doesn't work correctly (especially on 225% zoom monitors), you can draw custom boundary boxes. Checked boxes will trigger stationary mode when your cursor enters them. You can have multiple boxes per monitor."
+                   <TextBlock Text="If monitor detection doesn't work correctly (especially on any monitor that is not on 100% scaled zoom), you can draw custom boundary boxes. Checked boxes will trigger stationary mode when your cursor enters them. You can have multiple boxes per monitor."
                               Foreground="#FF888888"
                               FontSize="11"
                               TextWrapping="Wrap"
