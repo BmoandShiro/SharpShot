@@ -138,12 +138,6 @@ The always-on-top, draggable toolbar provides quick access to all core features:
 
 ### Settings Window
 
-#### General Settings
-
-![Settings - General](screenshots/SharpShot_20260121_141620.png)
-
-*General settings including save path, screenshot format, video quality, capture targets, and various behavior options*
-
 #### Magnifier & Boundary Boxes
 
 ![Settings - Magnifier](screenshots/SharpShot_20260121_141734.png)
