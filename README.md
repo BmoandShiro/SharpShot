@@ -132,7 +132,7 @@ You can move the entire folder anywhere on your system or to another Windows PC 
 
 The always-on-top, draggable toolbar provides quick access to all core features:
 
-![Main Toolbar](screenshots/main-toolbar.png)
+![Main Toolbar](screenshots/SharpShot_20260121_141605.png)
 
 *The floating toolbar with region selection, screenshot, recording, settings, minimize, and close buttons*
 
@@ -140,19 +140,19 @@ The always-on-top, draggable toolbar provides quick access to all core features:
 
 #### General Settings
 
-![Settings - General](screenshots/settings-general.png)
+![Settings - General](screenshots/SharpShot_20260121_141620.png)
 
 *General settings including save path, screenshot format, video quality, capture targets, and various behavior options*
 
 #### Magnifier & Boundary Boxes
 
-![Settings - Magnifier](screenshots/settings-magnifier.png)
+![Settings - Magnifier](screenshots/SharpShot_20260121_141734.png)
 
 *Magnifier settings with zoom level, size controls, mode selection (Follow/Stationary/Auto), and boundary box configuration for DPI-scaled monitors*
 
 #### Theme Customization & Hotkeys
 
-![Settings - Theme & Hotkeys](screenshots/settings-theme-hotkeys.png)
+![Settings - Theme & Hotkeys](screenshots/SharpShot_20260121_141816.png)
 
 *Theme customization with RGB color sliders, opacity controls, and hotkey configuration with update settings*
 
@@ -160,7 +160,7 @@ The always-on-top, draggable toolbar provides quick access to all core features:
 
 The built-in editor provides powerful annotation tools:
 
-![Screenshot Editor](screenshots/screenshot-editor.png)
+![Screenshot Editor](screenshots/EaseUS_2026_01_21_14_20_05.png)
 
 *Screenshot editor showing color picker with quick colors and RGB sliders, stroke width adjustment, and the annotation toolbar with blur, arrow, rectangle, circle, line, pen, text, and highlight tools*
 
@@ -168,7 +168,7 @@ The built-in editor provides powerful annotation tools:
 
 After capturing a screenshot, you can quickly copy, save, or cancel:
 
-![Post-Capture Options](screenshots/post-capture-options.png)
+![Post-Capture Options](screenshots/EaseUS_2026_01_21_14_20_50.png)
 
 *The post-capture toolbar with copy, save, and cancel options*
 
