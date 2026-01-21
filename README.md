@@ -128,20 +128,49 @@ You can move the entire folder anywhere on your system or to another Windows PC 
 
 ## 📸 Screenshots
 
-> **Note**: Consider adding screenshots to showcase the application! Here are some suggestions:
-> - Main floating toolbar
-> - Settings window (General, Magnifier, Boundary Boxes, Theme Customization, Hotkeys)
-> - Screenshot editor with annotation tools
-> - Region selection with magnifier
-> - Recording interface
+### Main Floating Toolbar
 
-The Settings window includes comprehensive options organized into sections:
-- **General Settings**: Save path, formats, quality, display options
-- **Magnifier Settings**: Zoom, size, mode, position
-- **Stationary Magnifier Settings**: Monitor and position configuration
-- **Boundary Boxes**: For DPI-scaled monitors
-- **Theme Customization**: Color, opacity, and visual effects
-- **Hotkeys**: Customizable keyboard shortcuts
+The always-on-top, draggable toolbar provides quick access to all core features:
+
+![Main Toolbar](screenshots/main-toolbar.png)
+
+*The floating toolbar with region selection, screenshot, recording, settings, minimize, and close buttons*
+
+### Settings Window
+
+#### General Settings
+
+![Settings - General](screenshots/settings-general.png)
+
+*General settings including save path, screenshot format, video quality, capture targets, and various behavior options*
+
+#### Magnifier & Boundary Boxes
+
+![Settings - Magnifier](screenshots/settings-magnifier.png)
+
+*Magnifier settings with zoom level, size controls, mode selection (Follow/Stationary/Auto), and boundary box configuration for DPI-scaled monitors*
+
+#### Theme Customization & Hotkeys
+
+![Settings - Theme & Hotkeys](screenshots/settings-theme-hotkeys.png)
+
+*Theme customization with RGB color sliders, opacity controls, and hotkey configuration with update settings*
+
+### Screenshot Editor
+
+The built-in editor provides powerful annotation tools:
+
+![Screenshot Editor](screenshots/screenshot-editor.png)
+
+*Screenshot editor showing color picker with quick colors and RGB sliders, stroke width adjustment, and the annotation toolbar with blur, arrow, rectangle, circle, line, pen, text, and highlight tools*
+
+### Post-Capture Options
+
+After capturing a screenshot, you can quickly copy, save, or cancel:
+
+![Post-Capture Options](screenshots/post-capture-options.png)
+
+*The post-capture toolbar with copy, save, and cancel options*
 
 ## 📦 Installation & Usage
 
