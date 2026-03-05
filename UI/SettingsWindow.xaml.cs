@@ -728,6 +728,45 @@ namespace SharpShot.UI
             }
         }
 
+        private void ClearHotkeyButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string actionKey)
+            {
+                TextBox? textBox = actionKey switch
+                {
+                    "ScreenshotRegion" => ScreenshotRegionHotkeyTextBox,
+                    "ScreenshotFullscreen" => ScreenshotFullscreenHotkeyTextBox,
+                    "RecordRegion" => RecordRegionHotkeyTextBox,
+                    "RecordFullscreen" => RecordFullscreenHotkeyTextBox,
+                    "Copy" => CopyHotkeyTextBox,
+                    "Save" => SaveHotkeyTextBox,
+                    _ => null
+                };
+                CheckBox? tripleCheckBox = actionKey switch
+                {
+                    "ScreenshotRegion" => ScreenshotRegionTripleClickCheckBox,
+                    "ScreenshotFullscreen" => ScreenshotFullscreenTripleClickCheckBox,
+                    "RecordRegion" => RecordRegionTripleClickCheckBox,
+                    "RecordFullscreen" => RecordFullscreenTripleClickCheckBox,
+                    "Copy" => CopyTripleClickCheckBox,
+                    "Save" => SaveTripleClickCheckBox,
+                    _ => null
+                };
+                if (textBox != null)
+                {
+                    textBox.Text = "";
+                    textBox.IsReadOnly = true;
+                }
+                if (tripleCheckBox != null)
+                    tripleCheckBox.IsChecked = false;
+                _originalSettings.Hotkeys[actionKey] = "";
+                _originalSettings.Hotkeys[actionKey + "TripleClick"] = "false";
+                CopySettings(_originalSettings, _settingsService.CurrentSettings);
+                _settingsService.SaveSettings();
+                _hotkeyManager?.UpdateHotkeys();
+            }
+        }
+
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -895,19 +934,13 @@ namespace SharpShot.UI
                 // Update theme colors immediately
                 UpdateThemeColors();
                 
-                // Update hotkeys - only save non-empty values
-                if (!string.IsNullOrWhiteSpace(ScreenshotRegionHotkeyTextBox.Text))
-                    _originalSettings.Hotkeys["ScreenshotRegion"] = ScreenshotRegionHotkeyTextBox.Text;
-                if (!string.IsNullOrWhiteSpace(ScreenshotFullscreenHotkeyTextBox.Text))
-                    _originalSettings.Hotkeys["ScreenshotFullscreen"] = ScreenshotFullscreenHotkeyTextBox.Text;
-                if (!string.IsNullOrWhiteSpace(RecordRegionHotkeyTextBox.Text))
-                    _originalSettings.Hotkeys["RecordRegion"] = RecordRegionHotkeyTextBox.Text;
-                if (!string.IsNullOrWhiteSpace(RecordFullscreenHotkeyTextBox.Text))
-                    _originalSettings.Hotkeys["RecordFullscreen"] = RecordFullscreenHotkeyTextBox.Text;
-                if (!string.IsNullOrWhiteSpace(CopyHotkeyTextBox.Text))
-                    _originalSettings.Hotkeys["Copy"] = CopyHotkeyTextBox.Text;
-                if (!string.IsNullOrWhiteSpace(SaveHotkeyTextBox.Text))
-                    _originalSettings.Hotkeys["Save"] = SaveHotkeyTextBox.Text;
+                // Update hotkeys - save current value (empty = unset)
+                _originalSettings.Hotkeys["ScreenshotRegion"] = ScreenshotRegionHotkeyTextBox.Text ?? "";
+                _originalSettings.Hotkeys["ScreenshotFullscreen"] = ScreenshotFullscreenHotkeyTextBox.Text ?? "";
+                _originalSettings.Hotkeys["RecordRegion"] = RecordRegionHotkeyTextBox.Text ?? "";
+                _originalSettings.Hotkeys["RecordFullscreen"] = RecordFullscreenHotkeyTextBox.Text ?? "";
+                _originalSettings.Hotkeys["Copy"] = CopyHotkeyTextBox.Text ?? "";
+                _originalSettings.Hotkeys["Save"] = SaveHotkeyTextBox.Text ?? "";
                 
                 // Update triple-click settings
                 _originalSettings.Hotkeys["ScreenshotRegionTripleClick"] = ScreenshotRegionTripleClickCheckBox.IsChecked == true ? "true" : "false";

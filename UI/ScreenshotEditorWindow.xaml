@@ -70,6 +70,12 @@
             <!-- Editing overlay canvas for drawings -->
             <Canvas x:Name="OverlayCanvas" 
                     Background="Transparent"/>
+            
+            <!-- OCR text regions overlay (click to copy) - above drawings so words are visible and clickable -->
+            <Canvas x:Name="OcrOverlayCanvas" 
+                    Background="Transparent"
+                    IsHitTestVisible="True"
+                    Visibility="Collapsed"/>
         </Canvas>
 
         <!-- Bottom editing toolbar -->
@@ -209,6 +215,33 @@
                           Fill="{DynamicResource AccentBrush}" 
                           Stretch="Uniform"
                           Width="18" Height="18"/>
+                </Button>
+
+                <!-- Separator -->
+                <Rectangle Width="1" 
+                           Height="30" 
+                           Fill="{DynamicResource AccentBrush}" 
+                           Margin="8,0"/>
+
+                <!-- Extract text (OCR) -->
+                <Button x:Name="ExtractTextButton" 
+                        Style="{StaticResource EditToolButtonStyle}"
+                        Click="ExtractTextButton_Click"
+                        ToolTip="Extract text from image (OCR). Click recognized words to copy."
+                        Width="60">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Data="M3 5v14h7v-4h2v4h7V5H3m2 2h2v2H5V7m0 4h2v2H5v-2m8 2h-2v-2h2v2m0-4h-2V7h2v2" 
+                              Stroke="{DynamicResource AccentBrush}" 
+                              StrokeThickness="1.5" 
+                              Fill="Transparent"
+                              Stretch="Uniform"
+                              Width="16" Height="16"
+                              Margin="0,0,4,0"/>
+                        <TextBlock Text="Text" 
+                                   Foreground="{DynamicResource AccentBrush}" 
+                                   FontSize="12" 
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Button>
 
                 <!-- Separator -->
@@ -457,5 +490,51 @@
                 </StackPanel>
             </StackPanel>
         </Border>
+
+        <!-- Extracted text panel: select and copy any section (shown when OCR has results) -->
+        <Popup x:Name="OcrTextPopup" 
+               Placement="Top" 
+               PlacementTarget="{Binding ElementName=BottomToolbarBorder}"
+               StaysOpen="True"
+               AllowsTransparency="True"
+               PopupAnimation="Slide">
+            <Border Background="#E8000000" 
+                    CornerRadius="8" 
+                    Padding="12"
+                    BorderBrush="{DynamicResource AccentBrush}"
+                    BorderThickness="1"
+                    MinWidth="320"
+                    MaxWidth="500"
+                    MaxHeight="280">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Extracted text — select and copy" 
+                                  Foreground="{DynamicResource AccentBrush}" 
+                                  FontWeight="Bold"/>
+                        <Button x:Name="OcrTextPopupCloseButton"
+                                Content="✕"
+                                HorizontalAlignment="Right"
+                                Padding="8,2"
+                                Background="Transparent"
+                                Foreground="{DynamicResource AccentBrush}"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Click="OcrTextPopupCloseButton_Click"/>
+                    </Grid>
+                    <TextBox x:Name="OcrExtractedTextBox"
+                             IsReadOnly="True"
+                             TextWrapping="Wrap"
+                             AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Auto"
+                             Padding="8"
+                             Height="160"
+                             Foreground="White"
+                             Background="#40000000"
+                             BorderBrush="{DynamicResource AccentBrush}"
+                             BorderThickness="1"
+                             CaretBrush="White"/>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Window>

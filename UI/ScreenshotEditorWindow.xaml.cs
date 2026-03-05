@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -56,7 +58,11 @@ namespace SharpShot.UI
         private Point _dragStartPoint;
         private Point _bottomToolbarStartPosition;
         private Point _colorPickerStartPosition;
-        
+
+        // OCR region selection: draw a rect, then run OCR on that area only
+        private bool _ocrRegionSelectMode = false;
+        private UIElement? _ocrPreviewElement;
+
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
         public bool ImageCopied { get; private set; } = false;
@@ -167,6 +173,7 @@ namespace SharpShot.UI
                 UpdateIconColor(HighlightButton, brush);
                 UpdateIconColor(UndoButton, brush);
                 UpdateIconColor(RedoButton, brush);
+                UpdateIconColor(ExtractTextButton, brush);
                 UpdateIconColor(CopyFinalButton, brush);
                 UpdateIconColor(SaveFinalButton, brush);
                 UpdateIconColor(CloseEditorButton, brush);
@@ -281,6 +288,7 @@ namespace SharpShot.UI
                 // Apply theme-aware styling to all editor buttons
                 UndoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 RedoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                ExtractTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 CopyFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 SaveFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 CloseEditorButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
@@ -323,6 +331,12 @@ namespace SharpShot.UI
             Canvas.SetTop(OverlayCanvas, (screenHeight - imageHeight) / 2);
             OverlayCanvas.Width = imageWidth;
             OverlayCanvas.Height = imageHeight;
+            
+            // OCR overlay same position and size as image
+            Canvas.SetLeft(OcrOverlayCanvas, (screenWidth - imageWidth) / 2);
+            Canvas.SetTop(OcrOverlayCanvas, (screenHeight - imageHeight) / 2);
+            OcrOverlayCanvas.Width = imageWidth;
+            OcrOverlayCanvas.Height = imageHeight;
             
             // Use Windows API to force the window to the correct monitor
             ForceWindowToMonitor(selectedMonitorBounds);
@@ -578,6 +592,16 @@ namespace SharpShot.UI
 
         private void OverlayCanvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // OCR region select: draw a rect, then run OCR on that area
+            if (_ocrRegionSelectMode)
+            {
+                _isDrawing = true;
+                _startPoint = e.GetPosition(OverlayCanvas);
+                OverlayCanvas.CaptureMouse();
+                e.Handled = true;
+                return;
+            }
+
             if (_currentTool == EditingTool.None) return;
             
             _isDrawing = true;
@@ -600,6 +624,17 @@ namespace SharpShot.UI
 
         private void OverlayCanvas_MouseMove(object sender, MouseEventArgs e)
         {
+            if (_ocrRegionSelectMode && _isDrawing)
+            {
+                _endPoint = e.GetPosition(OverlayCanvas);
+                if (_ocrPreviewElement != null)
+                    OverlayCanvas.Children.Remove(_ocrPreviewElement);
+                _ocrPreviewElement = CreateOcrRegionPreviewElement(_startPoint, _endPoint);
+                if (_ocrPreviewElement != null)
+                    OverlayCanvas.Children.Add(_ocrPreviewElement);
+                return;
+            }
+
             if (!_isDrawing || _currentTool == EditingTool.None || _currentTool == EditingTool.Text) return;
             
             _endPoint = e.GetPosition(OverlayCanvas);
@@ -626,6 +661,34 @@ namespace SharpShot.UI
 
         private void OverlayCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            if (_ocrRegionSelectMode && _isDrawing)
+            {
+                _isDrawing = false;
+                _endPoint = e.GetPosition(OverlayCanvas);
+                if (_ocrPreviewElement != null)
+                {
+                    OverlayCanvas.Children.Remove(_ocrPreviewElement);
+                    _ocrPreviewElement = null;
+                }
+                OverlayCanvas.ReleaseMouseCapture();
+                _ocrRegionSelectMode = false;
+                OverlayCanvas.Cursor = Cursors.Arrow;
+
+                double left = Math.Min(_startPoint.X, _endPoint.X);
+                double top = Math.Min(_startPoint.Y, _endPoint.Y);
+                double width = Math.Abs(_endPoint.X - _startPoint.X);
+                double height = Math.Abs(_endPoint.Y - _startPoint.Y);
+                if (width >= 5 && height >= 5) // minimum size to avoid accidental tiny clicks
+                {
+                    RunOcrOnRegionAsync(left, top, width, height);
+                }
+                _startPoint = new Point();
+                _endPoint = new Point();
+                ExtractTextButton.ToolTip = "Extract text from image (OCR). Select an area, then click words to copy.";
+                e.Handled = true;
+                return;
+            }
+
             if (!_isDrawing || _currentTool == EditingTool.None) return;
             
             _isDrawing = false;
@@ -702,6 +765,25 @@ namespace SharpShot.UI
             Canvas.SetLeft(rect, Math.Min(start.X, end.X));
             Canvas.SetTop(rect, Math.Min(start.Y, end.Y));
             
+            return rect;
+        }
+
+        private Rectangle CreateOcrRegionPreviewElement(Point start, Point end)
+        {
+            var c = _currentColor;
+            var strokeBrush = new SolidColorBrush(c);
+            var fillBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x20, c.R, c.G, c.B));
+            var rect = new Rectangle
+            {
+                Stroke = strokeBrush,
+                StrokeThickness = 2,
+                StrokeDashArray = new System.Windows.Media.DoubleCollection(new[] { 8.0, 4.0 }),
+                Fill = fillBrush,
+                Width = Math.Abs(end.X - start.X),
+                Height = Math.Abs(end.Y - start.Y)
+            };
+            Canvas.SetLeft(rect, Math.Min(start.X, end.X));
+            Canvas.SetTop(rect, Math.Min(start.Y, end.Y));
             return rect;
         }
 
@@ -1127,6 +1209,205 @@ namespace SharpShot.UI
 
         #region Final Actions
 
+        private void ExtractTextButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (!OcrService.IsAvailable())
+                {
+                    var msg = "Text recognition (OCR) needs Tesseract language data.\n\n" +
+                        "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
+                        "2. Place it in the application folder or in a subfolder named 'tessdata'.";
+                    var result = MessageBox.Show(this,
+                        msg + "\n\nOpen the application folder now?",
+                        "Extract Text",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                            var tessDataDir = System.IO.Path.Combine(appDir, "tessdata");
+                            var dirToOpen = Directory.Exists(tessDataDir) ? tessDataDir : appDir;
+                            Process.Start("explorer.exe", dirToOpen);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Open folder failed: {ex.Message}");
+                        }
+                    }
+                    return;
+                }
+
+                var bitmap = FinalBitmap ?? _originalBitmap;
+                if (bitmap == null)
+                {
+                    MessageBox.Show(this, "No image to read text from.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // Enter region-select mode: user draws a rectangle, then we run OCR on that area only
+                _ocrRegionSelectMode = true;
+                OverlayCanvas.Cursor = Cursors.Cross;
+                ExtractTextButton.ToolTip = "Draw a rectangle around the text to recognize (Esc to cancel)";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ExtractTextButton_Click error: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show(this, $"Something went wrong: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private async void RunOcrOnRegionAsync(double left, double top, double width, double height)
+        {
+            var bitmap = FinalBitmap ?? _originalBitmap;
+            if (bitmap == null) return;
+
+            int x = Math.Max(0, (int)left);
+            int y = Math.Max(0, (int)top);
+            int w = Math.Max(1, (int)width);
+            int h = Math.Max(1, (int)height);
+            if (x + w > bitmap.Width) w = bitmap.Width - x;
+            if (y + h > bitmap.Height) h = bitmap.Height - y;
+            if (w <= 0 || h <= 0) return;
+
+            Bitmap? crop = null;
+            try
+            {
+                crop = new Bitmap(w, h, bitmap.PixelFormat);
+                using (var g = System.Drawing.Graphics.FromImage(crop))
+                {
+                    g.DrawImage(bitmap, new System.Drawing.Rectangle(0, 0, w, h), new System.Drawing.Rectangle(x, y, w, h), GraphicsUnit.Pixel);
+                }
+
+                ExtractTextButton.IsEnabled = false;
+                ExtractTextButton.ToolTip = "Extracting text...";
+                const int timeoutMs = 60000;
+                var ocrTask = OcrService.RecognizeWordsAsync(crop);
+                var timeoutTask = Task.Delay(timeoutMs);
+                var completed = await Task.WhenAny(ocrTask, timeoutTask);
+                IReadOnlyList<OcrWordResult> words;
+                if (completed == timeoutTask)
+                {
+                    words = Array.Empty<OcrWordResult>();
+                    await Dispatcher.InvokeAsync(() =>
+                        MessageBox.Show(this, "Text recognition took too long. Try a smaller area.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning));
+                }
+                else
+                {
+                    words = await ocrTask;
+                }
+
+                double offsetX = x;
+                double offsetY = y;
+                var themeColor = _currentColor; // capture for UI thread
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    OcrOverlayCanvas.Children.Clear();
+                    var borderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, themeColor.R, themeColor.G, themeColor.B));
+                    var hoverBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x25, themeColor.R, themeColor.G, themeColor.B));
+                    foreach (var word in words)
+                    {
+                        var border = new Border
+                        {
+                            Background = System.Windows.Media.Brushes.Transparent,
+                            BorderBrush = borderBrush,
+                            BorderThickness = new Thickness(0),
+                            Cursor = Cursors.Hand,
+                            Tag = word.Text,
+                            ToolTip = $"Click to copy: {word.Text}"
+                        };
+                        Canvas.SetLeft(border, word.X + offsetX);
+                        Canvas.SetTop(border, word.Y + offsetY);
+                        border.Width = Math.Max(1, word.Width);
+                        border.Height = Math.Max(1, word.Height);
+                        border.MouseLeftButtonDown += OcrWord_MouseLeftButtonDown;
+                        var hb = hoverBrush;
+                        border.MouseEnter += (s, _) =>
+                        {
+                            if (s is Border b)
+                            {
+                                b.Background = hb;
+                                b.BorderThickness = new Thickness(1);
+                            }
+                        };
+                        border.MouseLeave += (s, _) =>
+                        {
+                            if (s is Border b)
+                            {
+                                b.Background = System.Windows.Media.Brushes.Transparent;
+                                b.BorderThickness = new Thickness(0);
+                            }
+                        };
+                        OcrOverlayCanvas.Children.Add(border);
+                    }
+                    OcrOverlayCanvas.Visibility = Visibility.Visible;
+                    if (words.Count == 0 && completed != timeoutTask)
+                    {
+                        MessageBox.Show(this, "No text was recognized in the selected area.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else if (words.Count > 0)
+                    {
+                        ExtractTextButton.ToolTip = $"{words.Count} word(s) recognized. Click a word to copy, or use the text panel to select a section.";
+                        string fullText = string.Join(" ", words.Select(w => w.Text));
+                        OcrExtractedTextBox.Text = fullText;
+                        OcrTextPopup.IsOpen = true;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OCR failed: {ex.Message}\n{ex.StackTrace}");
+                await Dispatcher.InvokeAsync(() =>
+                    MessageBox.Show(this, $"OCR failed: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning));
+            }
+            finally
+            {
+                crop?.Dispose();
+                ExtractTextButton.IsEnabled = true;
+                ExtractTextButton.ToolTip = "Extract text from image (OCR). Select an area, then click words to copy.";
+            }
+        }
+
+        private static bool TryCopyToClipboard(string text, int maxRetries = 5)
+        {
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    Clipboard.SetText(text);
+                    return true;
+                }
+                catch (System.Runtime.InteropServices.COMException ex) when (ex.HResult == unchecked((int)0x800401D0)) // CLIPBRD_E_CANT_OPEN
+                {
+                    if (i == maxRetries - 1) return false;
+                    System.Threading.Thread.Sleep(80);
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        private void OcrWord_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is Border border && border.Tag is string text && !string.IsNullOrEmpty(text))
+            {
+                if (TryCopyToClipboard(text))
+                    return;
+                string message = "Another app may be using the clipboard. Try again in a moment, or select and copy from the extracted text panel.";
+                MessageBox.Show(this, message, "Copy failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void OcrTextPopupCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            OcrTextPopup.IsOpen = false;
+        }
+
         private void CopyFinalButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1263,6 +1544,27 @@ namespace SharpShot.UI
             
             if (e.Key == Key.Escape)
             {
+                if (OcrTextPopup.IsOpen)
+                {
+                    OcrTextPopup.IsOpen = false;
+                    e.Handled = true;
+                    return;
+                }
+                if (_ocrRegionSelectMode)
+                {
+                    _ocrRegionSelectMode = false;
+                    _isDrawing = false;
+                    if (_ocrPreviewElement != null)
+                    {
+                        OverlayCanvas.Children.Remove(_ocrPreviewElement);
+                        _ocrPreviewElement = null;
+                    }
+                    OverlayCanvas.ReleaseMouseCapture();
+                    OverlayCanvas.Cursor = Cursors.Arrow;
+                    ExtractTextButton.ToolTip = "Extract text from image (OCR). Select an area, then click words to copy.";
+                    e.Handled = true;
+                    return;
+                }
                 Close();
             }
             else if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
@@ -1446,8 +1748,22 @@ namespace SharpShot.UI
 
         #region Toolbar Drag Functionality
 
+        private static bool IsChildOfButton(DependencyObject element)
+        {
+            while (element != null)
+            {
+                if (element is Button)
+                    return true;
+                element = System.Windows.Media.VisualTreeHelper.GetParent(element);
+            }
+            return false;
+        }
+
         private void BottomToolbar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            // Don't start drag when clicking on a button (so Text, Copy, Save, etc. still work)
+            if (e.OriginalSource is DependencyObject dep && IsChildOfButton(dep))
+                return;
             if (e.LeftButton == MouseButtonState.Pressed)
             {
                 _isDraggingBottomToolbar = true;

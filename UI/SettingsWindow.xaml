@@ -853,6 +853,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" 
                                Text="Screenshot Region Select:" 
@@ -868,7 +869,14 @@
                              GotFocus="HotkeyTextBox_GotFocus"
                              LostFocus="HotkeyTextBox_LostFocus"
                              IsEnabled="True"/>
-                    <CheckBox Grid.Column="2"
+                    <Button Grid.Column="2" x:Name="ScreenshotRegionClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="ScreenshotRegion"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
                               x:Name="ScreenshotRegionTripleClickCheckBox"
                               Content="Triple Click"
                               Style="{StaticResource DarkCheckBoxStyle}"
@@ -880,6 +888,7 @@
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -896,7 +905,14 @@
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                              GotFocus="HotkeyTextBox_GotFocus"
                              LostFocus="HotkeyTextBox_LostFocus"/>
-                    <CheckBox Grid.Column="2"
+                    <Button Grid.Column="2" x:Name="ScreenshotFullscreenClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="ScreenshotFullscreen"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
                               x:Name="ScreenshotFullscreenTripleClickCheckBox"
                               Content="Triple Click"
                               Style="{StaticResource DarkCheckBoxStyle}"
@@ -908,6 +924,7 @@
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -924,7 +941,14 @@
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                              GotFocus="HotkeyTextBox_GotFocus"
                              LostFocus="HotkeyTextBox_LostFocus"/>
-                    <CheckBox Grid.Column="2"
+                    <Button Grid.Column="2" x:Name="RecordRegionClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="RecordRegion"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
                               x:Name="RecordRegionTripleClickCheckBox"
                               Content="Triple Click"
                               Style="{StaticResource DarkCheckBoxStyle}"
@@ -936,6 +960,7 @@
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -952,7 +977,14 @@
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                              GotFocus="HotkeyTextBox_GotFocus"
                              LostFocus="HotkeyTextBox_LostFocus"/>
-                    <CheckBox Grid.Column="2"
+                    <Button Grid.Column="2" x:Name="RecordFullscreenClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="RecordFullscreen"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
                               x:Name="RecordFullscreenTripleClickCheckBox"
                               Content="Triple Click"
                               Style="{StaticResource DarkCheckBoxStyle}"
@@ -964,6 +996,7 @@
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -980,7 +1013,14 @@
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                              GotFocus="HotkeyTextBox_GotFocus"
                              LostFocus="HotkeyTextBox_LostFocus"/>
-                    <CheckBox Grid.Column="2"
+                    <Button Grid.Column="2" x:Name="CopyClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="Copy"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
                               x:Name="CopyTripleClickCheckBox"
                               Content="Triple Click"
                               Style="{StaticResource DarkCheckBoxStyle}"
@@ -992,6 +1032,7 @@
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -1008,7 +1049,14 @@
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
                              GotFocus="HotkeyTextBox_GotFocus"
                              LostFocus="HotkeyTextBox_LostFocus"/>
-                    <CheckBox Grid.Column="2"
+                    <Button Grid.Column="2" x:Name="SaveClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="Save"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
                               x:Name="SaveTripleClickCheckBox"
                               Content="Triple Click"
                               Style="{StaticResource DarkCheckBoxStyle}"
