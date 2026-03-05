@@ -308,6 +308,20 @@ namespace SharpShot.Utils
                 case "DOWN": return 0x28;
                 case "LEFT": return 0x25;
                 case "RIGHT": return 0x27;
+                // OEM keys (WPF Key.ToString() yields "Oem1", "OemComma", etc.)
+                case "OEM1": return 0xBA;   // ;: (US)
+                case "OEM2": return 0xBF;   // /?
+                case "OEM3": return 0xC0;   // `~ (backtick/grave)
+                case "OEM4": return 0xDB;   // [{
+                case "OEM5": return 0xDC;   // \|
+                case "OEM6": return 0xDD;   // ]}
+                case "OEM7": return 0xDE;   // '"
+                case "OEM8": return 0xDF;
+                case "OEM102": return 0xE2; // <> or \| (102-key)
+                case "OEMCOMMA": return 0xBC;  // ,<
+                case "OEMPERIOD": return 0xBE; // .>
+                case "OEMPLUS": return 0xBB;   // =+
+                case "OEMMINUS": return 0xBD;  // -_
                 default:
                     // Try to parse as a number
                     if (uint.TryParse(keyName, out var num))
