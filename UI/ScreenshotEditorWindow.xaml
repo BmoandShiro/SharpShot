@@ -223,11 +223,11 @@
                            Fill="{DynamicResource AccentBrush}" 
                            Margin="8,0"/>
 
-                <!-- Extract text (OCR) -->
+                <!-- OCR -->
                 <Button x:Name="ExtractTextButton" 
                         Style="{StaticResource EditToolButtonStyle}"
                         Click="ExtractTextButton_Click"
-                        ToolTip="Extract text from image (OCR). Click recognized words to copy."
+                        ToolTip="Extract text from image (OCR). Select an area to get text in the panel."
                         Width="60">
                     <StackPanel Orientation="Horizontal">
                         <Path Data="M3 5v14h7v-4h2v4h7V5H3m2 2h2v2H5V7m0 4h2v2H5v-2m8 2h-2v-2h2v2m0-4h-2V7h2v2" 
@@ -237,7 +237,7 @@
                               Stretch="Uniform"
                               Width="16" Height="16"
                               Margin="0,0,4,0"/>
-                        <TextBlock Text="Text" 
+                        <TextBlock Text="OCR" 
                                    Foreground="{DynamicResource AccentBrush}" 
                                    FontSize="12" 
                                    VerticalAlignment="Center"/>
@@ -507,32 +507,158 @@
                     MaxWidth="500"
                     MaxHeight="280">
                 <StackPanel>
-                    <Grid Margin="0,0,0,8">
-                        <TextBlock Text="Extracted text — select and copy" 
-                                  Foreground="{DynamicResource AccentBrush}" 
-                                  FontWeight="Bold"/>
-                        <Button x:Name="OcrTextPopupCloseButton"
-                                Content="✕"
-                                HorizontalAlignment="Right"
-                                Padding="8,2"
-                                Background="Transparent"
-                                Foreground="{DynamicResource AccentBrush}"
-                                BorderThickness="0"
-                                Cursor="Hand"
-                                Click="OcrTextPopupCloseButton_Click"/>
-                    </Grid>
-                    <TextBox x:Name="OcrExtractedTextBox"
-                             IsReadOnly="True"
-                             TextWrapping="Wrap"
-                             AcceptsReturn="True"
-                             VerticalScrollBarVisibility="Auto"
-                             Padding="8"
-                             Height="160"
-                             Foreground="White"
-                             Background="#40000000"
-                             BorderBrush="{DynamicResource AccentBrush}"
-                             BorderThickness="1"
-                             CaretBrush="White"/>
+                    <!-- Draggable header -->
+                    <Border x:Name="OcrTextPopupHeader"
+                            Margin="-12,-12,-12,8"
+                            Padding="12,8,12,8"
+                            Background="Transparent"
+                            Cursor="SizeAll"
+                            MouseLeftButtonDown="OcrTextPopupHeader_MouseLeftButtonDown"
+                            MouseLeftButtonUp="OcrTextPopupHeader_MouseLeftButtonUp"
+                            MouseMove="OcrTextPopupHeader_MouseMove">
+                        <Grid>
+                            <TextBlock Text="⋮⋮" 
+                                      Foreground="#40FFFFFF" 
+                                      FontSize="12" 
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,6,0"
+                                      ToolTip="Drag to move"/>
+                            <TextBlock Text="Extracted text — select and copy" 
+                                      Foreground="{DynamicResource AccentBrush}" 
+                                      FontWeight="Bold"
+                                      Margin="18,0,0,0"
+                                      VerticalAlignment="Center"/>
+                            <Button x:Name="OcrTextPopupCloseButton"
+                                    Content="✕"
+                                    HorizontalAlignment="Right"
+                                    Width="30"
+                                    Height="30"
+                                    Padding="0"
+                                    FontSize="16"
+                                    Foreground="{DynamicResource AccentBrush}"
+                                    Cursor="Hand"
+                                    Click="OcrTextPopupCloseButton_Click"/>
+                        </Grid>
+                    </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                                  Height="160"
+                                  Margin="0,0,0,0">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Width" Value="14"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ScrollBar">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                </Grid.RowDefinitions>
+                                                <RepeatButton Grid.Row="0" x:Name="PART_LineUpButton" Command="ScrollBar.LineUpCommand"
+                                                             Background="#FF1A1A1A" BorderBrush="#FF404040" BorderThickness="1" Height="18" Margin="1,0,1,1">
+                                                    <RepeatButton.Template>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                                                <Path Data="M0,6 L6,6 L3,0 Z" Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </RepeatButton.Template>
+                                                </RepeatButton>
+                                                <Border Grid.Row="1" Background="#FF1A1A1A">
+                                                    <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                                        <Track.DecreaseRepeatButton>
+                                                            <RepeatButton Background="Transparent" BorderThickness="0" Margin="1" x:Name="PART_DecreaseRepeatButton" Command="ScrollBar.PageUpCommand">
+                                                                <RepeatButton.Template>
+                                                                    <ControlTemplate TargetType="RepeatButton">
+                                                                        <Border x:Name="Bg" Background="Transparent">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Style.Triggers>
+                                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                                            <Setter Property="Background" Value="#40FFFFFF"/>
+                                                                                        </Trigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </RepeatButton.Template>
+                                                            </RepeatButton>
+                                                        </Track.DecreaseRepeatButton>
+                                                        <Track.IncreaseRepeatButton>
+                                                            <RepeatButton Background="Transparent" BorderThickness="0" Margin="1" x:Name="PART_IncreaseRepeatButton" Command="ScrollBar.PageDownCommand">
+                                                                <RepeatButton.Template>
+                                                                    <ControlTemplate TargetType="RepeatButton">
+                                                                        <Border Background="Transparent">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Style.Triggers>
+                                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                                            <Setter Property="Background" Value="#40FFFFFF"/>
+                                                                                        </Trigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </RepeatButton.Template>
+                                                            </RepeatButton>
+                                                        </Track.IncreaseRepeatButton>
+                                                        <Track.Thumb>
+                                                            <Thumb Background="#FF404040" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Margin="1,0" MinHeight="20">
+                                                                <Thumb.Template>
+                                                                    <ControlTemplate TargetType="Thumb">
+                                                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                                                                            <Border.Style>
+                                                                                <Style TargetType="Border">
+                                                                                    <Style.Triggers>
+                                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                                            <Setter Property="Background" Value="#FF505050"/>
+                                                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                                                                        </Trigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </Border.Style>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Thumb.Template>
+                                                            </Thumb>
+                                                        </Track.Thumb>
+                                                    </Track>
+                                                </Border>
+                                                <RepeatButton Grid.Row="2" x:Name="PART_LineDownButton" Command="ScrollBar.LineDownCommand"
+                                                             Background="#FF1A1A1A" BorderBrush="#FF404040" BorderThickness="1" Height="18" Margin="1,1,1,0">
+                                                    <RepeatButton.Template>
+                                                        <ControlTemplate TargetType="RepeatButton">
+                                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                                                <Path Data="M0,0 L6,0 L3,6 Z" Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </RepeatButton.Template>
+                                                </RepeatButton>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ScrollViewer.Resources>
+                        <TextBox x:Name="OcrExtractedTextBox"
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Disabled"
+                                 Padding="8"
+                                 MinHeight="140"
+                                 Foreground="White"
+                                 Background="#40000000"
+                                 BorderThickness="0"
+                                 CaretBrush="{DynamicResource AccentBrush}"/>
+                    </ScrollViewer>
                 </StackPanel>
             </Border>
         </Popup>

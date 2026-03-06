@@ -58,6 +58,12 @@
     <Content Include="$(MSBuildThisFileDirectory)OBS-Studio\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Include OCR language data (tessdata) so OCR works in the built app -->
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)tessdata\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(MSBuildThisFileDirectory)*.traineddata" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- OBS Studio Bundling removed to prevent infinite loop -->
 
 </Project> 
