@@ -31,6 +31,21 @@ Write-Host "Step 3: Copying SharpShot files..." -ForegroundColor Yellow
 $sourceDir = "bin\x64\Release\net8.0-windows\win-x64"
 Copy-Item -Path "$sourceDir\*" -Destination $releaseFolder -Recurse -Force
 
+# 4b. Ensure tessdata (OCR language data) is in the release folder (build may not include it in Docker)
+Write-Host "Step 3b: Copying tessdata (OCR languages)..." -ForegroundColor Yellow
+if (Test-Path "tessdata") {
+    $tessDest = Join-Path $releaseFolder "tessdata"
+    if (!(Test-Path $tessDest)) { New-Item -ItemType Directory -Path $tessDest -Force | Out-Null }
+    Copy-Item -Path "tessdata\*" -Destination $tessDest -Recurse -Force
+    Write-Host "tessdata folder copied successfully!" -ForegroundColor Green
+} else {
+    Write-Host "No tessdata folder in project (OCR will be unavailable unless added to release later)." -ForegroundColor Gray
+}
+Get-ChildItem -Path "." -Filter "*.traineddata" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Copy-Item -Path $_.FullName -Destination $releaseFolder -Force
+    Write-Host "Copied $($_.Name) to release folder" -ForegroundColor Green
+}
+
 # 5. Copy OBS Studio (from the working bundled location)
 Write-Host "Step 4: Copying OBS Studio..." -ForegroundColor Yellow
 $obsSourceDir = "bin\Release\net8.0-windows\x64\OBS-Studio"
@@ -113,6 +128,7 @@ Write-Host "Package includes:" -ForegroundColor White
 Write-Host "- SharpShot.exe (standalone)" -ForegroundColor White
 Write-Host "- OBS Studio (complete)" -ForegroundColor White
 Write-Host "- FFmpeg (if available)" -ForegroundColor White
+Write-Host "- tessdata (OCR languages, if present in project)" -ForegroundColor White
 Write-Host "- Launchers and documentation" -ForegroundColor White
 Write-Host "- License files (GPL v2, FFmpeg, OBS Studio)" -ForegroundColor White
 Write-Host ""

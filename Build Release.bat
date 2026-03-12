@@ -10,6 +10,7 @@ echo The release package will include:
 echo - SharpShot.exe (standalone)
 echo - Complete OBS Studio installation
 echo - FFmpeg (if available)
+echo - tessdata (OCR languages, if present in project)
 echo - Working launchers
 echo.
 powershell -ExecutionPolicy Bypass -File "build-release.ps1"
