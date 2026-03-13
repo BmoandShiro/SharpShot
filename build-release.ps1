@@ -1,24 +1,45 @@
 # SharpShot Release Builder
 # Uses your working OBS Docker.bat workflow but creates a proper release package
+param(
+    [switch]$NoPrompt  # When set, skips "open folder?" and "stop Docker?" prompts (for 3xbuild.bat)
+)
 
 Write-Host "Building SharpShot Release Package..." -ForegroundColor Green
 
-# 1. Start Docker environment (like your OBS Docker.bat does)
-Write-Host "Step 1: Starting Docker environment..." -ForegroundColor Yellow
-docker compose -f docker-compose.dev.yml down
-docker compose -f docker-compose.dev.yml up --build -d
+$sourceDir = "bin\x64\Release\net8.0-windows\win-x64"
+$dockerSucceeded = $false
 
-# Wait for container
-Start-Sleep -Seconds 5
+# Try Docker first (if available)
+try {
+    $null = docker version 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Step 1: Starting Docker environment..." -ForegroundColor Yellow
+        docker compose -f docker-compose.dev.yml down 2>&1 | Out-Null
+        docker compose -f docker-compose.dev.yml up --build -d 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "Docker compose up failed" }
+        Start-Sleep -Seconds 5
+        Write-Host "Step 2: Building SharpShot in Docker..." -ForegroundColor Yellow
+        docker exec sharpshot-development dotnet restore
+        docker exec sharpshot-development dotnet build --configuration Release -p:Platform=x64
+        if ($LASTEXITCODE -eq 0 -and (Test-Path "$sourceDir\SharpShot.exe")) { $dockerSucceeded = $true }
+    }
+} catch {
+    # Docker not available or failed
+}
 
-# 2. Build in Docker (like your obs-docker.ps1 does)
-Write-Host "Step 2: Building SharpShot in Docker..." -ForegroundColor Yellow
-docker exec sharpshot-development dotnet restore
-docker exec sharpshot-development dotnet build --configuration Release -p:Platform=x64
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Build failed!" -ForegroundColor Red
-    exit 1
+if (-not $dockerSucceeded) {
+    Write-Host "Docker not used or failed. Building locally..." -ForegroundColor Yellow
+    dotnet restore
+    dotnet build --configuration Release -p:Platform=x64
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Build failed!" -ForegroundColor Red
+        exit 1
+    }
+    if (-not (Test-Path "$sourceDir\SharpShot.exe")) {
+        Write-Host "Build succeeded but SharpShot.exe not found at $sourceDir" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Local build succeeded." -ForegroundColor Green
 }
 
 # 3. Create release folder
@@ -28,7 +49,6 @@ New-Item -ItemType Directory -Path $releaseFolder | Out-Null
 
 # 4. Copy SharpShot files (from the working build location)
 Write-Host "Step 3: Copying SharpShot files..." -ForegroundColor Yellow
-$sourceDir = "bin\x64\Release\net8.0-windows\win-x64"
 Copy-Item -Path "$sourceDir\*" -Destination $releaseFolder -Recurse -Force
 
 # 4b. Ensure tessdata (OCR language data) is in the release folder (build may not include it in Docker)
@@ -46,14 +66,17 @@ Get-ChildItem -Path "." -Filter "*.traineddata" -File -ErrorAction SilentlyConti
     Write-Host "Copied $($_.Name) to release folder" -ForegroundColor Green
 }
 
-# 5. Copy OBS Studio (from the working bundled location)
+# 5. Copy OBS Studio (from bin bundle or project root)
 Write-Host "Step 4: Copying OBS Studio..." -ForegroundColor Yellow
 $obsSourceDir = "bin\Release\net8.0-windows\x64\OBS-Studio"
 if (Test-Path $obsSourceDir) {
     Copy-Item -Path $obsSourceDir -Destination "$releaseFolder\OBS-Studio" -Recurse -Force
     Write-Host "OBS Studio bundled successfully!" -ForegroundColor Green
+} elseif (Test-Path "OBS-Studio") {
+    Copy-Item -Path "OBS-Studio" -Destination "$releaseFolder\OBS-Studio" -Recurse -Force
+    Write-Host "OBS Studio copied from project folder." -ForegroundColor Green
 } else {
-    Write-Host "Warning: OBS Studio not found in expected location" -ForegroundColor Yellow
+    Write-Host "Warning: OBS Studio not found. Skip if not needed." -ForegroundColor Yellow
 }
 
 # 6. Copy FFmpeg if exists
@@ -135,15 +158,17 @@ Write-Host ""
 Write-Host "Test the release package by running:" -ForegroundColor Yellow
 Write-Host "  $releaseFolder\Run SharpShot.bat" -ForegroundColor Cyan
 
-# Ask if user wants to open the release folder
-$openFolder = Read-Host "Do you want to open the release folder? (y/n)"
-if ($openFolder -eq "y" -or $openFolder -eq "Y") {
-    explorer $releaseFolder
-}
+# Ask if user wants to open the release folder (skip when -NoPrompt for 3xbuild)
+if (-not $NoPrompt) {
+    $openFolder = Read-Host "Do you want to open the release folder? (y/n)"
+    if ($openFolder -eq "y" -or $openFolder -eq "Y") {
+        explorer $releaseFolder
+    }
 
-# Ask if user wants to stop Docker
-$stopDocker = Read-Host "Stop Docker environment? (y/n)"
-if ($stopDocker -eq "y" -or $stopDocker -eq "Y") {
-    docker compose -f docker-compose.dev.yml down
-    Write-Host "Docker stopped." -ForegroundColor Green
+    # Ask if user wants to stop Docker
+    $stopDocker = Read-Host "Stop Docker environment? (y/n)"
+    if ($stopDocker -eq "y" -or $stopDocker -eq "Y") {
+        docker compose -f docker-compose.dev.yml down
+        Write-Host "Docker stopped." -ForegroundColor Green
+    }
 }

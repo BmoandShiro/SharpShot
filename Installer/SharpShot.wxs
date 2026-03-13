@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product
+    Id="*"
+    Name="SharpShot"
+    Language="1033"
+    Version="1.2.7.0"
+    Manufacturer="BmoandShiro"
+    UpgradeCode="F3D9B9B4-7F4D-4C5B-9D32-8F6E4C8D9A11">
+
+    <Package
+      InstallerVersion="500"
+      Compressed="yes"
+      InstallScope="perMachine"
+      Platform="x64" />
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <MediaTemplate />
+
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="SharpShot" />
+      </Directory>
+    </Directory>
+
+    <Feature
+      Id="MainFeature"
+      Title="SharpShot"
+      Level="1">
+      <ComponentGroupRef Id="SharpShotComponents" />
+    </Feature>
+  </Product>
+</Wix>
+
