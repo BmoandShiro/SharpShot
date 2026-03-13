@@ -17,6 +17,7 @@ namespace SharpShot.Models
         private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
         private bool _startMinimized;
+        private bool _startWithWindowsMinimized;
         private Dictionary<string, string> _hotkeys = new();
         private string _iconColor = string.Empty;
         private double _hoverOpacity;
@@ -24,6 +25,7 @@ namespace SharpShot.Models
         private string _selectedScreen = string.Empty;
         private bool _autoCopyScreenshots;
         private bool _enableMagnifier;
+        private bool _enableSmartRegionDetection;
         private double _magnifierZoomLevel;
         private int _magnifierSize = 200; // Size of the magnifier window in pixels (for stationary mode)
         private int _magnifierFollowSize = 200; // Size of the magnifier window in pixels (for follow cursor/auto modes, max 200)
@@ -58,6 +60,7 @@ namespace SharpShot.Models
             SelectedScreen = "Primary Monitor"; // Default to primary monitor
             AutoCopyScreenshots = false; // Default to false - user must manually copy
             EnableMagnifier = true; // Default to true - magnifier helps with precise selection
+            EnableSmartRegionDetection = false; // Default off - highlight detected elements (images, text) in region selection
             MagnifierZoomLevel = 2.0; // Default to 2x zoom
             MagnifierSize = 200; // Default to 200x200 pixels (for stationary mode)
             MagnifierFollowSize = 200; // Default to 200x200 pixels (for follow cursor/auto modes, max 200)
@@ -132,6 +135,12 @@ namespace SharpShot.Models
             set => SetProperty(ref _startMinimized, value);
         }
 
+        public bool StartWithWindowsMinimized
+        {
+            get => _startWithWindowsMinimized;
+            set => SetProperty(ref _startWithWindowsMinimized, value);
+        }
+
         public Dictionary<string, string> Hotkeys
         {
             get => _hotkeys;
@@ -172,6 +181,12 @@ namespace SharpShot.Models
         {
             get => _enableMagnifier;
             set => SetProperty(ref _enableMagnifier, value);
+        }
+
+        public bool EnableSmartRegionDetection
+        {
+            get => _enableSmartRegionDetection;
+            set => SetProperty(ref _enableSmartRegionDetection, value);
         }
 
         public double MagnifierZoomLevel

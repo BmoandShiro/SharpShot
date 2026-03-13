@@ -443,7 +443,12 @@
                 <CheckBox x:Name="StartMinimizedCheckBox" 
                           Content="Start Minimized" 
                           Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"/>
+                          Margin="0,0,0,4"/>
+                <CheckBox x:Name="StartWithWindowsMinimizedCheckBox"
+                          Content="Start SharpShot with Windows (minimized)"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="16,0,0,10"
+                          ToolTip="Adds SharpShot to your Windows startup apps and starts it minimized to the tray when Windows starts"/>
                 <CheckBox x:Name="AutoCopyScreenshotsCheckBox" 
                           Content="Auto-copy fullscreen and region screenshots to clipboard (failsafe after editor closes)" 
                           Style="{StaticResource DarkCheckBoxStyle}"
@@ -458,6 +463,11 @@
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
+                <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
+                          Content="Highlight detected regions (images, text blocks) during region selection"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, detects elements like images and text on the screen (e.g. in browsers) and lets you click a highlight to capture that region. Similar to Snipping Tool behavior."/>
                 <CheckBox x:Name="DisableAllPopupsCheckBox"
                           Content="Disable all popup notifications"
                           Style="{StaticResource DarkCheckBoxStyle}"

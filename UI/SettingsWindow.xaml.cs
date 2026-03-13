@@ -13,6 +13,7 @@ using SharpShot.Services;
 using SharpShot.Utils;
 using System.Runtime.InteropServices;
 using System.IO;
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Linq;
@@ -424,9 +425,15 @@ namespace SharpShot.UI
             }));
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
+            // This checkbox is defined in XAML; guard in case name changes
+            if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox)
+            {
+                startWithWindowsCheckBox.IsChecked = _originalSettings.StartWithWindowsMinimized;
+            }
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
+            EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             EnableAutoUpdateCheckBox.IsChecked = _originalSettings.EnableAutoUpdateCheck;
             
@@ -828,10 +835,25 @@ namespace SharpShot.UI
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.EnableAutoUpdateCheck = EnableAutoUpdateCheckBox.IsChecked ?? true;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
+                if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox)
+                {
+                    _originalSettings.StartWithWindowsMinimized = startWithWindowsCheckBox.IsChecked ?? false;
+                }
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
+                _originalSettings.EnableSmartRegionDetection = EnableSmartRegionDetectionCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
+
+                // Apply Windows startup registration based on new setting
+                try
+                {
+                    UpdateWindowsStartupRegistration(_originalSettings.StartWithWindowsMinimized);
+                }
+                catch (Exception ex)
+                {
+                    LogToFile($"Failed to update Windows startup registration: {ex.Message}");
+                }
                 
                 // Save magnifier zoom level
                 if (MagnifierZoomComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem zoomItem)
@@ -980,6 +1002,7 @@ namespace SharpShot.UI
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
             target.EnableMagnifier = source.EnableMagnifier;
+            target.EnableSmartRegionDetection = source.EnableSmartRegionDetection;
             target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
             target.MagnifierSize = source.MagnifierSize;
@@ -1363,6 +1386,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
                 if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(DisableAllPopupsCheckBox, themeColor);
+                if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox && startWithWindowsCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(startWithWindowsCheckBox, themeColor);
                 
                 // Update triple-click checkboxes (only if they exist)
                 if (ScreenshotRegionTripleClickCheckBox != null && ScreenshotRegionTripleClickCheckBox.IsLoaded)
@@ -1405,6 +1430,32 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating checkbox colors: {ex.Message}");
+            }
+        }
+
+        private void UpdateWindowsStartupRegistration(bool enable)
+        {
+            const string runKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+            const string appName = "SharpShot";
+
+            using var key = Registry.CurrentUser.OpenSubKey(runKeyPath, writable: true)
+                             ?? Registry.CurrentUser.CreateSubKey(runKeyPath);
+            if (key == null)
+                return;
+
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetEntryAssembly()?.Location;
+                if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+                    return;
+
+                // Quote the path in case it contains spaces
+                key.SetValue(appName, $"\"{exePath}\"");
+            }
+            else
+            {
+                if (key.GetValue(appName) != null)
+                    key.DeleteValue(appName, throwOnMissingValue: false);
             }
         }
         
