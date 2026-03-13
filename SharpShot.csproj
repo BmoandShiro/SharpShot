@@ -8,8 +8,8 @@
     <Nullable>enable</Nullable>
     <AssemblyTitle>SharpShot</AssemblyTitle>
     <AssemblyDescription>Dark-themed screenshot and screen recording tool</AssemblyDescription>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.2.7.0</AssemblyVersion>
+    <FileVersion>1.2.7.0</FileVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

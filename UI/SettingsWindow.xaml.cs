@@ -13,6 +13,7 @@ using SharpShot.Services;
 using SharpShot.Utils;
 using System.Runtime.InteropServices;
 using System.IO;
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Linq;
@@ -194,6 +195,7 @@ namespace SharpShot.UI
         private readonly HotkeyManager? _hotkeyManager;
         private TextBox? _currentHotkeyTextBox;
         private bool _isListeningForHotkey = false;
+        private List<string> _accumulatedModifiers = new List<string>();
 
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
@@ -423,9 +425,15 @@ namespace SharpShot.UI
             }));
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
+            // This checkbox is defined in XAML; guard in case name changes
+            if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox)
+            {
+                startWithWindowsCheckBox.IsChecked = _originalSettings.StartWithWindowsMinimized;
+            }
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
+            EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             EnableAutoUpdateCheckBox.IsChecked = _originalSettings.EnableAutoUpdateCheck;
             
@@ -611,64 +619,31 @@ namespace SharpShot.UI
             if (!_isListeningForHotkey) return;
             
             e.Handled = true;
-            
-            var modifiers = new List<string>();
-            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
-                modifiers.Add("Ctrl");
-            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
-                modifiers.Add("Shift");
-            if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt))
-                modifiers.Add("Alt");
-
             var key = e.Key.ToString();
             
             // Skip system keys
             if (key == "System")
                 return;
 
-            // Handle single modifier keys
+            // Modifier key: add to accumulated list and keep listening so user can add more keys
             if (key == "LeftCtrl" || key == "RightCtrl")
             {
-                if (_currentHotkeyTextBox != null)
-                {
-                    _currentHotkeyTextBox.Text = "Ctrl";
-                    _currentHotkeyTextBox.IsReadOnly = true;
-                    // Automatically enable triple-click for single modifier keys
-                    EnableTripleClickForHotkey(_currentHotkeyTextBox);
-                }
-                _isListeningForHotkey = false;
-                _currentHotkeyTextBox = null;
+                AddModifierAndUpdate("Ctrl");
                 return;
             }
-            
             if (key == "LeftShift" || key == "RightShift")
             {
-                if (_currentHotkeyTextBox != null)
-                {
-                    _currentHotkeyTextBox.Text = "Shift";
-                    _currentHotkeyTextBox.IsReadOnly = true;
-                    // Automatically enable triple-click for single modifier keys
-                    EnableTripleClickForHotkey(_currentHotkeyTextBox);
-                }
-                _isListeningForHotkey = false;
-                _currentHotkeyTextBox = null;
+                AddModifierAndUpdate("Shift");
                 return;
             }
-            
             if (key == "LeftAlt" || key == "RightAlt")
             {
-                if (_currentHotkeyTextBox != null)
-                {
-                    _currentHotkeyTextBox.Text = "Alt";
-                    _currentHotkeyTextBox.IsReadOnly = true;
-                    // Automatically enable triple-click for single modifier keys
-                    EnableTripleClickForHotkey(_currentHotkeyTextBox);
-                }
-                _isListeningForHotkey = false;
-                _currentHotkeyTextBox = null;
+                AddModifierAndUpdate("Alt");
                 return;
             }
 
+            // Non-modifier key: build full combo (up to 2 modifiers + this key) and finalize
+            var modifiers = _accumulatedModifiers.Take(2).ToList();
             var hotkey = modifiers.Count > 0 ? string.Join("+", modifiers) + "+" + key : key;
             
             if (_currentHotkeyTextBox != null)
@@ -677,8 +652,23 @@ namespace SharpShot.UI
                 _currentHotkeyTextBox.IsReadOnly = true;
             }
             
+            _accumulatedModifiers.Clear();
             _isListeningForHotkey = false;
             _currentHotkeyTextBox = null;
+        }
+
+        private void AddModifierAndUpdate(string modifier)
+        {
+            if (!_accumulatedModifiers.Contains(modifier))
+                _accumulatedModifiers.Add(modifier);
+            // Keep consistent order: Ctrl, Shift, Alt
+            var ordered = new List<string>();
+            if (_accumulatedModifiers.Contains("Ctrl")) ordered.Add("Ctrl");
+            if (_accumulatedModifiers.Contains("Shift")) ordered.Add("Shift");
+            if (_accumulatedModifiers.Contains("Alt")) ordered.Add("Alt");
+            _accumulatedModifiers = ordered;
+            if (_currentHotkeyTextBox != null)
+                _currentHotkeyTextBox.Text = string.Join("+", _accumulatedModifiers);
         }
         
         private void EnableTripleClickForHotkey(TextBox hotkeyTextBox)
@@ -704,6 +694,7 @@ namespace SharpShot.UI
             {
                 _currentHotkeyTextBox = textBox;
                 _isListeningForHotkey = true;
+                _accumulatedModifiers.Clear();
                 textBox.IsReadOnly = false;
                 textBox.Text = "Press a key...";
                 textBox.Focus();
@@ -718,12 +709,12 @@ namespace SharpShot.UI
                 if (_currentHotkeyTextBox != null)
                 {
                     _currentHotkeyTextBox.IsReadOnly = true;
-                    // If no key was pressed, clear the text
                     if (_currentHotkeyTextBox.Text == "Press a key...")
-                    {
                         _currentHotkeyTextBox.Text = "";
-                    }
+                    else if (_currentHotkeyTextBox.Text == "Ctrl" || _currentHotkeyTextBox.Text == "Shift" || _currentHotkeyTextBox.Text == "Alt")
+                        EnableTripleClickForHotkey(_currentHotkeyTextBox);
                 }
+                _accumulatedModifiers.Clear();
                 _currentHotkeyTextBox = null;
             }
         }
@@ -844,10 +835,25 @@ namespace SharpShot.UI
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.EnableAutoUpdateCheck = EnableAutoUpdateCheckBox.IsChecked ?? true;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
+                if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox)
+                {
+                    _originalSettings.StartWithWindowsMinimized = startWithWindowsCheckBox.IsChecked ?? false;
+                }
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
+                _originalSettings.EnableSmartRegionDetection = EnableSmartRegionDetectionCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
+
+                // Apply Windows startup registration based on new setting
+                try
+                {
+                    UpdateWindowsStartupRegistration(_originalSettings.StartWithWindowsMinimized);
+                }
+                catch (Exception ex)
+                {
+                    LogToFile($"Failed to update Windows startup registration: {ex.Message}");
+                }
                 
                 // Save magnifier zoom level
                 if (MagnifierZoomComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem zoomItem)
@@ -996,6 +1002,7 @@ namespace SharpShot.UI
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
             target.EnableMagnifier = source.EnableMagnifier;
+            target.EnableSmartRegionDetection = source.EnableSmartRegionDetection;
             target.DisableAllPopups = source.DisableAllPopups;
             target.MagnifierZoomLevel = source.MagnifierZoomLevel;
             target.MagnifierSize = source.MagnifierSize;
@@ -1379,6 +1386,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
                 if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(DisableAllPopupsCheckBox, themeColor);
+                if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox && startWithWindowsCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(startWithWindowsCheckBox, themeColor);
                 
                 // Update triple-click checkboxes (only if they exist)
                 if (ScreenshotRegionTripleClickCheckBox != null && ScreenshotRegionTripleClickCheckBox.IsLoaded)
@@ -1421,6 +1430,32 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error updating checkbox colors: {ex.Message}");
+            }
+        }
+
+        private void UpdateWindowsStartupRegistration(bool enable)
+        {
+            const string runKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+            const string appName = "SharpShot";
+
+            using var key = Registry.CurrentUser.OpenSubKey(runKeyPath, writable: true)
+                             ?? Registry.CurrentUser.CreateSubKey(runKeyPath);
+            if (key == null)
+                return;
+
+            if (enable)
+            {
+                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetEntryAssembly()?.Location;
+                if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+                    return;
+
+                // Quote the path in case it contains spaces
+                key.SetValue(appName, $"\"{exePath}\"");
+            }
+            else
+            {
+                if (key.GetValue(appName) != null)
+                    key.DeleteValue(appName, throwOnMissingValue: false);
             }
         }
         

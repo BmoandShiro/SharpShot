@@ -21,8 +21,8 @@ RUN dotnet restore --force --no-cache
 # Copy all source code
 COPY . ./
 
-# Build the application
-RUN dotnet build --configuration Release -p:Platform=x64
+# Do not build here: this image is Linux and cannot build WPF (net8.0-windows).
+# Build is run on the Windows host via "docker exec ... dotnet build" or locally.
 
 # Keep container running for development
 CMD ["tail", "-f", "/dev/null"] 

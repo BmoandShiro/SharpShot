@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -16,8 +17,8 @@ namespace SharpShot.Services
         private readonly SettingsService _settingsService;
         private readonly HttpClient _httpClient;
         private const string GitHubApiBase = "https://api.github.com/repos";
-        private const string DefaultRepoOwner = "YourGitHubUsername"; // TODO: Replace with your GitHub username
-        private const string DefaultRepoName = "SharpShot"; // TODO: Replace with your repo name if different
+        private const string DefaultRepoOwner = "BmoandShiro";
+        private const string DefaultRepoName = "SharpShot";
         
         // Update check settings
         private const int UpdateCheckIntervalHours = 24; // Check once per day
@@ -99,6 +100,61 @@ namespace SharpShot.Services
             {
                 progress?.Report(new UpdateProgress { Status = "Downloading update...", Percentage = 0 });
 
+                var installType = DetectInstallType();
+                var downloadUrl = updateInfo.DownloadUrl;
+
+                // If this looks like an installer build and we're downloading an installer asset (MSI / EXE),
+                // mirror TradeButler's behavior: download to temp and launch the installer.
+                if (installType == InstallType.MsiInstaller || installType == InstallType.NsisInstaller)
+                {
+                    var uriFileName = GetSafeFileNameFromUrl(downloadUrl) ?? "SharpShot-update-installer";
+                    var inferredExt = Path.GetExtension(uriFileName);
+
+                    // If URL has no extension, infer from install type
+                    if (string.IsNullOrEmpty(inferredExt))
+                    {
+                        inferredExt = installType == InstallType.MsiInstaller ? ".msi" : ".exe";
+                        uriFileName += inferredExt;
+                    }
+
+                    var tempDir = Path.GetTempPath();
+                    var installerPath = Path.Combine(tempDir, uriFileName);
+
+                    await DownloadFileAsync(downloadUrl, installerPath, progress);
+
+                    progress?.Report(new UpdateProgress
+                    {
+                        Status = "Launching installer...",
+                        Percentage = 100
+                    });
+
+                    if (installerPath.EndsWith(".msi", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = "msiexec",
+                            Arguments = $"/i \"{installerPath}\"",
+                            UseShellExecute = true
+                        };
+                        Process.Start(psi);
+                    }
+                    else
+                    {
+                        var psi = new ProcessStartInfo
+                        {
+                            FileName = installerPath,
+                            UseShellExecute = true
+                        };
+                        Process.Start(psi);
+                    }
+
+                    // Exit SharpShot so the installer can update files in-place
+                    await Task.Delay(500);
+                    Application.Current.Shutdown();
+                    return true;
+                }
+
+                // Portable / ZIP-based update flow (original SharpShot behavior)
                 // Get application directory
                 var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 var tempDirectory = Path.Combine(Path.GetTempPath(), "SharpShot_Update");
@@ -112,7 +168,7 @@ namespace SharpShot.Services
 
                 // Download the update zip
                 var zipPath = Path.Combine(tempDirectory, "update.zip");
-                await DownloadFileAsync(updateInfo.DownloadUrl, zipPath, progress);
+                await DownloadFileAsync(downloadUrl, zipPath, progress);
 
                 progress?.Report(new UpdateProgress { Status = "Extracting update...", Percentage = 50 });
 
@@ -174,16 +230,55 @@ namespace SharpShot.Services
 
         private string GetDownloadUrl(GitHubRelease release)
         {
-            // Look for a zip file asset
-            foreach (var asset in release.Assets ?? new GitHubAsset[0])
+            var assets = release.Assets ?? Array.Empty<GitHubAsset>();
+
+            // Decide if we're running as an "installer" build (MSI / NSIS) or portable
+            var installType = DetectInstallType();
+
+            // 1. If installer build, prefer installer-style assets (MSI or setup EXE)
+            if (installType == InstallType.MsiInstaller || installType == InstallType.NsisInstaller)
             {
-                if (asset.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                // If this looks like an MSI install, prefer .msi
+                if (installType == InstallType.MsiInstaller)
                 {
-                    return asset.BrowserDownloadUrl;
+                    var msi = assets.FirstOrDefault(a =>
+                        a.Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase));
+                    if (msi != null)
+                        return msi.BrowserDownloadUrl;
                 }
+
+                // If this looks like an NSIS install, prefer *setup*.exe
+                if (installType == InstallType.NsisInstaller)
+                {
+                    var nsis = assets.FirstOrDefault(a =>
+                        a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                        a.Name.Contains("setup", StringComparison.OrdinalIgnoreCase));
+                    if (nsis != null)
+                        return nsis.BrowserDownloadUrl;
+                }
+
+                // Fallback for installer builds: any .msi or .exe asset
+                var anyInstaller = assets.FirstOrDefault(a =>
+                    a.Name.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) ||
+                    a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+                if (anyInstaller != null)
+                    return anyInstaller.BrowserDownloadUrl;
             }
 
-            // Fallback: try to construct download URL from release tag
+            // 2. Portable builds: prefer a portable ZIP if present
+            var portableZip = assets.FirstOrDefault(a =>
+                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.Contains("portable", StringComparison.OrdinalIgnoreCase));
+            if (portableZip != null)
+                return portableZip.BrowserDownloadUrl;
+
+            // 3. Any ZIP asset as a general fallback
+            var anyZip = assets.FirstOrDefault(a =>
+                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+            if (anyZip != null)
+                return anyZip.BrowserDownloadUrl;
+
+            // 4. As a last resort, construct a tag-based ZIP URL (GitHub auto-generated source archive)
             var repoOwner = _settingsService.CurrentSettings.UpdateRepoOwner ?? DefaultRepoOwner;
             var repoName = _settingsService.CurrentSettings.UpdateRepoName ?? DefaultRepoName;
             return $"https://github.com/{repoOwner}/{repoName}/archive/refs/tags/{release.TagName}.zip";
@@ -413,6 +508,89 @@ Start-Sleep -Seconds 3
                     _httpClient?.Dispose();
                 }
                 _disposed = true;
+            }
+        }
+
+        private static string? GetSafeFileNameFromUrl(string url)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(url))
+                    return null;
+
+                // Try URI parsing first
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    var name = Path.GetFileName(uri.LocalPath);
+                    if (!string.IsNullOrEmpty(name))
+                        return name;
+                }
+
+                // Fallback to simple split
+                var lastSegment = url.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+                return string.IsNullOrWhiteSpace(lastSegment) ? null : lastSegment;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private enum InstallType
+        {
+            Portable,
+            MsiInstaller,
+            NsisInstaller,
+            Unknown
+        }
+
+        /// <summary>
+        /// Detect whether the current install looks like an MSI/NSIS installer or a portable build.
+        /// Mirrors the behavior of the TradeButler updater so we can pick the right asset type.
+        /// </summary>
+        private InstallType DetectInstallType()
+        {
+            try
+            {
+                var exePath = Environment.ProcessPath ?? Assembly.GetEntryAssembly()?.Location;
+                if (string.IsNullOrEmpty(exePath))
+                    return InstallType.Unknown;
+
+                var exeDir = Path.GetDirectoryName(exePath) ?? string.Empty;
+                var exeLower = exePath.ToLowerInvariant();
+
+                // Heuristic: Program Files / AppData => likely an installer-based install
+                var isInstaller =
+                    exeLower.Contains("program files") ||
+                    exeLower.Contains("programfiles") ||
+                    exeLower.Contains("\\appdata\\local\\") ||
+                    exeLower.Contains("/appdata/local/");
+
+                if (!isInstaller)
+                    return InstallType.Portable;
+
+                // NSIS typically drops an Uninstall*.exe in the app directory
+                try
+                {
+                    if (Directory.Exists(exeDir))
+                    {
+                        var uninstallExe = Directory.EnumerateFiles(exeDir, "uninstall*.exe", SearchOption.TopDirectoryOnly)
+                            .FirstOrDefault();
+                        if (!string.IsNullOrEmpty(uninstallExe))
+                            return InstallType.NsisInstaller;
+                    }
+                }
+                catch
+                {
+                    // Ignore filesystem errors and fall through to MSI/unknown
+                }
+
+                // If we got here, we look like an installer but didn't find NSIS markers → treat as MSI
+                return InstallType.MsiInstaller;
+            }
+            catch
+            {
+                return InstallType.Unknown;
             }
         }
     }

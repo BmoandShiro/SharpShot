@@ -10,6 +10,8 @@
         ResizeMode="NoResize">
     
     <Canvas x:Name="SelectionCanvas" Background="#01000000">
+        <!-- Smart region highlights (images, text blocks) - drawn when option is enabled -->
+        <Canvas x:Name="SmartHighlightsCanvas"/>
         <Rectangle x:Name="SelectionRect" 
                    Stroke="{StaticResource AccentBrush}" 
                    StrokeThickness="2" 

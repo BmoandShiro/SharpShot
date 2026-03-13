@@ -583,8 +583,9 @@ namespace SharpShot
             try
             {
                 // Don't manipulate the main window - just show region selection
-                // The region window will use Windows API to be truly non-focus-stealing
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService);
+                // Get foreground window before showing our overlay (for smart region detection)
+                IntPtr targetWindow = GetForegroundWindow();
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow);
                 
                 // Set the hotkey toggle state to indicate region selection is active
                 _hotkeyManager.SetRegionSelectionActive();
@@ -918,8 +919,8 @@ namespace SharpShot
 
                 private Task StartRegionRecording()
         {
-            // Show region selection window for recording (without hiding main window)
-            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true);
+            IntPtr targetWindow = GetForegroundWindow();
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true, targetWindowForSmartDetection: targetWindow);
             regionWindow.ShowDialog();
             
             // Check if a region was selected

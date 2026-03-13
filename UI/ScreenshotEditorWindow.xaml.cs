@@ -94,6 +94,24 @@ namespace SharpShot.UI
             InitializeEditor();
         }
 
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            
+            // Force window to topmost using Win32 API right when the HWND becomes available
+            // This ensures the editor appears above the taskbar on first launch
+            var windowHandle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            if (windowHandle != IntPtr.Zero)
+            {
+                var HWND_TOPMOST = new IntPtr(-1);
+                const uint SWP_NOMOVE = 0x0002;
+                const uint SWP_NOSIZE = 0x0001;
+                const uint SWP_SHOWWINDOW = 0x0040;
+                
+                SetWindowPos(windowHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            }
+        }
+
         /// <summary>
         /// Public method to refresh the theme when settings change
         /// </summary>
@@ -392,19 +410,24 @@ namespace SharpShot.UI
                 Left = targetMonitorBounds.X;
                 Top = targetMonitorBounds.Y;
                 
-                // Use Windows API to ensure the window is on the correct monitor
-                const uint SWP_NOZORDER = 0x0004;
+                // Use Windows API to ensure the window is on the correct monitor AND on top
+                // HWND_TOPMOST (-1) forces the window above all non-topmost windows including the taskbar
+                // We intentionally do NOT use SWP_NOZORDER so the z-order change takes effect
+                var HWND_TOPMOST = new IntPtr(-1);
                 const uint SWP_SHOWWINDOW = 0x0040;
                 
                 SetWindowPos(
                     windowHandle,
-                    IntPtr.Zero,
+                    HWND_TOPMOST,
                     (int)Left,
                     (int)Top,
                     (int)Width,
                     (int)Height,
-                    SWP_NOZORDER | SWP_SHOWWINDOW
+                    SWP_SHOWWINDOW
                 );
+                
+                // Also activate the window to ensure it has focus
+                Activate();
             }
             catch (Exception ex)
             {

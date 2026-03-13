@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using SharpShot.Services;
+using SharpShot.Utils;
 using Point = System.Windows.Point;
 
 namespace SharpShot.UI
@@ -77,14 +80,18 @@ namespace SharpShot.UI
         private Rectangle _virtualDesktopBounds;
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
-        private readonly bool _isRecordingMode; // New field to distinguish between screenshot and recording modes
+        private readonly bool _isRecordingMode;
+        private readonly IntPtr _targetWindowForSmartDetection;
+        private List<Rectangle> _smartRegionRects = new List<Rectangle>();
+        private bool _isPotentialClick; // true until user moves enough to count as drag
 
-        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false)
+        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null)
         {
             InitializeComponent();
             _screenshotService = screenshotService;
             _settingsService = settingsService;
-            _isRecordingMode = isRecordingMode; // Store the mode
+            _isRecordingMode = isRecordingMode;
+            _targetWindowForSmartDetection = targetWindowForSmartDetection ?? IntPtr.Zero;
             
             // Set this as the active instance
             _activeInstance = this;
@@ -143,10 +150,12 @@ namespace SharpShot.UI
             InitializeMagnifier();
             
             // Capture mouse input immediately when window is loaded
-            // This ensures mouse clicks go to our overlay, not the browser
             Loaded += (sender, e) =>
             {
                 CaptureMouseInput();
+                StartSmartRegionDetectionIfEnabled();
+                if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection == true && _targetWindowForSmartDetection != IntPtr.Zero)
+                    InstructionsText.Text = "Click and drag to select, or click a highlighted region to capture it. Press ESC to cancel.";
             };
             
             // Also capture when window becomes visible
@@ -343,20 +352,74 @@ namespace SharpShot.UI
             }
         }
 
+        private void StartSmartRegionDetectionIfEnabled()
+        {
+            if (_isRecordingMode) return;
+            if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection != true) return;
+            if (_targetWindowForSmartDetection == IntPtr.Zero) return;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    var rects = SmartRegionDetection.GetDetectedRegions(_targetWindowForSmartDetection);
+                    if (rects.Count == 0) return;
+                    Dispatcher.Invoke(() => DrawSmartRegionHighlights(rects));
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Smart region detection: {ex.Message}");
+                }
+            });
+        }
+
+        private void DrawSmartRegionHighlights(List<Rectangle> screenRects)
+        {
+            SmartHighlightsCanvas.Children.Clear();
+            _smartRegionRects.Clear();
+            double winLeft = Left;
+            double winTop = Top;
+            var accent = (SolidColorBrush)TryFindResource("AccentBrush") ?? new SolidColorBrush(Colors.Orange);
+            foreach (var r in screenRects)
+            {
+                double x = r.X - winLeft;
+                double y = r.Y - winTop;
+                if (x + r.Width < 0 || y + r.Height < 0 || x > SelectionCanvas.ActualWidth || y > SelectionCanvas.ActualHeight)
+                    continue;
+                _smartRegionRects.Add(r);
+                var rect = new System.Windows.Shapes.Rectangle
+                {
+                    Width = r.Width,
+                    Height = r.Height,
+                    Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x18, accent.Color.R, accent.Color.G, accent.Color.B)),
+                    Stroke = accent,
+                    StrokeThickness = 1.5
+                };
+                System.Windows.Controls.Canvas.SetLeft(rect, x);
+                System.Windows.Controls.Canvas.SetTop(rect, y);
+                SmartHighlightsCanvas.Children.Add(rect);
+            }
+        }
+
+        private Rectangle? GetSmartRegionAtScreenPoint(int screenX, int screenY)
+        {
+            foreach (var r in _smartRegionRects)
+            {
+                if (r.X <= screenX && screenX < r.X + r.Width && r.Y <= screenY && screenY < r.Y + r.Height)
+                    return r;
+            }
+            return null;
+        }
+
         private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Intercept mouse down at window level before browser gets it
-            e.Handled = true; // Prevent event from reaching browser
-            
-            // Capture mouse input immediately
+            e.Handled = true;
             CaptureMouseInput();
-            
-            // Convert to canvas coordinates and handle
             var canvasPoint = e.GetPosition(SelectionCanvas);
             _startPoint = canvasPoint;
             _isSelecting = true;
+            _isPotentialClick = true;
             SelectionRect.Visibility = Visibility.Visible;
-            
             System.Windows.Controls.Canvas.SetLeft(SelectionRect, _startPoint.X);
             System.Windows.Controls.Canvas.SetTop(SelectionRect, _startPoint.Y);
             SelectionRect.Width = 0;
@@ -365,43 +428,39 @@ namespace SharpShot.UI
         
         private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            // Intercept mouse up at window level
-            e.Handled = true; // Prevent event from reaching browser
-            
+            e.Handled = true;
             if (!_isSelecting) return;
-            
-            // Release mouse capture
             ReleaseCapture();
-            
             _isSelecting = false;
-            
             var endPoint = e.GetPosition(SelectionCanvas);
-            
             var x = Math.Min(_startPoint.X, endPoint.X);
             var y = Math.Min(_startPoint.Y, endPoint.Y);
             var width = Math.Abs(endPoint.X - _startPoint.X);
             var height = Math.Abs(endPoint.Y - _startPoint.Y);
-            
+
+            int screenX = (int)(Left + _startPoint.X);
+            int screenY = (int)(Top + _startPoint.Y);
+            var smartRect = GetSmartRegionAtScreenPoint(screenX, screenY);
+            if (_isPotentialClick && smartRect.HasValue && _smartRegionRects.Count > 0)
+            {
+                SelectedRegion = smartRect;
+                SelectionRect.Visibility = Visibility.Collapsed;
+                if (_isRecordingMode)
+                    Close();
+                else
+                    CaptureRegion();
+                return;
+            }
+
             if (width > 10 && height > 10)
             {
-                // Convert window coordinates to screen coordinates
-                var screenX = (int)(Left + x);
-                var screenY = (int)(Top + y);
-                
-                SelectedRegion = new Rectangle(screenX, screenY, (int)width, (int)height);
-                
-                // If in recording mode, just close the window with the selected region
-                // If in screenshot mode, capture the region and launch editor
+                var screenRectX = (int)(Left + x);
+                var screenRectY = (int)(Top + y);
+                SelectedRegion = new Rectangle(screenRectX, screenRectY, (int)width, (int)height);
                 if (_isRecordingMode)
-                {
-                    // For recording, just close the window - the calling code will handle the recording
                     Close();
-                }
                 else
-                {
-                    // For screenshot capture, proceed with normal behavior
                     CaptureRegion();
-                }
             }
             else
             {
@@ -412,17 +471,16 @@ namespace SharpShot.UI
         private void OnPreviewMouseMove(object sender, MouseEventArgs e)
         {
             if (!_isSelecting) return;
-            
-            // Intercept mouse move at window level
-            e.Handled = true; // Prevent event from reaching browser
-            
+            e.Handled = true;
             var currentPoint = e.GetPosition(SelectionCanvas);
-            
+            double dx = currentPoint.X - _startPoint.X;
+            double dy = currentPoint.Y - _startPoint.Y;
+            if (Math.Abs(dx) > 5 || Math.Abs(dy) > 5)
+                _isPotentialClick = false;
             var x = Math.Min(_startPoint.X, currentPoint.X);
             var y = Math.Min(_startPoint.Y, currentPoint.Y);
             var width = Math.Abs(currentPoint.X - _startPoint.X);
             var height = Math.Abs(currentPoint.Y - _startPoint.Y);
-            
             System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
             System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
             SelectionRect.Width = width;
@@ -431,60 +489,45 @@ namespace SharpShot.UI
         
         private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // Mouse capture is already set when window loaded
-            // Just ensure it's still active
             CaptureMouseInput();
-            
             _startPoint = e.GetPosition(SelectionCanvas);
             _isSelecting = true;
+            _isPotentialClick = true;
             SelectionRect.Visibility = Visibility.Visible;
-            
             System.Windows.Controls.Canvas.SetLeft(SelectionRect, _startPoint.X);
             System.Windows.Controls.Canvas.SetTop(SelectionRect, _startPoint.Y);
             SelectionRect.Width = 0;
             SelectionRect.Height = 0;
-            
-            // Magnifier is already running since window opened
         }
 
         private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (!_isSelecting) return;
-            
-            // Release mouse capture
             ReleaseCapture();
-            
             _isSelecting = false;
-            
-            // Magnifier continues running until window closes
-            
             var endPoint = e.GetPosition(SelectionCanvas);
-            
             var x = Math.Min(_startPoint.X, endPoint.X);
             var y = Math.Min(_startPoint.Y, endPoint.Y);
             var width = Math.Abs(endPoint.X - _startPoint.X);
             var height = Math.Abs(endPoint.Y - _startPoint.Y);
-            
+            int screenX = (int)(Left + _startPoint.X);
+            int screenY = (int)(Top + _startPoint.Y);
+            var smartRect = GetSmartRegionAtScreenPoint(screenX, screenY);
+            if (_isPotentialClick && smartRect.HasValue && _smartRegionRects.Count > 0)
+            {
+                SelectedRegion = smartRect;
+                SelectionRect.Visibility = Visibility.Collapsed;
+                if (_isRecordingMode) Close();
+                else CaptureRegion();
+                return;
+            }
             if (width > 10 && height > 10)
             {
-                // Convert window coordinates to screen coordinates
-                var screenX = (int)(Left + x);
-                var screenY = (int)(Top + y);
-                
-                SelectedRegion = new Rectangle(screenX, screenY, (int)width, (int)height);
-                
-                // If in recording mode, just close the window with the selected region
-                // If in screenshot mode, capture the region and launch editor
-                if (_isRecordingMode)
-                {
-                    // For recording, just close the window - the calling code will handle the recording
-                    Close();
-                }
-                else
-                {
-                    // For screenshot capture, proceed with normal behavior
-                    CaptureRegion();
-                }
+                var screenRectX = (int)(Left + x);
+                var screenRectY = (int)(Top + y);
+                SelectedRegion = new Rectangle(screenRectX, screenRectY, (int)width, (int)height);
+                if (_isRecordingMode) Close();
+                else CaptureRegion();
             }
             else
             {
@@ -495,14 +538,15 @@ namespace SharpShot.UI
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
             if (!_isSelecting) return;
-            
             var currentPoint = e.GetPosition(SelectionCanvas);
-            
+            double dx = currentPoint.X - _startPoint.X;
+            double dy = currentPoint.Y - _startPoint.Y;
+            if (Math.Abs(dx) > 5 || Math.Abs(dy) > 5)
+                _isPotentialClick = false;
             var x = Math.Min(_startPoint.X, currentPoint.X);
             var y = Math.Min(_startPoint.Y, currentPoint.Y);
             var width = Math.Abs(currentPoint.X - _startPoint.X);
             var height = Math.Abs(currentPoint.Y - _startPoint.Y);
-            
             System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
             System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
             SelectionRect.Width = width;

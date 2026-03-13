@@ -443,7 +443,12 @@
                 <CheckBox x:Name="StartMinimizedCheckBox" 
                           Content="Start Minimized" 
                           Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"/>
+                          Margin="0,0,0,4"/>
+                <CheckBox x:Name="StartWithWindowsMinimizedCheckBox"
+                          Content="Start SharpShot with Windows (minimized)"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="16,0,0,10"
+                          ToolTip="Adds SharpShot to your Windows startup apps and starts it minimized to the tray when Windows starts"/>
                 <CheckBox x:Name="AutoCopyScreenshotsCheckBox" 
                           Content="Auto-copy fullscreen and region screenshots to clipboard (failsafe after editor closes)" 
                           Style="{StaticResource DarkCheckBoxStyle}"
@@ -458,6 +463,11 @@
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
+                <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
+                          Content="Highlight detected regions (images, text blocks) during region selection"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, detects elements like images and text on the screen (e.g. in browsers) and lets you click a highlight to capture that region. Similar to Snipping Tool behavior."/>
                 <CheckBox x:Name="DisableAllPopupsCheckBox"
                           Content="Disable all popup notifications"
                           Style="{StaticResource DarkCheckBoxStyle}"
@@ -841,7 +851,7 @@
                            Visibility="Collapsed"/>
 
                 <!-- Hotkey Instructions -->
-                <TextBlock Text="Click on a hotkey field and press your desired key combination. Single modifier keys (Ctrl, Shift, Alt) will automatically enable triple-click mode."
+                <TextBlock Text="Click a hotkey field and press your combo (up to 3 keys). Examples: Ctrl+A, Shift+Ctrl+K, Shift+OemComma. Single modifiers (Ctrl, Shift, Alt) use triple-click mode."
                            Foreground="{StaticResource TextBrush}" 
                            FontSize="11" 
                            TextWrapping="Wrap"
@@ -862,7 +872,7 @@
                     <TextBox Grid.Column="1" 
                              x:Name="ScreenshotRegionHotkeyTextBox"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             Width="120"
+                             MinWidth="120" Width="200"
                              Text=""
                              IsReadOnly="True"
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
@@ -899,7 +909,7 @@
                     <TextBox Grid.Column="1" 
                              x:Name="ScreenshotFullscreenHotkeyTextBox"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             Width="120"
+                             MinWidth="120" Width="200"
                              Text=""
                              IsReadOnly="True"
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
@@ -935,7 +945,7 @@
                     <TextBox Grid.Column="1" 
                              x:Name="RecordRegionHotkeyTextBox"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             Width="120"
+                             MinWidth="120" Width="200"
                              Text=""
                              IsReadOnly="True"
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
@@ -971,7 +981,7 @@
                     <TextBox Grid.Column="1" 
                              x:Name="RecordFullscreenHotkeyTextBox"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             Width="120"
+                             MinWidth="120" Width="200"
                              Text=""
                              IsReadOnly="True"
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
@@ -1007,7 +1017,7 @@
                     <TextBox Grid.Column="1" 
                              x:Name="CopyHotkeyTextBox"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             Width="120"
+                             MinWidth="120" Width="200"
                              Text=""
                              IsReadOnly="True"
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
@@ -1043,7 +1053,7 @@
                     <TextBox Grid.Column="1" 
                              x:Name="SaveHotkeyTextBox"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             Width="120"
+                             MinWidth="120" Width="200"
                              Text=""
                              IsReadOnly="True"
                              PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
@@ -1111,7 +1121,7 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,15,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="v1.2.6.0"
+                           Text="v1.2.7.0"
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"
