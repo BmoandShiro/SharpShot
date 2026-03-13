@@ -70,13 +70,21 @@ namespace SharpShot
             // Position window
             PositionWindow();
             
-            // Force window to be visible and not minimized
-            WindowState = WindowState.Normal;
-            Visibility = Visibility.Visible;
-            
-            // Ensure window is on top and visible
-            Activate();
-            Focus();
+            // Start minimized if "Start with Windows (minimized)" or "Start Minimized" is enabled
+            bool startMinimized = _settingsService.CurrentSettings.StartWithWindowsMinimized 
+                || _settingsService.CurrentSettings.StartMinimized;
+            if (startMinimized)
+            {
+                WindowState = WindowState.Minimized;
+                Visibility = Visibility.Visible;
+            }
+            else
+            {
+                WindowState = WindowState.Normal;
+                Visibility = Visibility.Visible;
+                Activate();
+                Focus();
+            }
             
             // Debug output
             System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}, Visibility: {Visibility}");
@@ -87,16 +95,19 @@ namespace SharpShot
             // Debug: Verify settings are loaded
             System.Diagnostics.Debug.WriteLine($"Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
             
-            // Ensure window is visible after a short delay
-            Dispatcher.BeginInvoke(new Action(() =>
+            // Ensure window is visible after a short delay (skip forcing activation if starting minimized)
+            if (!startMinimized)
             {
-                if (Visibility != Visibility.Visible)
+                Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    Visibility = Visibility.Visible;
-                    Activate();
-                    Focus();
-                }
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
+                    if (Visibility != Visibility.Visible)
+                    {
+                        Visibility = Visibility.Visible;
+                        Activate();
+                        Focus();
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
             
             // Debug output
             System.Diagnostics.Debug.WriteLine($"SharpShot window created. Position: ({Left}, {Top}), Size: ({Width}, {Height}), State: {WindowState}");

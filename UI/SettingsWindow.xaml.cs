@@ -995,6 +995,8 @@ namespace SharpShot.UI
             target.SelectedInputAudioDevice = source.SelectedInputAudioDevice;
             target.EnableGlobalHotkeys = source.EnableGlobalHotkeys;
             target.StartMinimized = source.StartMinimized;
+            target.StartWithWindowsMinimized = source.StartWithWindowsMinimized;
+            target.EnableAutoUpdateCheck = source.EnableAutoUpdateCheck;
             target.IconColor = source.IconColor;
             target.HoverOpacity = source.HoverOpacity;
             target.DropShadowOpacity = source.DropShadowOpacity;
