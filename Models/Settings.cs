@@ -39,6 +39,10 @@ namespace SharpShot.Models
         private string _dashboardDisplayMonitor = "Primary Monitor";
         private double _dashboardLeft = double.NaN;
         private double _dashboardTop = double.NaN;
+        private bool _restoreDashboardPosition = true;
+        private bool _dashboardFollowsCaptureMonitor;
+        private bool _dashboardAutoReturnAfterCapture;
+        private bool _editorFollowsCaptureMonitor;
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
         private bool _enableAutoUpdateCheck = true;
@@ -77,6 +81,10 @@ namespace SharpShot.Models
             DashboardDisplayMonitor = "Primary Monitor"; // Default to primary monitor for main dashboard
             DashboardLeft = double.NaN; // Use auto positioning by default
             DashboardTop = double.NaN;  // Use auto positioning by default
+            RestoreDashboardPosition = true; // Default to restoring last position
+            DashboardFollowsCaptureMonitor = false; // Default: don't move dashboard to capture monitor
+            DashboardAutoReturnAfterCapture = false; // Default: don't auto-return after capture
+            EditorFollowsCaptureMonitor = false; // Default: editor uses configured monitor
             DisableAllPopups = false; // Default to false - show popups
             SkipEditorAndAutoCopy = false; // Default to false - show editor
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
@@ -283,6 +291,47 @@ namespace SharpShot.Models
         {
             get => _dashboardTop;
             set => SetProperty(ref _dashboardTop, value);
+        }
+
+        /// <summary>
+        /// When true, the main dashboard window restores to the last saved position.
+        /// When false, it always uses automatic positioning and ignores any saved coordinates.
+        /// </summary>
+        public bool RestoreDashboardPosition
+        {
+            get => _restoreDashboardPosition;
+            set => SetProperty(ref _restoreDashboardPosition, value);
+        }
+
+        /// <summary>
+        /// When true, after a region capture the dashboard is moved to the monitor
+        /// where the capture was taken (based on the capture rectangle).
+        /// </summary>
+        public bool DashboardFollowsCaptureMonitor
+        {
+            get => _dashboardFollowsCaptureMonitor;
+            set => SetProperty(ref _dashboardFollowsCaptureMonitor, value);
+        }
+
+        /// <summary>
+        /// When true and DashboardFollowsCaptureMonitor is enabled, the dashboard is moved
+        /// to the capture monitor temporarily and then returned to its previous position
+        /// after the post-capture flow completes.
+        /// </summary>
+        public bool DashboardAutoReturnAfterCapture
+        {
+            get => _dashboardAutoReturnAfterCapture;
+            set => SetProperty(ref _dashboardAutoReturnAfterCapture, value);
+        }
+
+        /// <summary>
+        /// When true, the screenshot editor overlay opens on the same monitor where the screenshot was taken,
+        /// instead of always using the configured editor display monitor.
+        /// </summary>
+        public bool EditorFollowsCaptureMonitor
+        {
+            get => _editorFollowsCaptureMonitor;
+            set => SetProperty(ref _editorFollowsCaptureMonitor, value);
         }
 
         public bool DisableAllPopups

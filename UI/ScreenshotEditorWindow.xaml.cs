@@ -435,6 +435,15 @@ namespace SharpShot.UI
             }
         }
 
+        /// <summary>
+        /// Public helper to move the editor window to a specific monitor's bounds.
+        /// Used when following the monitor where the screenshot was captured.
+        /// </summary>
+        public void MoveToMonitorBounds(System.Drawing.Rectangle targetMonitorBounds)
+        {
+            ForceWindowToMonitor(targetMonitorBounds);
+        }
+
         private System.Drawing.Rectangle GetSelectedMonitorBounds()
         {
             if (_settingsService?.CurrentSettings?.ScreenshotEditorDisplayMonitor == null)

@@ -670,6 +670,21 @@ namespace SharpShot.UI
                 
                 // Launch the screenshot editor
                 var editor = new ScreenshotEditorWindow(bitmap, _screenshotService, _settingsService);
+
+                // Optionally move the editor to the monitor where the region was captured
+                try
+                {
+                    if (_settingsService?.CurrentSettings?.EditorFollowsCaptureMonitor == true && SelectedRegion.HasValue)
+                    {
+                        var captureRect = SelectedRegion.Value;
+                        var captureScreen = System.Windows.Forms.Screen.FromRectangle(captureRect);
+                        editor.MoveToMonitorBounds(captureScreen.Bounds);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to move editor to capture monitor: {ex.Message}");
+                }
                 
                 // Make sure the editor window is visible and on top
                 editor.WindowState = WindowState.Normal;

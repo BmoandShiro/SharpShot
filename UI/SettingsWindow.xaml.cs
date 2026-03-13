@@ -426,6 +426,23 @@ namespace SharpShot.UI
             }));
             GlobalHotkeysCheckBox.IsChecked = _originalSettings.EnableGlobalHotkeys;
             StartMinimizedCheckBox.IsChecked = _originalSettings.StartMinimized;
+            // These checkboxes are defined in XAML; guard in case names change
+            if (FindName("RestoreDashboardPositionCheckBox") is System.Windows.Controls.CheckBox restoreDashboardCheckBox)
+            {
+                restoreDashboardCheckBox.IsChecked = _originalSettings.RestoreDashboardPosition;
+            }
+            if (FindName("DashboardFollowsCaptureMonitorCheckBox") is System.Windows.Controls.CheckBox dashboardFollowCheckBox)
+            {
+                dashboardFollowCheckBox.IsChecked = _originalSettings.DashboardFollowsCaptureMonitor;
+            }
+            if (FindName("DashboardAutoReturnAfterCaptureCheckBox") is System.Windows.Controls.CheckBox dashboardReturnCheckBox)
+            {
+                dashboardReturnCheckBox.IsChecked = _originalSettings.DashboardAutoReturnAfterCapture;
+            }
+            if (FindName("EditorFollowsCaptureMonitorCheckBox") is System.Windows.Controls.CheckBox editorFollowCheckBox)
+            {
+                editorFollowCheckBox.IsChecked = _originalSettings.EditorFollowsCaptureMonitor;
+            }
             // This checkbox is defined in XAML; guard in case name changes
             if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox)
             {
@@ -841,6 +858,22 @@ namespace SharpShot.UI
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.EnableAutoUpdateCheck = EnableAutoUpdateCheckBox.IsChecked ?? true;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
+                if (FindName("RestoreDashboardPositionCheckBox") is System.Windows.Controls.CheckBox restoreDashboardCheckBox)
+                {
+                    _originalSettings.RestoreDashboardPosition = restoreDashboardCheckBox.IsChecked ?? true;
+                }
+                if (FindName("DashboardFollowsCaptureMonitorCheckBox") is System.Windows.Controls.CheckBox dashboardFollowCheckBox)
+                {
+                    _originalSettings.DashboardFollowsCaptureMonitor = dashboardFollowCheckBox.IsChecked ?? false;
+                }
+                if (FindName("DashboardAutoReturnAfterCaptureCheckBox") is System.Windows.Controls.CheckBox dashboardReturnCheckBox)
+                {
+                    _originalSettings.DashboardAutoReturnAfterCapture = dashboardReturnCheckBox.IsChecked ?? false;
+                }
+                if (FindName("EditorFollowsCaptureMonitorCheckBox") is System.Windows.Controls.CheckBox editorFollowCheckBox)
+                {
+                    _originalSettings.EditorFollowsCaptureMonitor = editorFollowCheckBox.IsChecked ?? false;
+                }
                 if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox)
                 {
                     _originalSettings.StartWithWindowsMinimized = startWithWindowsCheckBox.IsChecked ?? false;
@@ -973,6 +1006,12 @@ namespace SharpShot.UI
                 
                 // Update hotkeys if hotkey manager is available
                 _hotkeyManager?.UpdateHotkeys();
+
+                // Reposition main dashboard immediately to reflect updated monitor / restore settings
+                if (Owner is MainWindow mainWindow)
+                {
+                    mainWindow.PositionWindow();
+                }
                 
                 DialogResult = true;
                 Close();
@@ -1035,6 +1074,11 @@ namespace SharpShot.UI
             target.DashboardDisplayMonitor = source.DashboardDisplayMonitor;
             target.DashboardLeft = source.DashboardLeft;
             target.DashboardTop = source.DashboardTop;
+            target.RestoreDashboardPosition = source.RestoreDashboardPosition;
+            target.DashboardFollowsCaptureMonitor = source.DashboardFollowsCaptureMonitor;
+            target.DashboardAutoReturnAfterCapture = source.DashboardAutoReturnAfterCapture;
+            target.EditorFollowsCaptureMonitor = source.EditorFollowsCaptureMonitor;
+            target.RestoreDashboardPosition = source.RestoreDashboardPosition;
             
             // Copy hotkeys
             target.Hotkeys.Clear();

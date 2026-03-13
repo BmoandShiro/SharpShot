@@ -23,6 +23,8 @@ namespace SharpShot
         private readonly RecordingService _recordingService;
         private readonly HotkeyManager _hotkeyManager;
         private System.Windows.Forms.NotifyIcon? _trayIcon;
+        private Point? _dashboardPreCapturePosition;
+        private bool _dashboardTemporarilyMovedFromCapture;
         private bool _isDragging;
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
@@ -182,14 +184,15 @@ namespace SharpShot
             // NOTE: Hotkeys will be applied AFTER the window handle is set in OnSourceInitialized
         }
 
-        private void PositionWindow()
+        public void PositionWindow()
         {
             try
             {
                 var settings = _settingsService.CurrentSettings;
 
-                // If we have a previously saved position, try to use it first (in DIPs)
-                if (!double.IsNaN(settings.DashboardLeft) && !double.IsNaN(settings.DashboardTop))
+                // If restore-last-position is enabled and we have a saved position, try to use it first (in DIPs)
+                if (settings.RestoreDashboardPosition &&
+                    !double.IsNaN(settings.DashboardLeft) && !double.IsNaN(settings.DashboardTop))
                 {
                     Left = settings.DashboardLeft;
                     Top = settings.DashboardTop;
@@ -212,41 +215,12 @@ namespace SharpShot
                     return;
                 }
 
-                // Use working area (excludes taskbar) for positioning
-                var workingArea = targetScreen.WorkingArea;
-
-                // Convert working area from physical pixels to DIPs for this window
-                var source = PresentationSource.FromVisual(this);
-                if (source?.CompositionTarget == null)
+                // Position on the selected screen using shared helper
+                if (!PositionWindowOnScreen(targetScreen))
                 {
-                    // Fallback if no source yet - center on primary screen using default WPF behavior
+                    // Fallback to center screen if positioning fails
                     WindowStartupLocation = WindowStartupLocation.CenterScreen;
-                    return;
                 }
-
-                var transform = source.CompositionTarget.TransformFromDevice;
-                var topLeftDip = transform.Transform(new System.Windows.Point(workingArea.Left, workingArea.Top));
-                var bottomRightDip = transform.Transform(new System.Windows.Point(workingArea.Right, workingArea.Bottom));
-
-                double screenLeftDip = topLeftDip.X;
-                double screenTopDip = topLeftDip.Y;
-                double screenWidthDip = bottomRightDip.X - topLeftDip.X;
-                double screenHeightDip = bottomRightDip.Y - topLeftDip.Y;
-
-                // Center horizontally on the selected screen
-                Left = screenLeftDip + (screenWidthDip - Width) / 2;
-
-                // Position near the bottom of the selected screen (above taskbar)
-                const double bottomMargin = 50.0;
-                Top = screenTopDip + screenHeightDip - Height - bottomMargin;
-
-                // Clamp to the working area's DIP bounds to guarantee visibility
-                if (Left < screenLeftDip) Left = screenLeftDip;
-                if (Top < screenTopDip) Top = screenTopDip;
-                if (Left + Width > screenLeftDip + screenWidthDip) Left = screenLeftDip + screenWidthDip - Width;
-                if (Top + Height > screenTopDip + screenHeightDip) Top = screenTopDip + screenHeightDip - Height;
-
-                System.Diagnostics.Debug.WriteLine($"Positioning window: Dashboard monitor working area (DIPs) L={screenLeftDip},T={screenTopDip},W={screenWidthDip},H={screenHeightDip}; Window position: ({Left}, {Top})");
             }
             catch (Exception ex)
             {
@@ -288,6 +262,57 @@ namespace SharpShot
 
             // Fallback to primary or first screen
             return System.Windows.Forms.Screen.PrimaryScreen ?? screens[0];
+        }
+
+        /// <summary>
+        /// Positions the main dashboard window on the given screen's working area (in a DPI-aware way),
+        /// centering it horizontally and placing it just above the taskbar.
+        /// Returns true if positioning succeeded.
+        /// </summary>
+        private bool PositionWindowOnScreen(System.Windows.Forms.Screen targetScreen)
+        {
+            try
+            {
+                // Use working area (excludes taskbar) for positioning
+                var workingArea = targetScreen.WorkingArea;
+
+                // Convert working area from physical pixels to DIPs for this window
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget == null)
+                {
+                    return false;
+                }
+
+                var transform = source.CompositionTarget.TransformFromDevice;
+                var topLeftDip = transform.Transform(new System.Windows.Point(workingArea.Left, workingArea.Top));
+                var bottomRightDip = transform.Transform(new System.Windows.Point(workingArea.Right, workingArea.Bottom));
+
+                double screenLeftDip = topLeftDip.X;
+                double screenTopDip = topLeftDip.Y;
+                double screenWidthDip = bottomRightDip.X - topLeftDip.X;
+                double screenHeightDip = bottomRightDip.Y - topLeftDip.Y;
+
+                // Center horizontally on the selected screen
+                Left = screenLeftDip + (screenWidthDip - Width) / 2;
+
+                // Position near the bottom of the selected screen (above taskbar)
+                const double bottomMargin = 50.0;
+                Top = screenTopDip + screenHeightDip - Height - bottomMargin;
+
+                // Clamp to the working area's DIP bounds to guarantee visibility
+                if (Left < screenLeftDip) Left = screenLeftDip;
+                if (Top < screenTopDip) Top = screenTopDip;
+                if (Left + Width > screenLeftDip + screenWidthDip) Left = screenLeftDip + screenWidthDip - Width;
+                if (Top + Height > screenTopDip + screenHeightDip) Top = screenTopDip + screenHeightDip - Height;
+
+                System.Diagnostics.Debug.WriteLine($"Positioning window on screen: working area (DIPs) L={screenLeftDip},T={screenTopDip},W={screenWidthDip},H={screenHeightDip}; Window position: ({Left}, {Top})");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PositionWindowOnScreen failed: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -367,9 +392,12 @@ namespace SharpShot
             try
             {
                 var settings = _settingsService.CurrentSettings;
-                settings.DashboardLeft = Left;
-                settings.DashboardTop = Top;
-                _settingsService.SaveSettings();
+                if (settings.RestoreDashboardPosition)
+                {
+                    settings.DashboardLeft = Left;
+                    settings.DashboardTop = Top;
+                    _settingsService.SaveSettings();
+                }
             }
             catch (Exception ex)
             {
@@ -710,6 +738,34 @@ namespace SharpShot
                 };
                 menu.Items.Add(openItem);
 
+                var moveHereItem = new System.Windows.Forms.ToolStripMenuItem("Move Dashboard Here");
+                moveHereItem.Click += (s, e) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        try
+                        {
+                            var cursorPos = System.Windows.Forms.Cursor.Position;
+                            var screen = System.Windows.Forms.Screen.FromPoint(cursorPos);
+                            if (PositionWindowOnScreen(screen))
+                            {
+                                var settings = _settingsService.CurrentSettings;
+                                if (settings.RestoreDashboardPosition)
+                                {
+                                    settings.DashboardLeft = Left;
+                                    settings.DashboardTop = Top;
+                                    _settingsService.SaveSettings();
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Failed to move dashboard to cursor monitor: {ex.Message}");
+                        }
+                    });
+                };
+                menu.Items.Add(moveHereItem);
+
                 var settingsItem = new System.Windows.Forms.ToolStripMenuItem("Settings...");
                 settingsItem.Click += (s, e) =>
                 {
@@ -938,6 +994,39 @@ namespace SharpShot
                         }
                     }
                     
+                    // Optionally move the dashboard to the monitor where the region was captured
+                    try
+                    {
+                        var settings = _settingsService.CurrentSettings;
+                        if (settings.DashboardFollowsCaptureMonitor && regionWindow.SelectedRegion.HasValue)
+                        {
+                            var captureRect = regionWindow.SelectedRegion.Value;
+                            var captureScreen = System.Windows.Forms.Screen.FromRectangle(captureRect);
+
+                            // If auto-return is enabled, remember the current position once
+                            if (settings.DashboardAutoReturnAfterCapture && !_dashboardTemporarilyMovedFromCapture)
+                            {
+                                _dashboardPreCapturePosition = new Point(Left, Top);
+                                _dashboardTemporarilyMovedFromCapture = true;
+                            }
+
+                            if (PositionWindowOnScreen(captureScreen))
+                            {
+                                // If we're not auto-returning, treat the capture monitor as the new home
+                                if (!settings.DashboardAutoReturnAfterCapture && settings.RestoreDashboardPosition)
+                                {
+                                    settings.DashboardLeft = Left;
+                                    settings.DashboardTop = Top;
+                                    _settingsService.SaveSettings();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Failed to move dashboard to capture monitor: {ex.Message}");
+                    }
+                    
                     // Show capture options for normal cases
                     ShowCaptureOptions();
                 }
@@ -1064,6 +1153,36 @@ namespace SharpShot
             _lastCapturedBitmap = null;
             _lastCapturedFilePath = string.Empty;
             ShowNormalButtons();
+
+            // If the dashboard was temporarily moved to the capture monitor, return it
+            try
+            {
+                var settings = _settingsService.CurrentSettings;
+                if (settings.DashboardFollowsCaptureMonitor &&
+                    settings.DashboardAutoReturnAfterCapture &&
+                    _dashboardTemporarilyMovedFromCapture &&
+                    _dashboardPreCapturePosition.HasValue)
+                {
+                    Left = _dashboardPreCapturePosition.Value.X;
+                    Top = _dashboardPreCapturePosition.Value.Y;
+
+                    if (settings.RestoreDashboardPosition)
+                    {
+                        settings.DashboardLeft = Left;
+                        settings.DashboardTop = Top;
+                        _settingsService.SaveSettings();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to return dashboard to pre-capture position: {ex.Message}");
+            }
+            finally
+            {
+                _dashboardTemporarilyMovedFromCapture = false;
+                _dashboardPreCapturePosition = null;
+            }
         }
 
         private void CopyButton_Click(object sender, RoutedEventArgs e)
