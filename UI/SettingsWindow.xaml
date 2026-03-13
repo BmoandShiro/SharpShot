@@ -82,9 +82,9 @@
             <Button Grid.Column="1" 
                     x:Name="CloseSettingsButton"
                     Style="{StaticResource ToolbarButtonStyle}"
-                    Width="30" 
-                    Height="30"
-                    Padding="4"
+                    Width="38" 
+                    Height="38"
+                    Padding="6"
                     Click="CloseSettingsButton_Click"
                     Cursor="Hand">
                 <Path Data="M1 1L11 11M11 1L1 11" 
@@ -92,7 +92,7 @@
                       StrokeThickness="2" 
                       Fill="Transparent"
                       Stretch="Uniform"
-                      Width="20" Height="20"/>
+                      Width="22" Height="22"/>
             </Button>
         </Grid>
 
