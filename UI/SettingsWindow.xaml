@@ -81,12 +81,19 @@
                        Cursor="Hand"/>
             <Button Grid.Column="1" 
                     x:Name="CloseSettingsButton"
-                    Content="ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¢"
+                    Style="{StaticResource ToolbarButtonStyle}"
                     Width="30" 
                     Height="30"
-                    FontSize="16"
+                    Padding="4"
                     Click="CloseSettingsButton_Click"
-                    Cursor="Hand"/>
+                    Cursor="Hand">
+                <Path Data="M1 1L11 11M11 1L1 11" 
+                      Stroke="{DynamicResource AccentBrush}" 
+                      StrokeThickness="2" 
+                      Fill="Transparent"
+                      Stretch="Uniform"
+                      Width="20" Height="20"/>
+            </Button>
         </Grid>
 
         <!-- Settings Content -->
@@ -1162,12 +1169,12 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,15,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="v1.2.8.2"
+                           Text="v1.2.8.3"
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"
                            VerticalAlignment="Center"/>
-                <TextBlock Text=" • "
+                <TextBlock Text=" | "
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"
