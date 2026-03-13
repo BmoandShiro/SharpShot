@@ -166,6 +166,13 @@ namespace SharpShot.Services
                 }
                 Directory.CreateDirectory(tempDirectory);
 
+                // Show user where we're downloading (portable often runs from a folder they care about)
+                progress?.Report(new UpdateProgress
+                {
+                    Status = $"Downloading to: {tempDirectory}",
+                    Percentage = 0
+                });
+
                 // Download the update zip
                 var zipPath = Path.Combine(tempDirectory, "update.zip");
                 await DownloadFileAsync(downloadUrl, zipPath, progress);
@@ -183,17 +190,15 @@ namespace SharpShot.Services
 
                 progress?.Report(new UpdateProgress { Status = "Update ready! Restarting application...", Percentage = 100 });
 
-                // Launch update script and exit
-                var scriptProcess = new Process
+                // Run the PowerShell script via powershell.exe so Windows doesn't prompt "open with" for .ps1
+                var psi = new ProcessStartInfo
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = updateScriptPath,
-                        UseShellExecute = true,
-                        CreateNoWindow = false
-                    }
+                    FileName = "powershell.exe",
+                    Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -File \"{updateScriptPath}\"",
+                    UseShellExecute = true,
+                    CreateNoWindow = true
                 };
-                scriptProcess.Start();
+                Process.Start(psi);
 
                 // Give the script a moment to start, then exit
                 await Task.Delay(500);

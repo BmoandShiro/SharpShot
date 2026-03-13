@@ -1162,7 +1162,7 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,15,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="v1.2.7.0"
+                           Text="v1.2.8.0"
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"

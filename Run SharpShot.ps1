@@ -21,9 +21,9 @@ if (Test-Path "SharpShot.csproj") {
         exit 1
     }
     
-    # Build and run the application
-    Write-Host "Building and running SharpShot..." -ForegroundColor Yellow
-    dotnet run
+    # Run the application with Hot Reload enabled
+    Write-Host "Starting SharpShot with Hot Reload (dotnet watch run)..." -ForegroundColor Yellow
+    dotnet watch run
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "SharpShot started successfully!" -ForegroundColor Green

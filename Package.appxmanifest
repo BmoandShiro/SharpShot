@@ -7,7 +7,7 @@
 
   <Identity Name="BMOsDevOps.SharpShot"
             Publisher="CN=7E8A6D64-EB7B-4C99-95F4-1194CC95BBA8"
-            Version="1.1.0.0"
+            Version="1.2.8.0"
             ProcessorArchitecture="x64" />
 
   <Properties>

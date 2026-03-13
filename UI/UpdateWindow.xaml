@@ -5,7 +5,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
         ShowInTaskbar="True">
-    <Border CornerRadius="10" Background="#FF1E1E1E" BorderBrush="#FF3E3E3E" BorderThickness="1">
+    <Border CornerRadius="10" Background="#FF1E1E1E" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
         <Border.Effect>
             <DropShadowEffect Color="Black" Direction="315" ShadowDepth="5" BlurRadius="10" Opacity="0.5"/>
         </Border.Effect>
@@ -18,15 +18,16 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <!-- Header -->
-            <Border Grid.Row="0" Background="#FF2D2D2D" CornerRadius="10,10,0,0" Padding="15">
+            <!-- Header (accent from theme) -->
+            <Border Grid.Row="0" Background="#FF2D2D2D" CornerRadius="10,10,0,0" Padding="15"
+                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0,0,0,2">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="Update Available" FontSize="18" FontWeight="Bold" 
-                               Foreground="White" VerticalAlignment="Center"/>
+                               Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Content="✕" Width="30" Height="30" 
                             Click="CloseButton_Click" Background="Transparent" 
                             BorderThickness="0" Foreground="White" FontSize="16"
@@ -53,7 +54,7 @@
                     <!-- Progress Section (shown during download) -->
                     <StackPanel Name="ProgressPanel" Visibility="Collapsed" Margin="0,15,0,0">
                         <TextBlock Name="ProgressStatusText" TextWrapping="Wrap" Foreground="White" Margin="0,0,0,10"/>
-                        <ProgressBar Name="ProgressBar" Height="20" Margin="0,0,0,5"/>
+                        <ProgressBar Name="ProgressBar" Height="20" Margin="0,0,0,5" Foreground="{DynamicResource AccentBrush}"/>
                         <TextBlock Name="ProgressPercentageText" TextAlignment="Center" Foreground="#FFCCCCCC" FontSize="12"/>
                     </StackPanel>
                 </StackPanel>
@@ -92,7 +93,7 @@
                 </Button>
                 <Button Name="UpdateButton" Content="Update Now" Width="120" Height="35" 
                         Click="UpdateButton_Click"
-                        Background="#FFFF8C00" Foreground="Black" BorderThickness="0" 
+                        Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" 
                         FontWeight="Bold" Cursor="Hand">
                     <Button.Style>
                         <Style TargetType="Button">
@@ -107,10 +108,10 @@
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#FFFFA500"/>
+                                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
                                             </Trigger>
                                             <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#FFCC7000"/>
+                                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>

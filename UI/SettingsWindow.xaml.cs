@@ -3634,9 +3634,11 @@ namespace SharpShot.UI
                     UpdateStatusText.Text = $"Update available: Version {updateInfo.Version}";
                     UpdateStatusText.Foreground = new SolidColorBrush(Colors.LightGreen);
                     
-                    // Show update window
+                    // Show update window in front of Settings (Owner + Activate)
                     var updateWindow = new UpdateWindow(App.UpdateService, updateInfo);
+                    updateWindow.Owner = this;
                     updateWindow.Show();
+                    updateWindow.Activate();
                 }
                 else
                 {
