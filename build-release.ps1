@@ -22,7 +22,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 3. Create release folder
-$releaseFolder = "SharpShot-Release-v1.0"
+$releaseFolder = "SharpShot-Release-v1.2.7.0"
 if (Test-Path $releaseFolder) { Remove-Item -Recurse -Force $releaseFolder }
 New-Item -ItemType Directory -Path $releaseFolder | Out-Null
 
@@ -82,7 +82,7 @@ Write-Host "Step 7: Creating launchers..." -ForegroundColor Yellow
 $launcherContent = @"
 @echo off
 echo ========================================
-echo    SharpShot v1.0 - Release Package
+echo    SharpShot v1.2.7.0 - Release Package
 echo ========================================
 echo.
 echo Starting SharpShot...
@@ -108,7 +108,7 @@ start "" "OBS-Studio\bin\64bit\obs64.exe"
 
 # 9. Create ZIP package
 Write-Host "Step 8: Creating ZIP package..." -ForegroundColor Yellow
-$zipName = "SharpShot-Release-v1.0.zip"
+$zipName = "SharpShot-Release-v1.2.7.0.zip"
 if (Test-Path $zipName) { Remove-Item $zipName }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
