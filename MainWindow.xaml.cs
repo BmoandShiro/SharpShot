@@ -22,6 +22,7 @@ namespace SharpShot
         private readonly ScreenshotService _screenshotService;
         private readonly RecordingService _recordingService;
         private readonly HotkeyManager _hotkeyManager;
+        private System.Windows.Forms.NotifyIcon? _trayIcon;
         private bool _isDragging;
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
@@ -66,6 +67,9 @@ namespace SharpShot
             
             // Setup event handlers
             SetupEventHandlers();
+
+            // Create system tray icon with context menu (including Settings)
+            InitializeTrayIcon();
             
             // Position window
             PositionWindow();
@@ -647,6 +651,158 @@ namespace SharpShot
             Application.Current.Shutdown();
         }
         #endregion
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+
+            try
+            {
+                if (_trayIcon != null)
+                {
+                    _trayIcon.Visible = false;
+                    _trayIcon.Dispose();
+                    _trayIcon = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to dispose tray icon: {ex.Message}");
+            }
+        }
+
+        private void InitializeTrayIcon()
+        {
+            try
+            {
+                if (_trayIcon != null)
+                {
+                    return;
+                }
+
+                _trayIcon = new System.Windows.Forms.NotifyIcon();
+
+                // Try to reuse the application icon if available
+                var appIcon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly()!.Location);
+                if (appIcon != null)
+                {
+                    _trayIcon.Icon = appIcon;
+                }
+
+                _trayIcon.Text = "SharpShot";
+                _trayIcon.Visible = true;
+
+                // Build context menu
+                var menu = new System.Windows.Forms.ContextMenuStrip();
+
+                var openItem = new System.Windows.Forms.ToolStripMenuItem("Open SharpShot");
+                openItem.Click += (s, e) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (WindowState == WindowState.Minimized)
+                        {
+                            WindowState = WindowState.Normal;
+                        }
+                        Activate();
+                        Focus();
+                    });
+                };
+                menu.Items.Add(openItem);
+
+                var settingsItem = new System.Windows.Forms.ToolStripMenuItem("Settings...");
+                settingsItem.Click += (s, e) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        ShowSettingsWindowOnMonitorUnderCursor();
+                    });
+                };
+                menu.Items.Add(settingsItem);
+
+                menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+
+                var exitItem = new System.Windows.Forms.ToolStripMenuItem("Exit");
+                exitItem.Click += (s, e) =>
+                {
+                    Dispatcher.Invoke(() => Application.Current.Shutdown());
+                };
+                menu.Items.Add(exitItem);
+
+                _trayIcon.ContextMenuStrip = menu;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to initialize tray icon: {ex.Message}");
+            }
+        }
+
+        private void ShowSettingsWindowOnMonitorUnderCursor()
+        {
+            try
+            {
+                // Get the monitor under the current cursor position (where the user right-clicked)
+                var cursorPos = System.Windows.Forms.Cursor.Position;
+                var screen = System.Windows.Forms.Screen.FromPoint(cursorPos);
+
+                var settingsWindow = new UI.SettingsWindow(_settingsService, _hotkeyManager);
+                settingsWindow.Owner = this;
+
+                // If we cannot get composition target yet, just show centered on owner
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget == null || screen == null)
+                {
+                    settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                    settingsWindow.ShowDialog();
+                    return;
+                }
+
+                // Convert monitor working area from device pixels to DIPs
+                var workingArea = screen.WorkingArea;
+                var fromDevice = source.CompositionTarget.TransformFromDevice;
+
+                var topLeftDip = fromDevice.Transform(new Point(workingArea.Left, workingArea.Top));
+                var bottomRightDip = fromDevice.Transform(new Point(workingArea.Right, workingArea.Bottom));
+
+                double monitorLeftDip = topLeftDip.X;
+                double monitorTopDip = topLeftDip.Y;
+                double monitorWidthDip = bottomRightDip.X - topLeftDip.X;
+                double monitorHeightDip = bottomRightDip.Y - topLeftDip.Y;
+
+                // Ensure the settings window uses manual positioning
+                settingsWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+
+                // Use the window's configured Width/Height (from XAML) for centering
+                double settingsWidth = settingsWindow.Width;
+                double settingsHeight = settingsWindow.Height;
+
+                // Center on the monitor
+                settingsWindow.Left = monitorLeftDip + (monitorWidthDip - settingsWidth) / 2;
+                settingsWindow.Top = monitorTopDip + (monitorHeightDip - settingsHeight) / 2;
+
+                // As an extra safety, clamp inside that monitor's bounds
+                if (settingsWindow.Left < monitorLeftDip) settingsWindow.Left = monitorLeftDip;
+                if (settingsWindow.Top < monitorTopDip) settingsWindow.Top = monitorTopDip;
+                if (settingsWindow.Left + settingsWidth > monitorLeftDip + monitorWidthDip)
+                    settingsWindow.Left = monitorLeftDip + monitorWidthDip - settingsWidth;
+                if (settingsWindow.Top + settingsHeight > monitorTopDip + monitorHeightDip)
+                    settingsWindow.Top = monitorTopDip + monitorHeightDip - settingsHeight;
+
+                settingsWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to show settings window on cursor monitor: {ex.Message}");
+
+                // Fallback to the existing behavior
+                var fallbackWindow = new UI.SettingsWindow(_settingsService, _hotkeyManager)
+                {
+                    Owner = this,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+                fallbackWindow.ShowDialog();
+            }
+        }
 
         #region Screenshot Methods
         private async void OnRegionCaptureRequested()
