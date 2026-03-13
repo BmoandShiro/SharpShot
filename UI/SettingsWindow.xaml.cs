@@ -194,6 +194,7 @@ namespace SharpShot.UI
         private readonly HotkeyManager? _hotkeyManager;
         private TextBox? _currentHotkeyTextBox;
         private bool _isListeningForHotkey = false;
+        private List<string> _accumulatedModifiers = new List<string>();
 
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
@@ -611,64 +612,31 @@ namespace SharpShot.UI
             if (!_isListeningForHotkey) return;
             
             e.Handled = true;
-            
-            var modifiers = new List<string>();
-            if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
-                modifiers.Add("Ctrl");
-            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
-                modifiers.Add("Shift");
-            if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt))
-                modifiers.Add("Alt");
-
             var key = e.Key.ToString();
             
             // Skip system keys
             if (key == "System")
                 return;
 
-            // Handle single modifier keys
+            // Modifier key: add to accumulated list and keep listening so user can add more keys
             if (key == "LeftCtrl" || key == "RightCtrl")
             {
-                if (_currentHotkeyTextBox != null)
-                {
-                    _currentHotkeyTextBox.Text = "Ctrl";
-                    _currentHotkeyTextBox.IsReadOnly = true;
-                    // Automatically enable triple-click for single modifier keys
-                    EnableTripleClickForHotkey(_currentHotkeyTextBox);
-                }
-                _isListeningForHotkey = false;
-                _currentHotkeyTextBox = null;
+                AddModifierAndUpdate("Ctrl");
                 return;
             }
-            
             if (key == "LeftShift" || key == "RightShift")
             {
-                if (_currentHotkeyTextBox != null)
-                {
-                    _currentHotkeyTextBox.Text = "Shift";
-                    _currentHotkeyTextBox.IsReadOnly = true;
-                    // Automatically enable triple-click for single modifier keys
-                    EnableTripleClickForHotkey(_currentHotkeyTextBox);
-                }
-                _isListeningForHotkey = false;
-                _currentHotkeyTextBox = null;
+                AddModifierAndUpdate("Shift");
                 return;
             }
-            
             if (key == "LeftAlt" || key == "RightAlt")
             {
-                if (_currentHotkeyTextBox != null)
-                {
-                    _currentHotkeyTextBox.Text = "Alt";
-                    _currentHotkeyTextBox.IsReadOnly = true;
-                    // Automatically enable triple-click for single modifier keys
-                    EnableTripleClickForHotkey(_currentHotkeyTextBox);
-                }
-                _isListeningForHotkey = false;
-                _currentHotkeyTextBox = null;
+                AddModifierAndUpdate("Alt");
                 return;
             }
 
+            // Non-modifier key: build full combo (up to 2 modifiers + this key) and finalize
+            var modifiers = _accumulatedModifiers.Take(2).ToList();
             var hotkey = modifiers.Count > 0 ? string.Join("+", modifiers) + "+" + key : key;
             
             if (_currentHotkeyTextBox != null)
@@ -677,8 +645,23 @@ namespace SharpShot.UI
                 _currentHotkeyTextBox.IsReadOnly = true;
             }
             
+            _accumulatedModifiers.Clear();
             _isListeningForHotkey = false;
             _currentHotkeyTextBox = null;
+        }
+
+        private void AddModifierAndUpdate(string modifier)
+        {
+            if (!_accumulatedModifiers.Contains(modifier))
+                _accumulatedModifiers.Add(modifier);
+            // Keep consistent order: Ctrl, Shift, Alt
+            var ordered = new List<string>();
+            if (_accumulatedModifiers.Contains("Ctrl")) ordered.Add("Ctrl");
+            if (_accumulatedModifiers.Contains("Shift")) ordered.Add("Shift");
+            if (_accumulatedModifiers.Contains("Alt")) ordered.Add("Alt");
+            _accumulatedModifiers = ordered;
+            if (_currentHotkeyTextBox != null)
+                _currentHotkeyTextBox.Text = string.Join("+", _accumulatedModifiers);
         }
         
         private void EnableTripleClickForHotkey(TextBox hotkeyTextBox)
@@ -704,6 +687,7 @@ namespace SharpShot.UI
             {
                 _currentHotkeyTextBox = textBox;
                 _isListeningForHotkey = true;
+                _accumulatedModifiers.Clear();
                 textBox.IsReadOnly = false;
                 textBox.Text = "Press a key...";
                 textBox.Focus();
@@ -718,12 +702,12 @@ namespace SharpShot.UI
                 if (_currentHotkeyTextBox != null)
                 {
                     _currentHotkeyTextBox.IsReadOnly = true;
-                    // If no key was pressed, clear the text
                     if (_currentHotkeyTextBox.Text == "Press a key...")
-                    {
                         _currentHotkeyTextBox.Text = "";
-                    }
+                    else if (_currentHotkeyTextBox.Text == "Ctrl" || _currentHotkeyTextBox.Text == "Shift" || _currentHotkeyTextBox.Text == "Alt")
+                        EnableTripleClickForHotkey(_currentHotkeyTextBox);
                 }
+                _accumulatedModifiers.Clear();
                 _currentHotkeyTextBox = null;
             }
         }
