@@ -448,6 +448,10 @@ namespace SharpShot.UI
             {
                 startWithWindowsCheckBox.IsChecked = _originalSettings.StartWithWindowsMinimized;
             }
+            if (FindName("MinimizeOnCloseCheckBox") is System.Windows.Controls.CheckBox minimizeOnCloseCheckBox)
+            {
+                minimizeOnCloseCheckBox.IsChecked = _originalSettings.MinimizeOnClose;
+            }
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
@@ -858,6 +862,10 @@ namespace SharpShot.UI
                 _originalSettings.EnableGlobalHotkeys = GlobalHotkeysCheckBox.IsChecked ?? false;
                 _originalSettings.EnableAutoUpdateCheck = EnableAutoUpdateCheckBox.IsChecked ?? true;
                 _originalSettings.StartMinimized = StartMinimizedCheckBox.IsChecked ?? false;
+                if (FindName("MinimizeOnCloseCheckBox") is System.Windows.Controls.CheckBox minimizeOnCloseCheckBox)
+                {
+                    _originalSettings.MinimizeOnClose = minimizeOnCloseCheckBox.IsChecked ?? false;
+                }
                 if (FindName("RestoreDashboardPositionCheckBox") is System.Windows.Controls.CheckBox restoreDashboardCheckBox)
                 {
                     _originalSettings.RestoreDashboardPosition = restoreDashboardCheckBox.IsChecked ?? true;
@@ -1078,7 +1086,7 @@ namespace SharpShot.UI
             target.DashboardFollowsCaptureMonitor = source.DashboardFollowsCaptureMonitor;
             target.DashboardAutoReturnAfterCapture = source.DashboardAutoReturnAfterCapture;
             target.EditorFollowsCaptureMonitor = source.EditorFollowsCaptureMonitor;
-            target.RestoreDashboardPosition = source.RestoreDashboardPosition;
+            target.MinimizeOnClose = source.MinimizeOnClose;
             
             // Copy hotkeys
             target.Hotkeys.Clear();

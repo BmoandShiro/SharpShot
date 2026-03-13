@@ -40,6 +40,7 @@ namespace SharpShot.Models
         private double _dashboardLeft = double.NaN;
         private double _dashboardTop = double.NaN;
         private bool _restoreDashboardPosition = true;
+        private bool _minimizeOnClose;
         private bool _dashboardFollowsCaptureMonitor;
         private bool _dashboardAutoReturnAfterCapture;
         private bool _editorFollowsCaptureMonitor;
@@ -82,6 +83,7 @@ namespace SharpShot.Models
             DashboardLeft = double.NaN; // Use auto positioning by default
             DashboardTop = double.NaN;  // Use auto positioning by default
             RestoreDashboardPosition = true; // Default to restoring last position
+            MinimizeOnClose = false; // Default to closing app on close button
             DashboardFollowsCaptureMonitor = false; // Default: don't move dashboard to capture monitor
             DashboardAutoReturnAfterCapture = false; // Default: don't auto-return after capture
             EditorFollowsCaptureMonitor = false; // Default: editor uses configured monitor
@@ -153,6 +155,17 @@ namespace SharpShot.Models
         {
             get => _startWithWindowsMinimized;
             set => SetProperty(ref _startWithWindowsMinimized, value);
+        }
+
+        /// <summary>
+        /// When true, clicking the Close button on the dashboard will minimize SharpShot
+        /// to the tray instead of exiting the application. The tray menu Exit item still
+        /// fully closes the app.
+        /// </summary>
+        public bool MinimizeOnClose
+        {
+            get => _minimizeOnClose;
+            set => SetProperty(ref _minimizeOnClose, value);
         }
 
         public Dictionary<string, string> Hotkeys

@@ -676,6 +676,21 @@ namespace SharpShot
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                var settings = _settingsService.CurrentSettings;
+                if (settings.MinimizeOnClose)
+                {
+                    // Mimic clicking the minimize button instead of exiting
+                    MinimizeButton_Click(sender, e);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MinimizeOnClose check failed, falling back to shutdown: {ex.Message}");
+            }
+
             Application.Current.Shutdown();
         }
         #endregion

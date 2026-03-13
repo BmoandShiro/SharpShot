@@ -465,6 +465,11 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="16,0,0,10"
                           ToolTip="Adds SharpShot to your Windows startup apps and starts it minimized to the tray when Windows starts"/>
+                <CheckBox x:Name="MinimizeOnCloseCheckBox"
+                          Content="When closing dashboard, minimize to tray instead of exiting"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="16,0,0,10"
+                          ToolTip="When enabled, clicking the Close button on the main SharpShot dashboard will minimize it to the tray. Use the tray menu's Exit option to fully close SharpShot."/>
                 <CheckBox x:Name="RestoreDashboardPositionCheckBox"
                           Content="Restore dashboard to last position"
                           Style="{StaticResource DarkCheckBoxStyle}"
