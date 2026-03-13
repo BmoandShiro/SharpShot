@@ -5,7 +5,7 @@ param(
 
 Write-Host "Building SharpShot MSI package..." -ForegroundColor Green
 
-$portableDir = "SharpShot-Release-v1.2.8.1"
+$portableDir = "SharpShot-Release-v1.2.8.2"
 $installerDir = "Installer"
 $productWxs = Join-Path $installerDir "SharpShot.wxs"
 $harvestWxs = Join-Path $installerDir "SharpShot.Harvest.wxs"
@@ -114,7 +114,7 @@ if (-not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir | Out-Null
 }
 
-$msiName = "SharpShot-1.2.8.1.msi"
+$msiName = "SharpShot-1.2.8.2.msi"
 $msiPath = Join-Path $outputDir $msiName
 
 Write-Host "Step 3: Linking MSI '$msiPath'..." -ForegroundColor Yellow
