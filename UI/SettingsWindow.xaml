@@ -81,7 +81,7 @@
                        Cursor="Hand"/>
             <Button Grid.Column="1" 
                     x:Name="CloseSettingsButton"
-                    Content="✕"
+                    Content="Ã¢Å“â€¢"
                     Width="30" 
                     Height="30"
                     FontSize="16"
@@ -1162,12 +1162,12 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,15,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="v1.2.8.0"
+                           Text="v1.2.8.1"
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"
                            VerticalAlignment="Center"/>
-                <TextBlock Text=" • "
+                <TextBlock Text=" Ã¢â‚¬Â¢ "
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"

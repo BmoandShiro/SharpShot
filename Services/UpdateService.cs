@@ -191,14 +191,14 @@ namespace SharpShot.Services
                 progress?.Report(new UpdateProgress { Status = "Update ready! Restarting application...", Percentage = 100 });
 
                 // Run the PowerShell script via powershell.exe so Windows doesn't prompt "open with" for .ps1
-                var psi = new ProcessStartInfo
+                var scriptPsi = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
                     Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -File \"{updateScriptPath}\"",
                     UseShellExecute = true,
                     CreateNoWindow = true
                 };
-                Process.Start(psi);
+                Process.Start(scriptPsi);
 
                 // Give the script a moment to start, then exit
                 await Task.Delay(500);

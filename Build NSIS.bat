@@ -7,12 +7,12 @@ echo ========================================
 echo.
 echo This will:
 echo   - Use the portable folder:
-echo       SharpShot-Release-v1.2.8.0
+echo       SharpShot-Release-v1.2.8.1
 echo   - Build SharpShot-Setup.exe with NSIS
 echo.
 
 set "NSIS_SCRIPT=Installer\SharpShot.nsi"
-set "PORTABLE_DIR=SharpShot-Release-v1.2.8.0"
+set "PORTABLE_DIR=SharpShot-Release-v1.2.8.1"
 
 if not exist "%PORTABLE_DIR%" (
   echo [ERROR] Portable folder "%PORTABLE_DIR%" not found.

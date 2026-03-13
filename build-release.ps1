@@ -1,10 +1,20 @@
 # SharpShot Release Builder
 # Uses your working OBS Docker.bat workflow but creates a proper release package
+# Version is read from the Version file; Apply-Version.ps1 syncs it to all project files before building.
 param(
     [switch]$NoPrompt  # When set, skips "open folder?" and "stop Docker?" prompts (for 3xbuild.bat)
 )
 
-Write-Host "Building SharpShot Release Package..." -ForegroundColor Green
+# Sync version from Version file to csproj, installers, etc., then read it for this script
+& "$PSScriptRoot\Apply-Version.ps1" -ProjectDir $PSScriptRoot
+$version = (Get-Content "$PSScriptRoot\Version" -Raw).Trim()
+$parts = $version.Split('.')
+if ($parts.Length -eq 2) { $version = "$version.0.0" }
+elseif ($parts.Length -eq 3) { $version = "$version.0" }
+$releaseFolder = "SharpShot-Release-v$version"
+$zipName = "SharpShot-Release-v$version.zip"
+
+Write-Host "Building SharpShot Release Package (v$version)..." -ForegroundColor Green
 
 $sourceDir = "bin\x64\Release\net8.0-windows\win-x64"
 $dockerSucceeded = $false
@@ -43,7 +53,6 @@ if (-not $dockerSucceeded) {
 }
 
 # 3. Create release folder
-$releaseFolder = "SharpShot-Release-v1.2.8.0"
 if (Test-Path $releaseFolder) { Remove-Item -Recurse -Force $releaseFolder }
 New-Item -ItemType Directory -Path $releaseFolder | Out-Null
 
@@ -105,7 +114,7 @@ Write-Host "Step 7: Creating launchers..." -ForegroundColor Yellow
 $launcherContent = @"
 @echo off
 echo ========================================
-echo    SharpShot v1.2.8.0 - Release Package
+echo    SharpShot v$version - Release Package
 echo ========================================
 echo.
 echo Starting SharpShot...
@@ -131,7 +140,6 @@ start "" "OBS-Studio\bin\64bit\obs64.exe"
 
 # 9. Create ZIP package
 Write-Host "Step 8: Creating ZIP package..." -ForegroundColor Yellow
-$zipName = "SharpShot-Release-v1.2.8.0.zip"
 if (Test-Path $zipName) { Remove-Item $zipName }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
