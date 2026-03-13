@@ -212,6 +212,7 @@ namespace SharpShot.UI
             
             // Populate editor display monitor dropdown
             PopulateEditorDisplayMonitorDropdown();
+            PopulateDashboardDisplayMonitorDropdown();
             
             // Populate magnifier stationary monitor dropdown BEFORE loading settings
             PopulateMagnifierStationaryMonitorDropdown();
@@ -784,6 +785,11 @@ namespace SharpShot.UI
                 {
                     _originalSettings.ScreenshotEditorDisplayMonitor = editorMonitorItem.Content?.ToString() ?? "Primary Monitor";
                 }
+
+                if (DashboardDisplayMonitorComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem dashboardMonitorItem)
+                {
+                    _originalSettings.DashboardDisplayMonitor = dashboardMonitorItem.Content?.ToString() ?? "Primary Monitor";
+                }
                 
                 if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
                 {
@@ -1026,6 +1032,9 @@ namespace SharpShot.UI
                 }))
                 : new List<Models.MagnifierBoundaryBox>();
             target.ScreenshotEditorDisplayMonitor = source.ScreenshotEditorDisplayMonitor;
+            target.DashboardDisplayMonitor = source.DashboardDisplayMonitor;
+            target.DashboardLeft = source.DashboardLeft;
+            target.DashboardTop = source.DashboardTop;
             
             // Copy hotkeys
             target.Hotkeys.Clear();
@@ -1862,6 +1871,44 @@ namespace SharpShot.UI
             if (EditorDisplayMonitorComboBox.SelectedItem == null)
             {
                 EditorDisplayMonitorComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private void PopulateDashboardDisplayMonitorDropdown()
+        {
+            // Clear existing items
+            DashboardDisplayMonitorComboBox.Items.Clear();
+
+            // Get all screens
+            var screens = System.Windows.Forms.Screen.AllScreens;
+
+            // Add primary monitor option first
+            DashboardDisplayMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Primary Monitor" });
+
+            // Add individual monitors
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var screen = screens[i];
+                var isPrimary = screen.Primary;
+                var monitorName = isPrimary ? $"Monitor {i + 1} (Primary)" : $"Monitor {i + 1}";
+                DashboardDisplayMonitorComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = monitorName });
+            }
+
+            // Select the saved setting
+            foreach (var item in DashboardDisplayMonitorComboBox.Items)
+            {
+                if (item is System.Windows.Controls.ComboBoxItem comboItem &&
+                    comboItem.Content.ToString() == _originalSettings.DashboardDisplayMonitor)
+                {
+                    DashboardDisplayMonitorComboBox.SelectedItem = item;
+                    break;
+                }
+            }
+
+            // If no match found, default to "Primary Monitor"
+            if (DashboardDisplayMonitorComboBox.SelectedItem == null)
+            {
+                DashboardDisplayMonitorComboBox.SelectedIndex = 0;
             }
         }
 

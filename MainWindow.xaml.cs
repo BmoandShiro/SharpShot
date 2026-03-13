@@ -182,41 +182,67 @@ namespace SharpShot
         {
             try
             {
-                // Use the primary screen for reliable positioning
-                var primaryScreen = System.Windows.Forms.Screen.PrimaryScreen;
-                if (primaryScreen == null)
+                var settings = _settingsService.CurrentSettings;
+
+                // If we have a previously saved position, try to use it first (in DIPs)
+                if (!double.IsNaN(settings.DashboardLeft) && !double.IsNaN(settings.DashboardTop))
                 {
-                    // Fallback to first available screen
-                    var allScreens = System.Windows.Forms.Screen.AllScreens;
-                    if (allScreens.Length > 0)
+                    Left = settings.DashboardLeft;
+                    Top = settings.DashboardTop;
+
+                    if (EnsureWindowIsOnScreen())
                     {
-                        primaryScreen = allScreens[0];
-                    }
-                    else
-                    {
-                        // Last resort - use default positioning
-                        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                        System.Diagnostics.Debug.WriteLine($"Positioning window: Using saved position ({Left}, {Top})");
                         return;
                     }
+
+                    System.Diagnostics.Debug.WriteLine("Saved window position was off-screen; falling back to automatic positioning.");
                 }
-                
-                // Position on primary screen, above taskbar
-                var screenBounds = primaryScreen.Bounds;
-                
-                // Center horizontally on the primary screen
-                Left = screenBounds.X + (screenBounds.Width - Width) / 2;
-                
-                // Position above taskbar (typically 40-50 pixels from bottom)
-                Top = screenBounds.Y + screenBounds.Height - Height - 50;
-                
-                // Ensure window is within the primary screen bounds
-                if (Left < screenBounds.X) Left = screenBounds.X;
-                if (Top < screenBounds.Y) Top = screenBounds.Y;
-                if (Left + Width > screenBounds.X + screenBounds.Width) Left = screenBounds.X + screenBounds.Width - Width;
-                if (Top + Height > screenBounds.Y + screenBounds.Height) Top = screenBounds.Y + screenBounds.Height - Height;
-                
-                // Debug output for positioning
-                System.Diagnostics.Debug.WriteLine($"Positioning window: Primary screen bounds: {screenBounds}, Window size: {Width}x{Height}, Position: ({Left}, {Top})");
+
+                // Determine which monitor to use for the dashboard
+                var targetScreen = GetDashboardScreen(settings.DashboardDisplayMonitor);
+                if (targetScreen == null)
+                {
+                    // Last resort - use default positioning
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                    return;
+                }
+
+                // Use working area (excludes taskbar) for positioning
+                var workingArea = targetScreen.WorkingArea;
+
+                // Convert working area from physical pixels to DIPs for this window
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget == null)
+                {
+                    // Fallback if no source yet - center on primary screen using default WPF behavior
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen;
+                    return;
+                }
+
+                var transform = source.CompositionTarget.TransformFromDevice;
+                var topLeftDip = transform.Transform(new System.Windows.Point(workingArea.Left, workingArea.Top));
+                var bottomRightDip = transform.Transform(new System.Windows.Point(workingArea.Right, workingArea.Bottom));
+
+                double screenLeftDip = topLeftDip.X;
+                double screenTopDip = topLeftDip.Y;
+                double screenWidthDip = bottomRightDip.X - topLeftDip.X;
+                double screenHeightDip = bottomRightDip.Y - topLeftDip.Y;
+
+                // Center horizontally on the selected screen
+                Left = screenLeftDip + (screenWidthDip - Width) / 2;
+
+                // Position near the bottom of the selected screen (above taskbar)
+                const double bottomMargin = 50.0;
+                Top = screenTopDip + screenHeightDip - Height - bottomMargin;
+
+                // Clamp to the working area's DIP bounds to guarantee visibility
+                if (Left < screenLeftDip) Left = screenLeftDip;
+                if (Top < screenTopDip) Top = screenTopDip;
+                if (Left + Width > screenLeftDip + screenWidthDip) Left = screenLeftDip + screenWidthDip - Width;
+                if (Top + Height > screenTopDip + screenHeightDip) Top = screenTopDip + screenHeightDip - Height;
+
+                System.Diagnostics.Debug.WriteLine($"Positioning window: Dashboard monitor working area (DIPs) L={screenLeftDip},T={screenTopDip},W={screenWidthDip},H={screenHeightDip}; Window position: ({Left}, {Top})");
             }
             catch (Exception ex)
             {
@@ -224,6 +250,100 @@ namespace SharpShot
                 // Fallback to center screen if positioning fails
                 WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
+        }
+
+        /// <summary>
+        /// Selects the target monitor for the dashboard based on the saved setting.
+        /// </summary>
+        private System.Windows.Forms.Screen GetDashboardScreen(string dashboardDisplayMonitor)
+        {
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            if (screens == null || screens.Length == 0)
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(dashboardDisplayMonitor) || dashboardDisplayMonitor == "Primary Monitor")
+            {
+                return System.Windows.Forms.Screen.PrimaryScreen ?? screens[0];
+            }
+
+            if (dashboardDisplayMonitor.StartsWith("Monitor "))
+            {
+                // Strip optional " (Primary)" suffix
+                var monitorNumberText = dashboardDisplayMonitor
+                    .Replace(" (Primary)", string.Empty)
+                    .Replace("Monitor ", string.Empty)
+                    .Trim();
+
+                if (int.TryParse(monitorNumberText, out int monitorNumber) && monitorNumber > 0 && monitorNumber <= screens.Length)
+                {
+                    return screens[monitorNumber - 1];
+                }
+            }
+
+            // Fallback to primary or first screen
+            return System.Windows.Forms.Screen.PrimaryScreen ?? screens[0];
+        }
+
+        /// <summary>
+        /// Ensures the window is at least partially visible on some monitor.
+        /// Returns true if the position is valid; false if it needed to be corrected.
+        /// </summary>
+        private bool EnsureWindowIsOnScreen()
+        {
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            if (screens == null || screens.Length == 0)
+            {
+                return true;
+            }
+
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget == null)
+            {
+                return true;
+            }
+
+            var toDevice = source.CompositionTarget.TransformToDevice;
+            var fromDevice = source.CompositionTarget.TransformFromDevice;
+
+            // Convert current window rectangle (DIPs) to device pixels
+            var topLeftDevice = toDevice.Transform(new System.Windows.Point(Left, Top));
+            var bottomRightDevice = toDevice.Transform(new System.Windows.Point(Left + Width, Top + Height));
+
+            var windowRect = new System.Drawing.Rectangle(
+                (int)topLeftDevice.X,
+                (int)topLeftDevice.Y,
+                (int)(bottomRightDevice.X - topLeftDevice.X),
+                (int)(bottomRightDevice.Y - topLeftDevice.Y));
+
+            // Check if the window intersects any screen's working area
+            foreach (var screen in screens)
+            {
+                var working = screen.WorkingArea;
+                if (working.IntersectsWith(windowRect))
+                {
+                    return true;
+                }
+            }
+
+            // If it's completely off-screen, move it to the primary screen's working area center
+            var primary = System.Windows.Forms.Screen.PrimaryScreen ?? screens[0];
+            var workingArea = primary.WorkingArea;
+
+            var topLeftDip = fromDevice.Transform(new System.Windows.Point(workingArea.Left, workingArea.Top));
+            var bottomRightDip = fromDevice.Transform(new System.Windows.Point(workingArea.Right, workingArea.Bottom));
+
+            double screenLeftDip = topLeftDip.X;
+            double screenTopDip = topLeftDip.Y;
+            double screenWidthDip = bottomRightDip.X - topLeftDip.X;
+            double screenHeightDip = bottomRightDip.Y - topLeftDip.Y;
+
+            Left = screenLeftDip + (screenWidthDip - Width) / 2;
+            Top = screenTopDip + (screenHeightDip - Height) / 2;
+
+            System.Diagnostics.Debug.WriteLine($"EnsureWindowIsOnScreen: Window was off-screen, moved to ({Left}, {Top}) on primary monitor.");
+            return false;
         }
 
         #region Window Dragging
@@ -238,6 +358,19 @@ namespace SharpShot
         {
             _isDragging = false;
             ReleaseMouseCapture();
+
+            // Save the final window position so we can restore it next time (in DIPs)
+            try
+            {
+                var settings = _settingsService.CurrentSettings;
+                settings.DashboardLeft = Left;
+                settings.DashboardTop = Top;
+                _settingsService.SaveSettings();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save dashboard window position: {ex.Message}");
+            }
         }
 
         private void MainWindow_MouseMove(object sender, MouseEventArgs e)

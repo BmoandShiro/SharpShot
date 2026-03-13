@@ -36,6 +36,9 @@ namespace SharpShot.Models
         private List<string> _magnifierAutoStationaryMonitors = new List<string>(); // Monitors that should use stationary in Auto mode
         private List<MagnifierBoundaryBox> _magnifierBoundaryBoxes = new List<MagnifierBoundaryBox>(); // Boundary boxes for magnifier detection
         private string _screenshotEditorDisplayMonitor = string.Empty;
+        private string _dashboardDisplayMonitor = "Primary Monitor";
+        private double _dashboardLeft = double.NaN;
+        private double _dashboardTop = double.NaN;
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
         private bool _enableAutoUpdateCheck = true;
@@ -71,6 +74,9 @@ namespace SharpShot.Models
             MagnifierAutoStationaryMonitors = new List<string>(); // Default: no monitors auto-switch to stationary
             MagnifierBoundaryBoxes = new List<MagnifierBoundaryBox>(); // Default: no boundary boxes
             ScreenshotEditorDisplayMonitor = "Primary Monitor"; // Default to primary monitor for editor display
+            DashboardDisplayMonitor = "Primary Monitor"; // Default to primary monitor for main dashboard
+            DashboardLeft = double.NaN; // Use auto positioning by default
+            DashboardTop = double.NaN;  // Use auto positioning by default
             DisableAllPopups = false; // Default to false - show popups
             SkipEditorAndAutoCopy = false; // Default to false - show editor
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
@@ -247,6 +253,36 @@ namespace SharpShot.Models
         {
             get => _screenshotEditorDisplayMonitor;
             set => SetProperty(ref _screenshotEditorDisplayMonitor, value);
+        }
+
+        /// <summary>
+        /// Controls which monitor the main SharpShot dashboard window opens on.
+        /// Uses the same naming pattern as ScreenshotEditorDisplayMonitor (\"Primary Monitor\", \"Monitor 1\", etc.).
+        /// </summary>
+        public string DashboardDisplayMonitor
+        {
+            get => _dashboardDisplayMonitor;
+            set => SetProperty(ref _dashboardDisplayMonitor, value);
+        }
+
+        /// <summary>
+        /// Saved horizontal position of the main dashboard window in device-independent pixels (DIPs).
+        /// If NaN, automatic positioning is used.
+        /// </summary>
+        public double DashboardLeft
+        {
+            get => _dashboardLeft;
+            set => SetProperty(ref _dashboardLeft, value);
+        }
+
+        /// <summary>
+        /// Saved vertical position of the main dashboard window in device-independent pixels (DIPs).
+        /// If NaN, automatic positioning is used.
+        /// </summary>
+        public double DashboardTop
+        {
+            get => _dashboardTop;
+            set => SetProperty(ref _dashboardTop, value);
         }
 
         public bool DisableAllPopups

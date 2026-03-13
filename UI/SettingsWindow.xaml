@@ -364,6 +364,22 @@
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
 
+                <!-- Dashboard Display Monitor -->
+                <TextBlock Text="Dashboard Display Monitor:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="DashboardDisplayMonitorComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15"
+                          ToolTip="Choose which monitor shows the main SharpShot dashboard window">
+                    <ComboBoxItem Content="Primary Monitor"/>
+                    <ComboBoxItem Content="Monitor 1"/>
+                    <ComboBoxItem Content="Monitor 2"/>
+                    <ComboBoxItem Content="Monitor 3"/>
+                    <ComboBoxItem Content="Monitor 4"/>
+                </ComboBox>
+
                 <!-- Recording Engine -->
                 <TextBlock Text="Recording Engine:" 
                            Foreground="{StaticResource TextBrush}" 
