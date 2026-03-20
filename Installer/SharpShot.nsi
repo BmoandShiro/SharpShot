@@ -5,8 +5,8 @@
 
 !define APP_NAME "SharpShot"
 !define APP_PUBLISHER "BmoandShiro"
-!define APP_VERSION "1.2.7.0"
-!define APP_PORTABLE_DIR "SharpShot-Release-v1.2.7.0"
+!define APP_VERSION "1.2.8.4"
+!define APP_PORTABLE_DIR "SharpShot-Release-v1.2.8.4"
 
 ; Output installer
 OutFile "SharpShot-Setup.exe"

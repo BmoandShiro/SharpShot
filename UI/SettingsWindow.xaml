@@ -378,7 +378,7 @@
                            Margin="0,0,0,5"/>
                 <ComboBox x:Name="DashboardDisplayMonitorComboBox" 
                           Style="{StaticResource DarkComboBoxStyle}"
-                          Margin="0,0,0,15"
+                          Margin="0,0,0,10"
                           ToolTip="Choose which monitor shows the main SharpShot dashboard window">
                     <ComboBoxItem Content="Primary Monitor"/>
                     <ComboBoxItem Content="Monitor 1"/>
@@ -386,6 +386,46 @@
                     <ComboBoxItem Content="Monitor 3"/>
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
+
+                <TextBlock Text="Dashboard window size (pixels):"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Width" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBox x:Name="DashboardWidthTextBox" Grid.Column="1"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             ToolTip="Dashboard width in logical pixels. Leave empty for default (500). Range: 280–2400."/>
+                    <TextBlock Grid.Column="3" Text="Height" VerticalAlignment="Center" Margin="12,0,8,0"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBox x:Name="DashboardHeightTextBox" Grid.Column="4"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50–400."/>
+                    <Button x:Name="DashboardSizeResetButton" Grid.Column="6"
+                            Style="{StaticResource ModernButtonStyle}"
+                            VerticalAlignment="Center"
+                            Click="DashboardSizeResetButton_Click"
+                            Width="128"
+                            Height="32"
+                            ToolTip="Set width and height to the default dashboard size (500 × 80)">
+                        <TextBlock Text="Reset to default"
+                                   Foreground="#FFFF8C00"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
 
                 <!-- Recording Engine -->
                 <TextBlock Text="Recording Engine:" 
@@ -1169,7 +1209,7 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,15,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="v1.2.8.3"
+                           Text="v1.2.8.4"
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"

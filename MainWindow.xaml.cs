@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Controls;
 using System.Windows.Media.Effects;
 using System.Windows.Interop;
+using SharpShot.Models;
 using SharpShot.Services;
 using SharpShot.Utils;
 using System.Threading.Tasks;
@@ -73,7 +74,8 @@ namespace SharpShot
             // Create system tray icon with context menu (including Settings)
             InitializeTrayIcon();
             
-            // Position window
+            ApplyDashboardDimensionsFromSettings();
+            // Position window (uses current Width/Height)
             PositionWindow();
             
             // Start minimized if "Start with Windows (minimized)" or "Start Minimized" is enabled
@@ -182,6 +184,25 @@ namespace SharpShot
             _hotkeyManager.Initialize();
             
             // NOTE: Hotkeys will be applied AFTER the window handle is set in OnSourceInitialized
+        }
+
+        /// <summary>
+        /// Applies <see cref="Settings.DashboardWidth"/> and <see cref="Settings.DashboardHeight"/> (0 = built-in defaults).
+        /// </summary>
+        private void ApplyDashboardDimensionsFromSettings()
+        {
+            var s = _settingsService.CurrentSettings;
+            Width = s.DashboardWidth <= 0 ? Settings.DefaultDashboardWidth : s.DashboardWidth;
+            Height = s.DashboardHeight <= 0 ? Settings.DefaultDashboardHeight : s.DashboardHeight;
+        }
+
+        /// <summary>
+        /// Re-reads dashboard size from settings and re-runs positioning (e.g. after saving Settings).
+        /// </summary>
+        public void ApplyDashboardLayoutFromSettings()
+        {
+            ApplyDashboardDimensionsFromSettings();
+            PositionWindow();
         }
 
         public void PositionWindow()

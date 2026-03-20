@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -458,6 +459,11 @@ namespace SharpShot.UI
             EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             EnableAutoUpdateCheckBox.IsChecked = _originalSettings.EnableAutoUpdateCheck;
+
+            double dW = _originalSettings.DashboardWidth;
+            double dH = _originalSettings.DashboardHeight;
+            DashboardWidthTextBox.Text = (dW <= 0 ? Settings.DefaultDashboardWidth : dW).ToString("0", CultureInfo.InvariantCulture);
+            DashboardHeightTextBox.Text = (dH <= 0 ? Settings.DefaultDashboardHeight : dH).ToString("0", CultureInfo.InvariantCulture);
             
             // Load magnifier zoom level
             if (MagnifierZoomComboBox != null && MagnifierZoomComboBox.Items.Count > 0)
@@ -636,6 +642,12 @@ namespace SharpShot.UI
             }
         }
 
+        private void DashboardSizeResetButton_Click(object sender, RoutedEventArgs e)
+        {
+            DashboardWidthTextBox.Text = Settings.DefaultDashboardWidth.ToString("0", CultureInfo.InvariantCulture);
+            DashboardHeightTextBox.Text = Settings.DefaultDashboardHeight.ToString("0", CultureInfo.InvariantCulture);
+        }
+
         private void HotkeyTextBox_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (!_isListeningForHotkey) return;
@@ -811,6 +823,9 @@ namespace SharpShot.UI
                 {
                     _originalSettings.DashboardDisplayMonitor = dashboardMonitorItem.Content?.ToString() ?? "Primary Monitor";
                 }
+
+                _originalSettings.DashboardWidth = ParseDashboardDimensionField(DashboardWidthTextBox.Text);
+                _originalSettings.DashboardHeight = ParseDashboardDimensionField(DashboardHeightTextBox.Text);
                 
                 if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
                 {
@@ -1015,10 +1030,10 @@ namespace SharpShot.UI
                 // Update hotkeys if hotkey manager is available
                 _hotkeyManager?.UpdateHotkeys();
 
-                // Reposition main dashboard immediately to reflect updated monitor / restore settings
+                // Resize and reposition main dashboard immediately (monitor, restore, and size)
                 if (Owner is MainWindow mainWindow)
                 {
-                    mainWindow.PositionWindow();
+                    mainWindow.ApplyDashboardLayoutFromSettings();
                 }
                 
                 DialogResult = true;
@@ -1035,6 +1050,14 @@ namespace SharpShot.UI
         {
             DialogResult = false;
             Close();
+        }
+
+        /// <summary>Parses dashboard width/height text; empty or invalid → 0 (use defaults). Raw value is clamped when assigned to <see cref="Settings"/>.</summary>
+        private static double ParseDashboardDimensionField(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return 0;
+            return double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : 0;
         }
 
         private void CopySettings(Settings source, Settings target)
@@ -1082,6 +1105,8 @@ namespace SharpShot.UI
             target.DashboardDisplayMonitor = source.DashboardDisplayMonitor;
             target.DashboardLeft = source.DashboardLeft;
             target.DashboardTop = source.DashboardTop;
+            target.DashboardWidth = source.DashboardWidth;
+            target.DashboardHeight = source.DashboardHeight;
             target.RestoreDashboardPosition = source.RestoreDashboardPosition;
             target.DashboardFollowsCaptureMonitor = source.DashboardFollowsCaptureMonitor;
             target.DashboardAutoReturnAfterCapture = source.DashboardAutoReturnAfterCapture;
@@ -2126,26 +2151,8 @@ namespace SharpShot.UI
                 if (HotkeysHeader != null)
                     HotkeysHeader.Foreground = brush;
                 
-                // Update textbox borders
-                if (SavePathTextBox != null)
-                    SavePathTextBox.BorderBrush = brush;
-                if (IconColorTextBox != null)
-                    IconColorTextBox.BorderBrush = brush;
-                
-                // Update hotkey textbox borders
-                if (ScreenshotRegionHotkeyTextBox != null)
-                    ScreenshotRegionHotkeyTextBox.BorderBrush = brush;
-                if (ScreenshotFullscreenHotkeyTextBox != null)
-                    ScreenshotFullscreenHotkeyTextBox.BorderBrush = brush;
-                if (RecordRegionHotkeyTextBox != null)
-                    RecordRegionHotkeyTextBox.BorderBrush = brush;
-                if (RecordFullscreenHotkeyTextBox != null)
-                    RecordFullscreenHotkeyTextBox.BorderBrush = brush;
-                if (SaveHotkeyTextBox != null)
-                    SaveHotkeyTextBox.BorderBrush = brush;
-                if (CopyHotkeyTextBox != null)
-                    CopyHotkeyTextBox.BorderBrush = brush;
-                
+                // TextBox borders use {DynamicResource AccentBrush} via DarkTextBoxStyle (no per-control assignment needed)
+
                 // Update Cancel and Save buttons with dynamic hover effects
                 if (CancelButton != null)
                 {
@@ -2175,6 +2182,13 @@ namespace SharpShot.UI
                     browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
                     if (browseButton.Content is TextBlock browseText)
                         browseText.Foreground = brush;
+                }
+
+                if (DashboardSizeResetButton != null)
+                {
+                    DashboardSizeResetButton.Style = CreateModernButtonStyle(color, 128.0, 32.0);
+                    if (DashboardSizeResetButton.Content is TextBlock resetSizeText)
+                        resetSizeText.Foreground = brush;
                 }
                 
                 // Update Add Boundary Box button with dynamic hover effects
@@ -2341,6 +2355,13 @@ namespace SharpShot.UI
                     browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
                     if (browseButton.Content is TextBlock browseText)
                         browseText.Foreground = brush;
+                }
+
+                if (DashboardSizeResetButton != null)
+                {
+                    DashboardSizeResetButton.Style = CreateModernButtonStyle(color, 128.0, 32.0);
+                    if (DashboardSizeResetButton.Content is TextBlock resetSizeText)
+                        resetSizeText.Foreground = brush;
                 }
                 
                 // Update Close button

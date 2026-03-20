@@ -338,8 +338,8 @@ namespace SharpShot.Services
 
 Write-Host ""Applying SharpShot update..."" -ForegroundColor Green
 
-# Wait for SharpShot to fully close
-Start-Sleep -Seconds 2
+# Wait for SharpShot to fully close and release the .exe file (single-file app locks it)
+Start-Sleep -Seconds 5
 
 # Find the extracted update files
 $updateSource = ""{extractPath.Replace("\\", "\\\\")}""
@@ -357,6 +357,9 @@ Write-Host ""To: $appTarget""
 
 # Copy all files except settings and user data
 $excludeItems = @(""settings.json"", ""OBS-Studio"", ""ffmpeg"", ""*.log"")
+
+$exeSourcePath = $null
+$exeTargetPath = Join-Path $appTarget ""SharpShot.exe""
 
 Get-ChildItem -Path $updateSource -Recurse | ForEach-Object {{
     $relativePath = $_.FullName.Substring($updateSource.Length + 1)
@@ -381,12 +384,37 @@ Get-ChildItem -Path $updateSource -Recurse | ForEach-Object {{
             New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
         }}
     }} else {{
+        # Defer copying SharpShot.exe until last so process has time to release it
+        if ($_.Name -eq ""SharpShot.exe"") {{
+            $exeSourcePath = $_.FullName
+            return
+        }}
         $targetDir = Split-Path $targetPath -Parent
         if (!(Test-Path $targetDir)) {{
             New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
         }}
         Copy-Item $_.FullName $targetPath -Force
         Write-Host ""Updated: $relativePath""
+    }}
+}}
+
+# Copy SharpShot.exe last with retries (single-file app may still hold the handle)
+if ($exeSourcePath) {{
+    $maxRetries = 15
+    $retryDelaySeconds = 1
+    for ($i = 1; $i -le $maxRetries; $i++) {{
+        try {{
+            Copy-Item $exeSourcePath $exeTargetPath -Force -ErrorAction Stop
+            Write-Host ""Updated: SharpShot.exe"" -ForegroundColor Green
+            break
+        }} catch {{
+            if ($i -eq $maxRetries) {{
+                Write-Host ""Error: Could not overwrite SharpShot.exe after $maxRetries attempts. Close any other SharpShot windows and try the update again."" -ForegroundColor Red
+                exit 1
+            }}
+            Write-Host ""Waiting for SharpShot to release file (attempt $i/$maxRetries)..."" -ForegroundColor Yellow
+            Start-Sleep -Seconds $retryDelaySeconds
+        }}
     }}
 }}
 

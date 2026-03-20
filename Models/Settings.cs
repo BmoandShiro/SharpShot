@@ -39,7 +39,18 @@ namespace SharpShot.Models
         private string _dashboardDisplayMonitor = "Primary Monitor";
         private double _dashboardLeft = double.NaN;
         private double _dashboardTop = double.NaN;
+        private double _dashboardWidth;
+        private double _dashboardHeight;
         private bool _restoreDashboardPosition = true;
+
+        /// <summary>Default main dashboard width in DIPs when <see cref="DashboardWidth"/> is 0 or unset.</summary>
+        public const double DefaultDashboardWidth = 500;
+        /// <summary>Default main dashboard height in DIPs when <see cref="DashboardHeight"/> is 0 or unset.</summary>
+        public const double DefaultDashboardHeight = 80;
+        public const double MinDashboardWidth = 280;
+        public const double MaxDashboardWidth = 2400;
+        public const double MinDashboardHeight = 50;
+        public const double MaxDashboardHeight = 400;
         private bool _minimizeOnClose;
         private bool _dashboardFollowsCaptureMonitor;
         private bool _dashboardAutoReturnAfterCapture;
@@ -82,6 +93,8 @@ namespace SharpShot.Models
             DashboardDisplayMonitor = "Primary Monitor"; // Default to primary monitor for main dashboard
             DashboardLeft = double.NaN; // Use auto positioning by default
             DashboardTop = double.NaN;  // Use auto positioning by default
+            DashboardWidth = 0; // 0 = use DefaultDashboardWidth
+            DashboardHeight = 0; // 0 = use DefaultDashboardHeight
             RestoreDashboardPosition = true; // Default to restoring last position
             MinimizeOnClose = false; // Default to closing app on close button
             DashboardFollowsCaptureMonitor = false; // Default: don't move dashboard to capture monitor
@@ -304,6 +317,38 @@ namespace SharpShot.Models
         {
             get => _dashboardTop;
             set => SetProperty(ref _dashboardTop, value);
+        }
+
+        /// <summary>
+        /// Main dashboard window width in DIPs. Use 0 to mean <see cref="DefaultDashboardWidth"/>.
+        /// </summary>
+        public double DashboardWidth
+        {
+            get => _dashboardWidth;
+            set
+            {
+                double v = value;
+                if (v < 0) v = 0;
+                else if (v > 0)
+                    v = Math.Max(MinDashboardWidth, Math.Min(MaxDashboardWidth, v));
+                SetProperty(ref _dashboardWidth, v);
+            }
+        }
+
+        /// <summary>
+        /// Main dashboard window height in DIPs. Use 0 to mean <see cref="DefaultDashboardHeight"/>.
+        /// </summary>
+        public double DashboardHeight
+        {
+            get => _dashboardHeight;
+            set
+            {
+                double v = value;
+                if (v < 0) v = 0;
+                else if (v > 0)
+                    v = Math.Max(MinDashboardHeight, Math.Min(MaxDashboardHeight, v));
+                SetProperty(ref _dashboardHeight, v);
+            }
         }
 
         /// <summary>
