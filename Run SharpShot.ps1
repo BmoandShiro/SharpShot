@@ -23,6 +23,7 @@ if (Test-Path "SharpShot.csproj") {
     
     # Run the application with Hot Reload enabled
     Write-Host "Starting SharpShot with Hot Reload (dotnet watch run)..." -ForegroundColor Yellow
+    Write-Host 'If build fails with MSB3021/MSB3027 (file locked), stop this script (Ctrl+C), close SharpShot, then run again. Watch cannot overwrite SharpShot.exe while it is running.' -ForegroundColor DarkGray
     dotnet watch run
     
     if ($LASTEXITCODE -eq 0) {

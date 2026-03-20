@@ -405,19 +405,19 @@
                                Foreground="{StaticResource TextBrush}"/>
                     <TextBox x:Name="DashboardWidthTextBox" Grid.Column="1"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             ToolTip="Dashboard width in logical pixels. Leave empty for default (500). Range: 280–2400."/>
+                             ToolTip="Dashboard width in logical pixels. Leave empty for default (500). Range: 280â€“2400."/>
                     <TextBlock Grid.Column="3" Text="Height" VerticalAlignment="Center" Margin="12,0,8,0"
                                Foreground="{StaticResource TextBrush}"/>
                     <TextBox x:Name="DashboardHeightTextBox" Grid.Column="4"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50–400."/>
+                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50â€“400."/>
                     <Button x:Name="DashboardSizeResetButton" Grid.Column="6"
                             Style="{StaticResource ModernButtonStyle}"
                             VerticalAlignment="Center"
                             Click="DashboardSizeResetButton_Click"
                             Width="128"
                             Height="32"
-                            ToolTip="Set width and height to the default dashboard size (500 × 80)">
+                            ToolTip="Set width and height to the default dashboard size (500 Ã— 80)">
                         <TextBlock Text="Reset to default"
                                    Foreground="#FFFF8C00"
                                    FontSize="12"
@@ -460,14 +460,16 @@
                 <!-- Output Audio Device Selection -->
                 <StackPanel x:Name="OutputAudioDevicePanel" 
                            Margin="0,0,0,10" 
-                           Visibility="Collapsed">
-                    <TextBlock Text="Output Audio Device (System Audio):" 
+                           Visibility="Collapsed"
+                           ToolTip="FFmpeg region and full-screen recordings: capture system audio from the chosen playback device (WASAPI loopback). Choose No system audio for video-only.">
+                    <TextBlock Text="FFmpeg â€” system audio (playback device):" 
                                Foreground="{StaticResource TextBrush}" 
                                FontWeight="SemiBold" 
                                Margin="0,0,0,5"/>
                     <ComboBox x:Name="OutputAudioDeviceComboBox" 
                               Style="{StaticResource DarkComboBoxStyle}"
-                              Margin="0,0,0,10"/>
+                              Margin="0,0,0,10"
+                              ToolTip="Uses WASAPI loopback on the selected output. Auto-detect uses the default playback device."/>
                 </StackPanel>
 
                 <!-- Input Audio Device Selection -->
@@ -1209,7 +1211,7 @@
                         VerticalAlignment="Bottom"
                         Margin="0,0,15,0">
                 <TextBlock x:Name="VersionTextBlock"
-                           Text="v1.2.8.4"
+                           Text="v1.2.8.5"
                            Foreground="{StaticResource TextBrush}"
                            FontSize="11"
                            Opacity="0.6"

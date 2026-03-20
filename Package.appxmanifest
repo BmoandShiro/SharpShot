@@ -7,7 +7,7 @@
 
   <Identity Name="BMOsDevOps.SharpShot"
             Publisher="CN=7E8A6D64-EB7B-4C99-95F4-1194CC95BBA8"
-            Version="1.2.8.4"
+            Version="1.2.8.5"
             ProcessorArchitecture="x64" />
 
   <Properties>
@@ -17,7 +17,7 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="1.2.8.4" MaxVersionTested="10.0.19041.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="1.2.8.5" MaxVersionTested="10.0.19041.0" />
   </Dependencies>
 
   <Resources>
