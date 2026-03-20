@@ -67,6 +67,12 @@ namespace SharpShot.UI
         private bool _ocrRegionSelectMode = false;
         private UIElement? _ocrPreviewElement;
 
+        /// <summary>
+        /// Last monitor rectangle used for full-screen editor placement. Set in <see cref="ForceWindowToMonitor"/> so
+        /// <see cref="OnSourceInitialized"/> can re-apply Win32 z-order after HWND exists (constructor runs too early).
+        /// </summary>
+        private System.Drawing.Rectangle _monitorBoundsForEditor;
+
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
         public bool ImageCopied { get; private set; } = false;
@@ -97,18 +103,36 @@ namespace SharpShot.UI
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            
-            // Force window to topmost using Win32 API right when the HWND becomes available
-            // This ensures the editor appears above the taskbar on first launch
-            var windowHandle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-            if (windowHandle != IntPtr.Zero)
+
+            // Constructor calls ForceWindowToMonitor before a HWND exists, so SetWindowPos was skipped and the first
+            // editor open can sit behind the taskbar. Re-apply full placement + HWND_TOPMOST now, then once after layout.
+            try
             {
-                var HWND_TOPMOST = new IntPtr(-1);
-                const uint SWP_NOMOVE = 0x0002;
-                const uint SWP_NOSIZE = 0x0001;
-                const uint SWP_SHOWWINDOW = 0x0040;
-                
-                SetWindowPos(windowHandle, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+                if (new System.Windows.Interop.WindowInteropHelper(this).Handle == IntPtr.Zero
+                    || _monitorBoundsForEditor.Width <= 0
+                    || _monitorBoundsForEditor.Height <= 0)
+                {
+                    return;
+                }
+
+                ForceWindowToMonitor(_monitorBoundsForEditor);
+
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        if (_monitorBoundsForEditor.Width > 0 && _monitorBoundsForEditor.Height > 0)
+                            ForceWindowToMonitor(_monitorBoundsForEditor);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Deferred editor monitor placement: {ex.Message}");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"OnSourceInitialized editor placement: {ex.Message}");
             }
         }
 
@@ -394,28 +418,26 @@ namespace SharpShot.UI
 
         private void ForceWindowToMonitor(System.Drawing.Rectangle targetMonitorBounds)
         {
+            _monitorBoundsForEditor = targetMonitorBounds;
+
             try
             {
-                // Get the window handle
                 var windowHandle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-                
-                // Set the window to normal state to allow positioning
+
                 WindowState = WindowState.Normal;
-                
-                // Make the window fill the entire selected monitor
+
                 Width = targetMonitorBounds.Width;
                 Height = targetMonitorBounds.Height;
-                
-                // Position the window to cover the entire selected monitor
                 Left = targetMonitorBounds.X;
                 Top = targetMonitorBounds.Y;
-                
-                // Use Windows API to ensure the window is on the correct monitor AND on top
-                // HWND_TOPMOST (-1) forces the window above all non-topmost windows including the taskbar
-                // We intentionally do NOT use SWP_NOZORDER so the z-order change takes effect
+
+                // HWND is only valid after the window is shown — skip Win32 until then (constructor path).
+                if (windowHandle == IntPtr.Zero)
+                    return;
+
                 var HWND_TOPMOST = new IntPtr(-1);
                 const uint SWP_SHOWWINDOW = 0x0040;
-                
+
                 SetWindowPos(
                     windowHandle,
                     HWND_TOPMOST,
@@ -423,10 +445,8 @@ namespace SharpShot.UI
                     (int)Top,
                     (int)Width,
                     (int)Height,
-                    SWP_SHOWWINDOW
-                );
-                
-                // Also activate the window to ensure it has focus
+                    SWP_SHOWWINDOW);
+
                 Activate();
             }
             catch (Exception ex)
