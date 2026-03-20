@@ -136,12 +136,14 @@ namespace SharpShot.Services
                 && !string.Equals(settings.SelectedOutputAudioDevice.Trim(), "No system audio", StringComparison.OrdinalIgnoreCase);
 
             var ffmpegExe = GetFFmpegPath();
-            var videoInputArgs = BuildVideoInputArgs(region, settings, wantAudio ? 2048 : 512);
+            var videoInputArgs = BuildVideoInputArgs(region, settings, wantAudio ? 2048 : 512, wantAudio);
+
+            var recordFps = settings.RecordingFrameRate;
 
             if (!wantAudio)
             {
                 DisposeLoopbackPipeAudio();
-                var args = ComposeFfmpegArguments(videoInputArgs, null);
+                var args = ComposeFfmpegArguments(videoInputArgs, null, recordFps);
                 StartFfmpegProcess(args, ffmpegExe);
                 return;
             }
@@ -175,7 +177,7 @@ namespace SharpShot.Services
             var pipeShortName = $"SharpShotAud_{Guid.NewGuid():N}";
             var pipePath = @"\\.\pipe\" + pipeShortName;
             var audioClause = $" -thread_queue_size 4096 -f {fmt} -ac {ch} -ar {rate} -i {pipePath}";
-            var ffmpegArgs = ComposeFfmpegArguments(videoInputArgs, audioClause);
+            var ffmpegArgs = ComposeFfmpegArguments(videoInputArgs, audioClause, recordFps);
 
             NamedPipeServerStream? pipe = null;
             try
@@ -457,11 +459,15 @@ namespace SharpShot.Services
             });
         }
 
-        private string ComposeFfmpegArguments(string videoInputArgs, string? rawAudioInputClause)
+        private string ComposeFfmpegArguments(string videoInputArgs, string? rawAudioInputClause, int recordFps)
         {
+            var fps = Math.Clamp(recordFps, Settings.MinRecordingFrameRate, Settings.MaxRecordingFrameRate);
+            var gop = Math.Clamp(fps * 2, 30, 600);
+            var keyintMin = Math.Clamp(fps, 1, gop);
+
             var vPreset = string.IsNullOrEmpty(rawAudioInputClause) ? "fast" : "veryfast";
             var outputArgs = $"-c:v libx264 -preset {vPreset} -crf 20 -pix_fmt yuv420p -profile:v baseline -level 3.0";
-            outputArgs += " -g 60 -keyint_min 30";
+            outputArgs += $" -g {gop} -keyint_min {keyintMin}";
             if (!string.IsNullOrEmpty(rawAudioInputClause))
                 outputArgs += " -map 0:v:0 -map 1:0 -c:a aac -b:a 192k";
             outputArgs += " -movflags +faststart -f mp4 -strict experimental";
@@ -474,10 +480,16 @@ namespace SharpShot.Services
             return $"{videoInputArgs}{rawAudioInputClause ?? ""} {outputArgs}";
         }
 
-        private string BuildVideoInputArgs(System.Drawing.Rectangle? region, Settings settings, int gdigrabThreadQueueSize = 512)
+        /// <param name="gdigrabLowLatencyProbe">
+        /// When true (muxing live PCM from a pipe), use a tiny gdigrab probe. A large <c>-probesize 10M</c> delays the first video frame
+        /// by seconds while audio already runs — A/V starts out of sync in the file.
+        /// </param>
+        private string BuildVideoInputArgs(System.Drawing.Rectangle? region, Settings settings, int gdigrabThreadQueueSize = 512, bool gdigrabLowLatencyProbe = false)
         {
             string inputArgs;
             var tq = gdigrabThreadQueueSize;
+            var probe = gdigrabLowLatencyProbe ? "-probesize 32 -analyzeduration 0" : "-probesize 10M";
+            var fps = settings.RecordingFrameRate;
 
             if (region.HasValue && region.Value != System.Drawing.Rectangle.Empty)
             {
@@ -487,14 +499,14 @@ namespace SharpShot.Services
                 {
                     System.Diagnostics.Debug.WriteLine($"Invalid region bounds: {bounds}, falling back to full screen");
                     var screenBounds = GetBoundsForSelectedScreen();
-                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size {tq}";
+                    inputArgs = $"-f gdigrab -framerate {fps} -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} {probe} -thread_queue_size {tq} -i desktop";
                 }
                 else
                 {
                     var adjustedWidth = bounds.Width % 2 == 0 ? bounds.Width : bounds.Width - 1;
                     var adjustedHeight = bounds.Height % 2 == 0 ? bounds.Height : bounds.Height - 1;
 
-                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {adjustedWidth}x{adjustedHeight} -i desktop -probesize 10M -thread_queue_size {tq}";
+                    inputArgs = $"-f gdigrab -framerate {fps} -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {adjustedWidth}x{adjustedHeight} {probe} -thread_queue_size {tq} -i desktop";
                     System.Diagnostics.Debug.WriteLine($"Region recording: {bounds.X},{bounds.Y} {adjustedWidth}x{adjustedHeight} (original: {bounds.Width}x{bounds.Height})");
                 }
             }
@@ -504,12 +516,12 @@ namespace SharpShot.Services
 
                 if (settings.SelectedScreen == "All Screens" || settings.SelectedScreen == "All Monitors")
                 {
-                    inputArgs = $"-f gdigrab -framerate 30 -i desktop -probesize 10M -thread_queue_size {tq}";
+                    inputArgs = $"-f gdigrab -framerate {fps} {probe} -thread_queue_size {tq} -i desktop";
                     System.Diagnostics.Debug.WriteLine("Recording all screens - no offset/size specified");
                 }
                 else
                 {
-                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size {tq}";
+                    inputArgs = $"-f gdigrab -framerate {fps} -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} {probe} -thread_queue_size {tq} -i desktop";
                     System.Diagnostics.Debug.WriteLine($"Recording specific screen with offset: {screenBounds.X},{screenBounds.Y} size: {screenBounds.Width}x{screenBounds.Height}");
                 }
             }

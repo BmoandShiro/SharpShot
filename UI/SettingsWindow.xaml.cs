@@ -397,6 +397,8 @@ namespace SharpShot.UI
                     break;
                 }
             }
+
+            RecordingFpsTextBox.Text = _originalSettings.RecordingFrameRate.ToString(CultureInfo.InvariantCulture);
             
             // Audio recording mode combo box commented out
             // foreach (var item in AudioRecordingModeComboBox.Items)
@@ -844,6 +846,8 @@ namespace SharpShot.UI
                         HideOBSSettings();
                     }
                 }
+
+                _originalSettings.RecordingFrameRate = ParseRecordingFpsField(RecordingFpsTextBox.Text);
                 
                 // Audio recording mode combo box commented out
                 // if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem audioModeItem)
@@ -1065,12 +1069,24 @@ namespace SharpShot.UI
             return double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out double v) ? v : 0;
         }
 
+        private static int ParseRecordingFpsField(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return Settings.DefaultRecordingFrameRate;
+            if (!int.TryParse(text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int v))
+                return Settings.DefaultRecordingFrameRate;
+            if (v < Settings.MinRecordingFrameRate || v > Settings.MaxRecordingFrameRate)
+                return Settings.DefaultRecordingFrameRate;
+            return v;
+        }
+
         private void CopySettings(Settings source, Settings target)
         {
             target.SavePath = source.SavePath;
             target.ScreenshotFormat = source.ScreenshotFormat;
             target.VideoQuality = source.VideoQuality;
             target.RecordingEngine = source.RecordingEngine;
+            target.RecordingFrameRate = source.RecordingFrameRate;
             target.AudioRecordingMode = source.AudioRecordingMode;
             target.SelectedOutputAudioDevice = source.SelectedOutputAudioDevice;
             target.SelectedInputAudioDevice = source.SelectedInputAudioDevice;
@@ -3352,9 +3368,11 @@ namespace SharpShot.UI
                 if (RecordingEngineComboBox?.SelectedItem is not System.Windows.Controls.ComboBoxItem item)
                     return;
                 var engine = item.Content?.ToString() ?? "";
-                OutputAudioDevicePanel.Visibility = string.Equals(engine, "FFmpeg", StringComparison.OrdinalIgnoreCase)
+                var ffmpegVis = string.Equals(engine, "FFmpeg", StringComparison.OrdinalIgnoreCase)
                     ? Visibility.Visible
                     : Visibility.Collapsed;
+                OutputAudioDevicePanel.Visibility = ffmpegVis;
+                FfmpegRecordingFpsPanel.Visibility = ffmpegVis;
             }
             catch
             {

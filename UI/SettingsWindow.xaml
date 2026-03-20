@@ -440,6 +440,18 @@
                     <ComboBoxItem Content="OBS"/>
                 </ComboBox>
 
+                <StackPanel x:Name="FfmpegRecordingFpsPanel" Margin="0,0,0,10" Visibility="Collapsed">
+                    <TextBlock Text="FFmpeg recording frame rate (FPS):"
+                               Foreground="{StaticResource TextBrush}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,5"/>
+                    <TextBox x:Name="RecordingFpsTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             Width="100"
+                             HorizontalAlignment="Left"
+                             ToolTip="Target frames per second for FFmpeg screen capture (gdigrab). Range: 1–120. Examples: 24, 30, 60. Higher values use more CPU and disk."/>
+                </StackPanel>
+
                 <!-- Audio Recording Mode -->
                 <!-- Commented out - Audio recording disabled for now
                 <TextBlock Text="Audio Recording Mode:" 
