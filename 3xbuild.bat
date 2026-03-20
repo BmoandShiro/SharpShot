@@ -40,7 +40,7 @@ echo.
 REM --- Step 3: NSIS ---
 echo [3/3] Building NSIS installer...
 set "NSIS_SCRIPT=Installer\SharpShot.nsi"
-set "PORTABLE_DIR=SharpShot-Release-v1.2.8.4"
+set "PORTABLE_DIR=SharpShot-Release-v1.2.8.5"
 
 if not exist "%NSIS_SCRIPT%" (
   echo WARN: NSIS script not found. Skipping NSIS.
