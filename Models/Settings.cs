@@ -13,7 +13,6 @@ namespace SharpShot.Models
         private string _videoQuality = string.Empty;
         private string _audioRecordingMode = string.Empty;
         private string _recordingEngine = string.Empty;
-        private int _recordingFrameRate = 30;
         private string _selectedOutputAudioDevice = string.Empty;
         private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
@@ -52,10 +51,6 @@ namespace SharpShot.Models
         public const double MaxDashboardWidth = 2400;
         public const double MinDashboardHeight = 50;
         public const double MaxDashboardHeight = 400;
-
-        public const int DefaultRecordingFrameRate = 30;
-        public const int MinRecordingFrameRate = 1;
-        public const int MaxRecordingFrameRate = 120;
         private bool _minimizeOnClose;
         private bool _dashboardFollowsCaptureMonitor;
         private bool _dashboardAutoReturnAfterCapture;
@@ -74,7 +69,6 @@ namespace SharpShot.Models
             VideoQuality = "High";
             AudioRecordingMode = "No Audio";
             RecordingEngine = "FFmpeg";
-            RecordingFrameRate = DefaultRecordingFrameRate;
             SelectedOutputAudioDevice = string.Empty;
             SelectedInputAudioDevice = string.Empty;
             EnableGlobalHotkeys = false;
@@ -144,24 +138,6 @@ namespace SharpShot.Models
         {
             get => _recordingEngine;
             set => SetProperty(ref _recordingEngine, value);
-        }
-
-        /// <summary>Target capture frame rate for FFmpeg gdigrab screen recording (1–120). Invalid stored values fall back to <see cref="DefaultRecordingFrameRate"/>.</summary>
-        public int RecordingFrameRate
-        {
-            get
-            {
-                if (_recordingFrameRate < MinRecordingFrameRate || _recordingFrameRate > MaxRecordingFrameRate)
-                    return DefaultRecordingFrameRate;
-                return _recordingFrameRate;
-            }
-            set
-            {
-                int v = value;
-                if (v < MinRecordingFrameRate || v > MaxRecordingFrameRate)
-                    v = DefaultRecordingFrameRate;
-                SetProperty(ref _recordingFrameRate, v);
-            }
         }
 
         public string SelectedOutputAudioDevice

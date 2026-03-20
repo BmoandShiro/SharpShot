@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Threading;
 using System.Windows;
 using System.Threading.Tasks;
 using SharpShot.Services;
@@ -15,8 +14,6 @@ namespace SharpShot
         private SettingsService _settingsService = null!;
         private HotkeyManager _hotkeyManager = null!;
         private UpdateService? _updateService;
-        private Mutex? _singleInstanceMutex;
-        private bool _ownsSingleInstanceMutex;
 
         // Make SettingsService accessible to other parts of the app
         public static SettingsService SettingsService => ((App)Current)._settingsService;
@@ -24,19 +21,6 @@ namespace SharpShot
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            // One process = one dashboard. dotnet watch / double-start can otherwise open two MainWindows.
-            const string mutexName = @"Global\SharpShot_SingleInstance_8E3A1F2C-6B0D-4E5A-9C7D-1A2B3C4D5E6F";
-            _singleInstanceMutex = new Mutex(true, mutexName, out bool createdNew);
-            if (!createdNew)
-            {
-                _singleInstanceMutex.Dispose();
-                _singleInstanceMutex = null;
-                Shutdown();
-                return;
-            }
-
-            _ownsSingleInstanceMutex = true;
-
             base.OnStartup(e);
             
             // Initialize services
@@ -105,22 +89,6 @@ namespace SharpShot
 
         protected override void OnExit(ExitEventArgs e)
         {
-            if (_ownsSingleInstanceMutex && _singleInstanceMutex != null)
-            {
-                try
-                {
-                    _singleInstanceMutex.ReleaseMutex();
-                }
-                catch (ApplicationException)
-                {
-                    // not owner; ignore
-                }
-
-                _singleInstanceMutex.Dispose();
-                _singleInstanceMutex = null;
-                _ownsSingleInstanceMutex = false;
-            }
-
             // Debug: Verify settings before saving
             System.Diagnostics.Debug.WriteLine($"App exit - Settings before save - IconColor: {_settingsService?.CurrentSettings?.IconColor}, SavePath: {_settingsService?.CurrentSettings?.SavePath}");
             
