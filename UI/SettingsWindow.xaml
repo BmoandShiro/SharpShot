@@ -460,14 +460,16 @@
                 <!-- Output Audio Device Selection -->
                 <StackPanel x:Name="OutputAudioDevicePanel" 
                            Margin="0,0,0,10" 
-                           Visibility="Collapsed">
-                    <TextBlock Text="Output Audio Device (System Audio):" 
+                           Visibility="Collapsed"
+                           ToolTip="FFmpeg region and full-screen recordings: capture system audio from the chosen playback device (WASAPI loopback). Choose No system audio for video-only.">
+                    <TextBlock Text="FFmpeg — system audio (playback device):" 
                                Foreground="{StaticResource TextBrush}" 
                                FontWeight="SemiBold" 
                                Margin="0,0,0,5"/>
                     <ComboBox x:Name="OutputAudioDeviceComboBox" 
                               Style="{StaticResource DarkComboBoxStyle}"
-                              Margin="0,0,0,10"/>
+                              Margin="0,0,0,10"
+                              ToolTip="Uses WASAPI loopback on the selected output. Auto-detect uses the default playback device."/>
                 </StackPanel>
 
                 <!-- Input Audio Device Selection -->

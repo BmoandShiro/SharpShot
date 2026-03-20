@@ -1,7 +1,12 @@
 using System;
+using System.Buffers;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipes;
+using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
+using NAudio.Wave;
 using SharpShot.Models;
 using SharpShot.Services;
 // using ScreenRecorderLib; // Temporarily commented out for MSIX build
@@ -16,6 +21,24 @@ namespace SharpShot.Services
 
         private Process? _ffmpegProcess; // Track FFmpeg process for stopping
         private bool _isRecording = false;
+
+        /// <summary>NAudio loopback → raw PCM/F32 into FFmpeg via a named pipe (avoids FFmpeg WASAPI demuxer issues).</summary>
+        private WasapiLoopbackCapture? _loopbackCapture;
+        private NamedPipeServerStream? _audioPipe;
+        private ChannelWriter<PooledAudioChunk>? _audioChunkWriter;
+        private Task? _audioPipePumpTask;
+
+        private readonly struct PooledAudioChunk
+        {
+            public byte[] Buffer { get; }
+            public int Length { get; }
+
+            public PooledAudioChunk(byte[] buffer, int length)
+            {
+                Buffer = buffer;
+                Length = length;
+            }
+        }
 
         // Events that MainWindow expects
         public event EventHandler<bool>? RecordingStateChanged;
@@ -104,55 +127,327 @@ namespace SharpShot.Services
 
 
 
+        private static readonly Guid KsSubTypeIeeeFloat = new("00000003-0000-0010-8000-00aa00389b71");
+
         private async Task StartFFmpegRecordingAsync(System.Drawing.Rectangle? region = null)
         {
             var settings = _settingsService.CurrentSettings;
-            
-            // Build FFmpeg command - pass the region directly and let BuildFFmpegCommand handle the logic
-            var ffmpegArgs = await BuildFFmpegCommand(region, settings);
-            
-            // Start FFmpeg process
-            _ffmpegProcess = new System.Diagnostics.Process
+            var wantAudio = !string.IsNullOrWhiteSpace(settings.SelectedOutputAudioDevice)
+                && !string.Equals(settings.SelectedOutputAudioDevice.Trim(), "No system audio", StringComparison.OrdinalIgnoreCase);
+
+            var ffmpegExe = GetFFmpegPath();
+            var videoInputArgs = BuildVideoInputArgs(region, settings, wantAudio ? 2048 : 512);
+
+            if (!wantAudio)
             {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
+                DisposeLoopbackPipeAudio();
+                var args = ComposeFfmpegArguments(videoInputArgs, null);
+                StartFfmpegProcess(args, ffmpegExe);
+                return;
+            }
+
+            var mm = NaudioLoopbackDeviceResolver.TryResolve(settings.SelectedOutputAudioDevice, out var resolveReason);
+            if (mm == null)
+                throw new InvalidOperationException(resolveReason ?? "No playback device available for system audio.");
+
+            WasapiLoopbackCapture capture;
+            try
+            {
+                capture = new WasapiLoopbackCapture(mm);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Could not open WASAPI loopback: {ex.Message}", ex);
+            }
+
+            string fmt;
+            int ch, rate;
+            try
+            {
+                (fmt, ch, rate) = GetFfmpegRawLayout(capture.WaveFormat);
+            }
+            catch (NotSupportedException ns)
+            {
+                capture.Dispose();
+                throw new InvalidOperationException(ns.Message, ns);
+            }
+
+            var pipeShortName = $"SharpShotAud_{Guid.NewGuid():N}";
+            var pipePath = @"\\.\pipe\" + pipeShortName;
+            var audioClause = $" -thread_queue_size 4096 -f {fmt} -ac {ch} -ar {rate} -i {pipePath}";
+            var ffmpegArgs = ComposeFfmpegArguments(videoInputArgs, audioClause);
+
+            NamedPipeServerStream? pipe = null;
+            try
+            {
+                const int pipeOutBufferBytes = 1024 * 1024;
+                pipe = new NamedPipeServerStream(
+                    pipeShortName,
+                    PipeDirection.Out,
+                    1,
+                    PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous,
+                    inBufferSize: 0,
+                    outBufferSize: pipeOutBufferBytes);
+                _audioPipe = pipe;
+
+                using var connectCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var connectTask = pipe.WaitForConnectionAsync(connectCts.Token);
+
+                StartFfmpegProcess(ffmpegArgs, ffmpegExe, deferRecordingState: true);
+
+                await connectTask.ConfigureAwait(true);
+
+                var audioChannel = Channel.CreateBounded<PooledAudioChunk>(new BoundedChannelOptions(512)
                 {
-                    FileName = GetFFmpegPath(),
+                    SingleReader = true,
+                    SingleWriter = false,
+                    FullMode = BoundedChannelFullMode.DropOldest
+                });
+                _audioChunkWriter = audioChannel.Writer;
+                var audioReader = audioChannel.Reader;
+                _audioPipePumpTask = Task.Run(() => RunAudioPipePumpAsync(pipe, audioReader));
+
+                _loopbackCapture = capture;
+                capture.DataAvailable += OnLoopbackDataAvailable;
+                capture.RecordingStopped += OnLoopbackRecordingStopped;
+                capture.StartRecording();
+
+                System.Diagnostics.Debug.WriteLine($"FFmpeg system audio: NAudio loopback → pipe ({fmt}, {ch} ch, {rate} Hz) for '{settings.SelectedOutputAudioDevice}'");
+            }
+            catch
+            {
+                DisposeLoopbackPipeAudio();
+                TryKillAndDisposeFfmpeg();
+                capture.Dispose();
+                throw;
+            }
+
+            _isRecording = true;
+            RecordingStateChanged?.Invoke(this, true);
+        }
+
+        private void OnLoopbackRecordingStopped(object? sender, StoppedEventArgs e)
+        {
+            if (e.Exception != null)
+                System.Diagnostics.Debug.WriteLine($"Loopback capture stopped with error: {e.Exception.Message}");
+        }
+
+        private void OnLoopbackDataAvailable(object? sender, WaveInEventArgs e)
+        {
+            if (e.BytesRecorded <= 0)
+                return;
+
+            var writer = _audioChunkWriter;
+            if (writer == null)
+                return;
+
+            var n = e.BytesRecorded;
+            var buf = ArrayPool<byte>.Shared.Rent(n);
+            Buffer.BlockCopy(e.Buffer, 0, buf, 0, n);
+            if (!writer.TryWrite(new PooledAudioChunk(buf, n)))
+                ArrayPool<byte>.Shared.Return(buf);
+        }
+
+        /// <summary>Writes pooled chunks to the pipe on a thread pool thread so NAudio's capture callback never blocks on FFmpeg.</summary>
+        private static async Task RunAudioPipePumpAsync(NamedPipeServerStream pipe, ChannelReader<PooledAudioChunk> reader)
+        {
+            try
+            {
+                await foreach (var chunk in reader.ReadAllAsync(CancellationToken.None).ConfigureAwait(false))
+                {
+                    try
+                    {
+                        if (pipe.IsConnected)
+                            await pipe.WriteAsync(chunk.Buffer.AsMemory(0, chunk.Length)).ConfigureAwait(false);
+                    }
+                    catch (IOException)
+                    {
+                        // FFmpeg exited or pipe closed
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // ignore
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(chunk.Buffer);
+                    }
+                }
+            }
+            finally
+            {
+                while (reader.TryRead(out var leftover))
+                    ArrayPool<byte>.Shared.Return(leftover.Buffer);
+            }
+        }
+
+        private void DisposeLoopbackPipeAudio()
+        {
+            if (_loopbackCapture != null)
+            {
+                try
+                {
+                    _loopbackCapture.DataAvailable -= OnLoopbackDataAvailable;
+                    _loopbackCapture.RecordingStopped -= OnLoopbackRecordingStopped;
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                try
+                {
+                    _loopbackCapture.StopRecording();
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                try
+                {
+                    _loopbackCapture.Dispose();
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                _loopbackCapture = null;
+            }
+
+            try
+            {
+                _audioChunkWriter?.TryComplete();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _audioChunkWriter = null;
+
+            try
+            {
+                _audioPipePumpTask?.Wait(TimeSpan.FromSeconds(5));
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _audioPipePumpTask = null;
+
+            try
+            {
+                _audioPipe?.Dispose();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _audioPipe = null;
+        }
+
+        private void TryKillAndDisposeFfmpeg()
+        {
+            try
+            {
+                if (_ffmpegProcess != null && !_ffmpegProcess.HasExited)
+                    _ffmpegProcess.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+                // ignore
+            }
+
+            try
+            {
+                _ffmpegProcess?.Dispose();
+            }
+            catch
+            {
+                // ignore
+            }
+
+            _ffmpegProcess = null;
+        }
+
+        /// <summary>Maps NAudio loopback <see cref="WaveFormat"/> to FFmpeg raw demuxer flags.</summary>
+        private static (string format, int channels, int rate) GetFfmpegRawLayout(WaveFormat wf)
+        {
+            var channels = wf.Channels;
+            var rate = wf.SampleRate;
+
+            if (wf.Encoding == WaveFormatEncoding.Pcm && wf.BitsPerSample == 16)
+                return ("s16le", channels, rate);
+
+            if (wf is WaveFormatExtensible ext && ext.SubFormat == KsSubTypeIeeeFloat && wf.BitsPerSample == 32)
+                return ("f32le", channels, rate);
+
+            if (wf.Encoding == WaveFormatEncoding.IeeeFloat && wf.BitsPerSample == 32)
+                return ("f32le", channels, rate);
+
+            throw new NotSupportedException(
+                $"This output device's loopback format is not supported ({wf.Encoding}, {wf.BitsPerSample} bit, {channels} ch, {rate} Hz). Try another playback device or \"No system audio\".");
+        }
+
+        private void StartFfmpegProcess(string ffmpegArgs, string ffmpegExe, bool deferRecordingState = false)
+        {
+            _ffmpegProcess = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = ffmpegExe,
                     Arguments = ffmpegArgs,
                     UseShellExecute = false,
-                    RedirectStandardInput = true,  // Enable input redirection for 'q' command
+                    RedirectStandardInput = true,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 }
             };
 
-            // Ensure directory exists
             var directory = Path.GetDirectoryName(_currentRecordingPath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
-            
+
             _ffmpegProcess.Start();
-            
-            _isRecording = true;
-            RecordingStateChanged?.Invoke(this, true);
+
+            try
+            {
+                _ffmpegProcess.PriorityClass = ProcessPriorityClass.AboveNormal;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Could not raise FFmpeg process priority: {ex.Message}");
+            }
+
+            if (!deferRecordingState)
+            {
+                _isRecording = true;
+                RecordingStateChanged?.Invoke(this, true);
+            }
 
             System.Diagnostics.Debug.WriteLine($"Started FFmpeg recording to: {_currentRecordingPath}");
             System.Diagnostics.Debug.WriteLine($"FFmpeg command: {ffmpegArgs}");
-            
-            // Log stderr output for debugging
+
+            AttachFfmpegStderrLogging(_ffmpegProcess);
+        }
+
+        private static void AttachFfmpegStderrLogging(Process process)
+        {
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    while (!_ffmpegProcess.StandardError.EndOfStream)
+                    while (!process.StandardError.EndOfStream)
                     {
-                        var line = await _ffmpegProcess.StandardError.ReadLineAsync();
+                        var line = await process.StandardError.ReadLineAsync().ConfigureAwait(false);
                         if (!string.IsNullOrEmpty(line))
-                        {
                             System.Diagnostics.Debug.WriteLine($"FFmpeg: {line}");
-                        }
                     }
                 }
                 catch (Exception ex)
@@ -160,85 +455,66 @@ namespace SharpShot.Services
                     System.Diagnostics.Debug.WriteLine($"Error reading FFmpeg stderr: {ex.Message}");
                 }
             });
-            
-            // Method is async so no explicit return needed
         }
 
-        private async Task<string> BuildFFmpegCommand(System.Drawing.Rectangle? region, Settings settings)
+        private string ComposeFfmpegArguments(string videoInputArgs, string? rawAudioInputClause)
         {
-            var inputArgs = "";
-            
-            // Configure input based on whether we have a specific region or full screen
+            var vPreset = string.IsNullOrEmpty(rawAudioInputClause) ? "fast" : "veryfast";
+            var outputArgs = $"-c:v libx264 -preset {vPreset} -crf 20 -pix_fmt yuv420p -profile:v baseline -level 3.0";
+            outputArgs += " -g 60 -keyint_min 30";
+            if (!string.IsNullOrEmpty(rawAudioInputClause))
+                outputArgs += " -map 0:v:0 -map 1:0 -c:a aac -b:a 192k";
+            outputArgs += " -movflags +faststart -f mp4 -strict experimental";
+
+            if (_currentRecordingPath == null)
+                throw new InvalidOperationException("Recording path is not set.");
+            var outPath = _currentRecordingPath.Replace("\"", "\"\"");
+            outputArgs += $" \"{outPath}\"";
+
+            return $"{videoInputArgs}{rawAudioInputClause ?? ""} {outputArgs}";
+        }
+
+        private string BuildVideoInputArgs(System.Drawing.Rectangle? region, Settings settings, int gdigrabThreadQueueSize = 512)
+        {
+            string inputArgs;
+            var tq = gdigrabThreadQueueSize;
+
             if (region.HasValue && region.Value != System.Drawing.Rectangle.Empty)
             {
-                // For region recording, capture only the specified region
                 var bounds = region.Value;
-                
-                // Ensure bounds are valid and positive
+
                 if (bounds.Width <= 0 || bounds.Height <= 0)
                 {
                     System.Diagnostics.Debug.WriteLine($"Invalid region bounds: {bounds}, falling back to full screen");
                     var screenBounds = GetBoundsForSelectedScreen();
-                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size 512";
+                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size {tq}";
                 }
                 else
                 {
-                    // For GDI capture, ensure even dimensions for better compatibility
                     var adjustedWidth = bounds.Width % 2 == 0 ? bounds.Width : bounds.Width - 1;
                     var adjustedHeight = bounds.Height % 2 == 0 ? bounds.Height : bounds.Height - 1;
-                    
-                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {adjustedWidth}x{adjustedHeight} -i desktop -probesize 10M -thread_queue_size 512";
+
+                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {bounds.X} -offset_y {bounds.Y} -video_size {adjustedWidth}x{adjustedHeight} -i desktop -probesize 10M -thread_queue_size {tq}";
                     System.Diagnostics.Debug.WriteLine($"Region recording: {bounds.X},{bounds.Y} {adjustedWidth}x{adjustedHeight} (original: {bounds.Width}x{bounds.Height})");
                 }
             }
             else
             {
-                // For full screen recording, respect the selected monitor setting
                 var screenBounds = GetBoundsForSelectedScreen();
-                
+
                 if (settings.SelectedScreen == "All Screens" || settings.SelectedScreen == "All Monitors")
                 {
-                    // Capture entire virtual desktop (all monitors)
-                    inputArgs = $"-f gdigrab -framerate 30 -i desktop -probesize 10M -thread_queue_size 512";
+                    inputArgs = $"-f gdigrab -framerate 30 -i desktop -probesize 10M -thread_queue_size {tq}";
                     System.Diagnostics.Debug.WriteLine("Recording all screens - no offset/size specified");
                 }
                 else
                 {
-                    // Capture specific monitor - offset parameters MUST come before -i desktop
-                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size 512";
+                    inputArgs = $"-f gdigrab -framerate 30 -offset_x {screenBounds.X} -offset_y {screenBounds.Y} -video_size {screenBounds.Width}x{screenBounds.Height} -i desktop -probesize 10M -thread_queue_size {tq}";
                     System.Diagnostics.Debug.WriteLine($"Recording specific screen with offset: {screenBounds.X},{screenBounds.Y} size: {screenBounds.Width}x{screenBounds.Height}");
                 }
             }
-            
-            // Audio input disabled for now - always record video only to avoid DirectShow issues
-            var audioInput = "";
-            
-            // Log that audio is disabled
-            try
-            {
-                var audioLogPath = Path.Combine(Path.GetTempPath(), "sharpshot_audio_disabled.log");
-                await File.WriteAllTextAsync(audioLogPath, $"Audio recording disabled for simplified operation\nOriginal setting: {settings.AudioRecordingMode}\nTime: {DateTime.Now}");
-            }
-            catch
-            {
-                // Ignore logging errors - don't let them break recording
-            }
-            
-            // Build output arguments with better encoding settings for maximum compatibility
-            var outputArgs = $"-c:v libx264 -preset fast -crf 20 -pix_fmt yuv420p -profile:v baseline -level 3.0";
-            
-            // Add key frame settings for better playback (framerate already set in input)
-            outputArgs += " -g 60 -keyint_min 30";
-            
-            // Audio codec disabled - recording video only for now
-            // This avoids any audio-related FFmpeg issues
-            
-            // Add proper MP4 formatting and compatibility flags
-            outputArgs += " -movflags +faststart -f mp4 -strict experimental";
-            
-            outputArgs += $" \"{_currentRecordingPath}\"";
-            
-            return $"{inputArgs}{audioInput} {outputArgs}";
+
+            return inputArgs;
         }
 
         private System.Drawing.Rectangle GetBoundsForSelectedScreen()
@@ -394,7 +670,9 @@ namespace SharpShot.Services
                         }
                         break;
                     case "FFmpeg":
-                        // Stop FFmpeg process by sending 'q' command or killing the process
+                        // End NAudio loopback and close the pipe so FFmpeg sees audio EOF, then tell FFmpeg to quit gdigrab.
+                        DisposeLoopbackPipeAudio();
+
                         if (_ffmpegProcess != null && !_ffmpegProcess.HasExited)
                         {
                             try

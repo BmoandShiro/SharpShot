@@ -21,10 +21,10 @@ using System.Linq;
 using System.Management;
 using System.Reflection;
 
-// Windows Core Audio API imports
+// Windows Core Audio API imports (name must not be MMDeviceEnumerator — conflicts with NAudio.CoreAudioApi.MMDeviceEnumerator in the same assembly)
 [ComImport]
 [Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-class MMDeviceEnumerator { }
+class ComMMDeviceEnumeratorClass { }
 
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -620,6 +620,8 @@ namespace SharpShot.UI
             
             // Apply current theme colors
             UpdateThemeColors();
+
+            ApplyFfmpegOutputAudioPanelVisibility();
             }
             catch (Exception ex)
             {
@@ -856,8 +858,11 @@ namespace SharpShot.UI
                 if (OutputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem outputAudioItem)
                 {
                     var outputDevice = outputAudioItem.Content?.ToString() ?? string.Empty;
-                    _originalSettings.SelectedOutputAudioDevice = outputDevice;
-                    LogToFile($"Saving output audio device: '{outputDevice}'");
+                    if (string.Equals(outputDevice, "No system audio", StringComparison.OrdinalIgnoreCase))
+                        _originalSettings.SelectedOutputAudioDevice = string.Empty;
+                    else
+                        _originalSettings.SelectedOutputAudioDevice = outputDevice;
+                    LogToFile($"Saving output audio device: '{_originalSettings.SelectedOutputAudioDevice}' (display: '{outputDevice}')");
                 }
                 else
                 {
@@ -2462,7 +2467,7 @@ namespace SharpShot.UI
                 OutputAudioDeviceComboBox.Items.Clear();
                 InputAudioDeviceComboBox.Items.Clear();
                 
-                // Add "Auto-detect" options
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "No system audio" });
                 OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
                 InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
                 
@@ -2497,6 +2502,29 @@ namespace SharpShot.UI
                 }
                 
                 LogToFile($"Categorized {inputDevices.Count} input devices and {outputDevices.Count} output devices");
+
+                // FFmpeg WASAPI expects exact names from its own list; merge those into the output list so they match -i.
+                try
+                {
+                    var ffPath = GetFFmpegPath();
+                    if (!string.IsNullOrEmpty(ffPath))
+                    {
+                        foreach (var name in FfmpegWasapiDeviceResolver.GetWasapiAudioDeviceNames(ffPath))
+                        {
+                            if (!outputDevices.Contains(name))
+                            {
+                                outputDevices.Add(name);
+                                LogToFile($"Appended FFmpeg WASAPI name: {name}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception mergeEx)
+                {
+                    LogToFile($"FFmpeg WASAPI name merge skipped: {mergeEx.Message}");
+                }
+
+                outputDevices.Sort(StringComparer.OrdinalIgnoreCase);
                 
                 // Populate dropdowns
                 foreach (var device in inputDevices)
@@ -2516,6 +2544,7 @@ namespace SharpShot.UI
                 LogToFile($"Error loading audio devices: {ex.Message}");
                 // On error, just leave with Auto-detect option
                 OutputAudioDeviceComboBox.Items.Clear();
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "No system audio" });
                 OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
                 
                 InputAudioDeviceComboBox.Items.Clear();
@@ -2529,8 +2558,9 @@ namespace SharpShot.UI
             LogToFile($"Saved output device: '{_originalSettings.SelectedOutputAudioDevice}'");
             LogToFile($"Saved input device: '{_originalSettings.SelectedInputAudioDevice}'");
             
-            // Set output audio device
+            // Set output audio device (empty / legacy = no system audio for FFmpeg)
             bool outputDeviceSet = false;
+            var savedOutput = _originalSettings.SelectedOutputAudioDevice?.Trim() ?? "";
             foreach (var item in OutputAudioDeviceComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem)
@@ -2538,7 +2568,10 @@ namespace SharpShot.UI
                     var deviceName = comboItem.Content.ToString();
                     LogToFile($"Checking output device: '{deviceName}'");
                     
-                    if (deviceName == _originalSettings.SelectedOutputAudioDevice)
+                    var matchSaved = !string.IsNullOrEmpty(savedOutput) && deviceName == savedOutput;
+                    var matchNoAudio = string.IsNullOrEmpty(savedOutput) &&
+                        string.Equals(deviceName, "No system audio", StringComparison.OrdinalIgnoreCase);
+                    if (matchSaved || matchNoAudio)
                     {
                         OutputAudioDeviceComboBox.SelectedItem = item;
                         LogToFile($"Set output device to: {deviceName}");
@@ -2551,11 +2584,10 @@ namespace SharpShot.UI
             if (!outputDeviceSet)
             {
                 LogToFile($"Could not find saved output device '{_originalSettings.SelectedOutputAudioDevice}' in dropdown");
-                // Set to "Auto-detect" if device not found
                 if (OutputAudioDeviceComboBox.Items.Count > 0)
                 {
                     OutputAudioDeviceComboBox.SelectedIndex = 0;
-                    LogToFile("Set output device to Auto-detect (default)");
+                    LogToFile("Set output device to first list item (no system audio or fallback)");
                 }
             }
 
@@ -2824,7 +2856,7 @@ namespace SharpShot.UI
                 try
                 {
                     // Create device enumerator
-                    var deviceEnumeratorType = typeof(MMDeviceEnumerator).GUID;
+                    var deviceEnumeratorType = typeof(ComMMDeviceEnumeratorClass).GUID;
                     var deviceEnumeratorInterface = typeof(IMMDeviceEnumerator).GUID;
                     var result = WindowsCoreAudioAPI.CoCreateInstance(
                         ref deviceEnumeratorType, 
@@ -2974,7 +3006,7 @@ namespace SharpShot.UI
                 try
                 {
                     // Create device enumerator
-                    var deviceEnumeratorType = typeof(MMDeviceEnumerator).GUID;
+                    var deviceEnumeratorType = typeof(ComMMDeviceEnumeratorClass).GUID;
                     var deviceEnumeratorInterface = typeof(IMMDeviceEnumerator).GUID;
                     var result = WindowsCoreAudioAPI.CoCreateInstance(
                         ref deviceEnumeratorType, 
@@ -3308,7 +3340,25 @@ namespace SharpShot.UI
         {
             if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
             {
-                _originalSettings.RecordingEngine = selectedItem.Content.ToString() ?? "ScreenRecorderLib";
+                _originalSettings.RecordingEngine = selectedItem.Content?.ToString() ?? "FFmpeg";
+            }
+            ApplyFfmpegOutputAudioPanelVisibility();
+        }
+
+        private void ApplyFfmpegOutputAudioPanelVisibility()
+        {
+            try
+            {
+                if (RecordingEngineComboBox?.SelectedItem is not System.Windows.Controls.ComboBoxItem item)
+                    return;
+                var engine = item.Content?.ToString() ?? "";
+                OutputAudioDevicePanel.Visibility = string.Equals(engine, "FFmpeg", StringComparison.OrdinalIgnoreCase)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+            catch
+            {
+                // Controls may not be initialized yet
             }
         }
 
@@ -3364,7 +3414,7 @@ namespace SharpShot.UI
                 OutputAudioDeviceComboBox.Items.Clear();
                 InputAudioDeviceComboBox.Items.Clear();
                 
-                // Add "Auto-detect" options
+                OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "No system audio" });
                 OutputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
                 InputAudioDeviceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = "Auto-detect" });
                 
@@ -3399,6 +3449,25 @@ namespace SharpShot.UI
                 }
                 
                 LogToFile($"Categorized {inputDevices.Count} input devices and {outputDevices.Count} output devices");
+
+                try
+                {
+                    var ffPath = GetFFmpegPath();
+                    if (!string.IsNullOrEmpty(ffPath))
+                    {
+                        foreach (var name in FfmpegWasapiDeviceResolver.GetWasapiAudioDeviceNames(ffPath))
+                        {
+                            if (!outputDevices.Contains(name))
+                                outputDevices.Add(name);
+                        }
+                    }
+                }
+                catch (Exception mergeEx)
+                {
+                    LogToFile($"FFmpeg WASAPI name merge skipped: {mergeEx.Message}");
+                }
+
+                outputDevices.Sort(StringComparer.OrdinalIgnoreCase);
                 
                 // Populate dropdowns
                 foreach (var device in inputDevices)
