@@ -554,6 +554,11 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="Adds an OCR button to the main dashboard. Click it to region-select and extract text directly without opening the screenshot editor."/>
+                <CheckBox x:Name="SkipPostCaptureMenuCheckBox"
+                          Content="Skip post-capture menu for screenshots and videos"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, SharpShot skips the copy/save/cancel dashboard menu after region, fullscreen, and video captures."/>
                 <CheckBox x:Name="EnableMagnifierCheckBox"
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"

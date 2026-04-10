@@ -76,6 +76,7 @@ namespace SharpShot.UI
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
         public bool ImageCopied { get; private set; } = false;
+        public bool RetakeRequested { get; private set; } = false;
 
         public enum EditingTool
         {
@@ -337,6 +338,7 @@ namespace SharpShot.UI
                 ExtractTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 CopyFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 SaveFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                RetakeButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 CloseEditorButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 
                 // Also apply to tool buttons
@@ -1545,6 +1547,12 @@ namespace SharpShot.UI
 
         private void CloseEditorButton_Click(object sender, RoutedEventArgs e)
         {
+            Close();
+        }
+
+        private void RetakeButton_Click(object sender, RoutedEventArgs e)
+        {
+            RetakeRequested = true;
             Close();
         }
 

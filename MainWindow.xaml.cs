@@ -716,6 +716,11 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
+                if (TrySkipPostCaptureMenu())
+                {
+                    return;
+                }
+
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
@@ -752,6 +757,40 @@ namespace SharpShot
                 CopyButton.ToolTip = "Copy Video (Not supported)";
                 SaveButton.ToolTip = "Save Video";
             });
+        }
+
+        private bool TrySkipPostCaptureMenu()
+        {
+            if (!_settingsService.CurrentSettings.SkipPostCaptureMenu)
+            {
+                return false;
+            }
+
+            try
+            {
+                if (_lastCapturedBitmap != null)
+                {
+                    if (string.IsNullOrEmpty(_lastCapturedFilePath))
+                    {
+                        _lastCapturedFilePath = _screenshotService.SaveScreenshot(_lastCapturedBitmap);
+                    }
+
+                    if (_settingsService.CurrentSettings.AutoCopyScreenshots)
+                    {
+                        AutoCopyScreenshot();
+                    }
+
+                    _lastCapturedBitmap.Dispose();
+                    _lastCapturedBitmap = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Skip post-capture menu save/copy failed: {ex.Message}");
+            }
+
+            ShowNormalButtons();
+            return true;
         }
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
@@ -1131,6 +1170,15 @@ namespace SharpShot
                 {
                     _lastCapturedBitmap = regionWindow.CapturedBitmap;
                     System.Diagnostics.Debug.WriteLine($"Region captured successfully: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+
+                    if (regionWindow.EditorRetakeRequested)
+                    {
+                        _lastCapturedBitmap?.Dispose();
+                        _lastCapturedBitmap = null;
+                        _lastCapturedFilePath = string.Empty;
+                        await CaptureRegion();
+                        return;
+                    }
                     
                     // Check if user completed an action in the editor
                     if (IsEditorActionCompleted(regionWindow))
@@ -1293,6 +1341,11 @@ namespace SharpShot
         {
             Dispatcher.Invoke(() =>
             {
+                if (TrySkipPostCaptureMenu())
+                {
+                    return;
+                }
+
                 // Auto-copy if enabled
                 if (_settingsService.CurrentSettings.AutoCopyScreenshots && _lastCapturedBitmap != null)
                 {

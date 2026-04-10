@@ -298,6 +298,20 @@
                            Fill="{DynamicResource AccentBrush}" 
                            Margin="8,0"/>
 
+                <!-- Retake -->
+                <Button x:Name="RetakeButton"
+                        Style="{StaticResource EditToolButtonStyle}"
+                        Click="RetakeButton_Click"
+                        ToolTip="Retake Region"
+                        Width="60">
+                    <Path Data="M20 8v4h-4M12 4a8 8 0 108 8"
+                          Stroke="{DynamicResource AccentBrush}"
+                          StrokeThickness="1.8"
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="18" Height="18"/>
+                </Button>
+
                 <!-- Close/Cancel -->
                 <Button x:Name="CloseEditorButton" 
                         Style="{StaticResource EditToolButtonStyle}"
@@ -648,6 +662,7 @@
                             </Style>
                         </ScrollViewer.Resources>
                         <TextBox x:Name="OcrExtractedTextBox"
+                                 Style="{StaticResource DarkTextBoxStyle}"
                                  IsReadOnly="True"
                                  TextWrapping="Wrap"
                                  AcceptsReturn="True"
@@ -656,7 +671,6 @@
                                  MinHeight="140"
                                  Foreground="White"
                                  Background="#40000000"
-                                 BorderThickness="0"
                                  CaretBrush="{DynamicResource AccentBrush}"/>
                     </ScrollViewer>
                     <Button x:Name="OcrCopyTextButton"

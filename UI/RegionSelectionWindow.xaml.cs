@@ -77,6 +77,7 @@ namespace SharpShot.UI
         public bool EditorActionCompleted { get; private set; } = false;
         public bool EditorCopyRequested { get; private set; } = false;
         public bool EditorSaveRequested { get; private set; } = false;
+        public bool EditorRetakeRequested { get; private set; } = false;
         private Rectangle _virtualDesktopBounds;
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
@@ -711,6 +712,7 @@ namespace SharpShot.UI
                 EditorActionCompleted = editor.ImageSaved || editor.ImageCopied;
                 EditorCopyRequested = editor.ImageCopied;
                 EditorSaveRequested = editor.ImageSaved;
+                EditorRetakeRequested = editor.RetakeRequested;
                 
                 // Close this window
                 Close();
