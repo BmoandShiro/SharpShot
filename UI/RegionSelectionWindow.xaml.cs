@@ -81,16 +81,18 @@ namespace SharpShot.UI
         private MagnifierWindow? _magnifier;
         private System.Windows.Threading.DispatcherTimer? _magnifierTimer;
         private readonly bool _isRecordingMode;
+        private readonly bool _directCaptureOnly;
         private readonly IntPtr _targetWindowForSmartDetection;
         private List<Rectangle> _smartRegionRects = new List<Rectangle>();
         private bool _isPotentialClick; // true until user moves enough to count as drag
 
-        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null)
+        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null, bool directCaptureOnly = false)
         {
             InitializeComponent();
             _screenshotService = screenshotService;
             _settingsService = settingsService;
             _isRecordingMode = isRecordingMode;
+            _directCaptureOnly = directCaptureOnly;
             _targetWindowForSmartDetection = targetWindowForSmartDetection ?? IntPtr.Zero;
             
             // Set this as the active instance
@@ -620,8 +622,13 @@ namespace SharpShot.UI
                     CapturedBitmap = new Bitmap(bitmap);
                     System.Diagnostics.Debug.WriteLine($"Captured region: {actualWidth}x{actualHeight} at ({actualX},{actualY})");
                     
+                    // For OCR quick-capture we only need a raw captured bitmap and should not show editor overlay.
+                    if (_directCaptureOnly)
+                    {
+                        Close();
+                    }
                     // Check if we should skip the editor and auto-copy
-                    if (_settingsService?.CurrentSettings?.SkipEditorAndAutoCopy == true)
+                    else if (_settingsService?.CurrentSettings?.SkipEditorAndAutoCopy == true)
                     {
                         // Skip editor, auto-copy to clipboard, and close
                         try

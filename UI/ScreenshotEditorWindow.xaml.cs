@@ -352,6 +352,8 @@ namespace SharpShot.UI
                 // OCR extracted-text popup close button: same hover/glow as toolbar and settings
                 if (OcrTextPopupCloseButton != null)
                     OcrTextPopupCloseButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                if (OcrCopyTextButton != null)
+                    OcrCopyTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 
                 System.Diagnostics.Debug.WriteLine("All button styles updated with theme-aware styling");
             }
@@ -1391,6 +1393,25 @@ namespace SharpShot.UI
         private void OcrTextPopupCloseButton_Click(object sender, RoutedEventArgs e)
         {
             OcrTextPopup.IsOpen = false;
+        }
+
+        private void OcrCopyTextButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var text = OcrExtractedTextBox.Text ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    return;
+                }
+
+                Clipboard.SetText(text);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OCR copy text failed: {ex.Message}");
+                MessageBox.Show(this, $"Failed to copy text: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void OcrTextPopupHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

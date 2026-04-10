@@ -11,6 +11,8 @@ using SharpShot.Models;
 using SharpShot.Services;
 using SharpShot.Utils;
 using System.Threading.Tasks;
+using System.Linq;
+using System.Collections.Generic;
 using Point = System.Windows.Point;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -26,6 +28,8 @@ namespace SharpShot
         private System.Windows.Forms.NotifyIcon? _trayIcon;
         private Point? _dashboardPreCapturePosition;
         private bool _dashboardTemporarilyMovedFromCapture;
+        private double _effectiveBaseDashboardWidth;
+        private DispatcherTimer? _dashboardResizeSaveTimer;
         private bool _isDragging;
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
@@ -35,6 +39,11 @@ namespace SharpShot
         private const int WM_HOTKEY = 0x0312;
         private const int WM_ACTIVATE = 0x0006;
         private const int WA_INACTIVE = 0;
+        private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int HTLEFT = 10;
+        private const int HTRIGHT = 11;
+        private const int HTTOP = 12;
+        private const int HTBOTTOM = 15;
         
         // Windows API to prevent window activation
         [DllImport("user32.dll")]
@@ -57,6 +66,12 @@ namespace SharpShot
         
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
         public MainWindow()
         {
@@ -99,6 +114,7 @@ namespace SharpShot
             
             // Apply theme settings
             ApplyThemeSettings();
+            ApplyDashboardFeatureVisibility();
             
             // Debug: Verify settings are loaded
             System.Diagnostics.Debug.WriteLine($"Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
@@ -167,6 +183,7 @@ namespace SharpShot
             MouseLeftButtonDown += MainWindow_MouseLeftButtonDown;
             MouseLeftButtonUp += MainWindow_MouseLeftButtonUp;
             MouseMove += MainWindow_MouseMove;
+            SizeChanged += MainWindow_SizeChanged;
             
             // Recording events
             _recordingService.RecordingStateChanged += OnRecordingStateChanged;
@@ -186,13 +203,56 @@ namespace SharpShot
             // NOTE: Hotkeys will be applied AFTER the window handle is set in OnSourceInitialized
         }
 
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            try
+            {
+                if (WindowState != WindowState.Normal)
+                {
+                    return;
+                }
+
+                // Persist live dashboard size so Settings reflects drag-resize dimensions.
+                var settings = _settingsService.CurrentSettings;
+                settings.DashboardWidth = Width;
+                settings.DashboardHeight = Height;
+
+                _dashboardResizeSaveTimer ??= new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(350)
+                };
+                _dashboardResizeSaveTimer.Tick -= DashboardResizeSaveTimer_Tick;
+                _dashboardResizeSaveTimer.Tick += DashboardResizeSaveTimer_Tick;
+                _dashboardResizeSaveTimer.Stop();
+                _dashboardResizeSaveTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to handle dashboard resize: {ex.Message}");
+            }
+        }
+
+        private void DashboardResizeSaveTimer_Tick(object? sender, EventArgs e)
+        {
+            try
+            {
+                _dashboardResizeSaveTimer?.Stop();
+                _settingsService.SaveSettings();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to persist dashboard size: {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Applies <see cref="Settings.DashboardWidth"/> and <see cref="Settings.DashboardHeight"/> (0 = built-in defaults).
         /// </summary>
         private void ApplyDashboardDimensionsFromSettings()
         {
             var s = _settingsService.CurrentSettings;
-            Width = s.DashboardWidth <= 0 ? Settings.DefaultDashboardWidth : s.DashboardWidth;
+            _effectiveBaseDashboardWidth = s.DashboardWidth <= 0 ? Settings.DefaultDashboardWidth : s.DashboardWidth;
+            Width = _effectiveBaseDashboardWidth;
             Height = s.DashboardHeight <= 0 ? Settings.DefaultDashboardHeight : s.DashboardHeight;
         }
 
@@ -202,7 +262,22 @@ namespace SharpShot
         public void ApplyDashboardLayoutFromSettings()
         {
             ApplyDashboardDimensionsFromSettings();
+            ApplyDashboardFeatureVisibility();
             PositionWindow();
+        }
+
+        private void ApplyDashboardFeatureVisibility()
+        {
+            bool showOcrQuickButton = _settingsService.CurrentSettings.ShowOcrButtonOnDashboard;
+            OcrRegionButton.Visibility = showOcrQuickButton ? Visibility.Visible : Visibility.Collapsed;
+            OcrSectionSeparator.Visibility = showOcrQuickButton ? Visibility.Visible : Visibility.Collapsed;
+
+            // Auto-expand dashboard width only when using default width.
+            // If user set a custom DashboardWidth, respect that value exactly.
+            if (_settingsService.CurrentSettings.DashboardWidth <= 0)
+            {
+                Width = showOcrQuickButton ? 600 : _effectiveBaseDashboardWidth;
+            }
         }
 
         public void PositionWindow()
@@ -456,6 +531,12 @@ namespace SharpShot
             await CaptureFullScreen();
         }
 
+        private async void OcrRegionButton_Click(object sender, RoutedEventArgs e)
+        {
+            PreventWindowActivation();
+            await CaptureRegionForOcr();
+        }
+
         private void RecordingButton_Click(object sender, RoutedEventArgs e)
         {
             ShowRecordingOptions();
@@ -558,12 +639,14 @@ namespace SharpShot
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
+                OcrRegionButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
+                OcrSectionSeparator.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
@@ -589,12 +672,14 @@ namespace SharpShot
                 // Hide all other buttons first
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
+                OcrRegionButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
                 
                 // Hide main toolbar separators
+                OcrSectionSeparator.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
@@ -643,12 +728,14 @@ namespace SharpShot
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
+                OcrRegionButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
+                OcrSectionSeparator.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
@@ -693,6 +780,54 @@ namespace SharpShot
                 // Remove the event handler to avoid multiple subscriptions
                 StateChanged -= MainWindow_StateChanged;
             }
+        }
+
+        private void BeginResizeFromEdge(int hitTest)
+        {
+            try
+            {
+                if (WindowState != WindowState.Normal)
+                {
+                    return;
+                }
+
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd == IntPtr.Zero)
+                {
+                    return;
+                }
+
+                ReleaseCapture();
+                SendMessage(hwnd, WM_NCLBUTTONDOWN, (IntPtr)hitTest, IntPtr.Zero);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"BeginResizeFromEdge failed: {ex.Message}");
+            }
+        }
+
+        private void LeftResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            BeginResizeFromEdge(HTLEFT);
+        }
+
+        private void RightResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            BeginResizeFromEdge(HTRIGHT);
+        }
+
+        private void TopResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            BeginResizeFromEdge(HTTOP);
+        }
+
+        private void BottomResizeHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            BeginResizeFromEdge(HTBOTTOM);
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -1085,6 +1220,70 @@ namespace SharpShot
             }
         }
 
+        private async Task CaptureRegionForOcr()
+        {
+            try
+            {
+                if (!OcrService.IsAvailable())
+                {
+                    var msg = "Text recognition (OCR) needs Tesseract language data.\n\n" +
+                              "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
+                              "2. Place it in the application folder or in a subfolder named 'tessdata'.";
+                    var result = MessageBox.Show(
+                        msg + "\n\nOpen the application folder now?",
+                        "OCR Quick Capture",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        try
+                        {
+                            var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                            var tessDataDir = Path.Combine(appDir, "tessdata");
+                            var dirToOpen = Directory.Exists(tessDataDir) ? tessDataDir : appDir;
+                            System.Diagnostics.Process.Start("explorer.exe", dirToOpen);
+                        }
+                        catch (Exception openEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Open folder failed: {openEx.Message}");
+                        }
+                    }
+
+                    return;
+                }
+
+                IntPtr targetWindow = GetForegroundWindow();
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow, directCaptureOnly: true);
+                regionWindow.ShowDialog();
+
+                var capturedBitmap = regionWindow.CapturedBitmap;
+                if (capturedBitmap == null)
+                {
+                    return;
+                }
+
+                IReadOnlyList<OcrWordResult> words = await OcrService.RecognizeWordsAsync(capturedBitmap);
+                string text = string.Join(" ", words.Select(w => w.Text).Where(t => !string.IsNullOrWhiteSpace(t))).Trim();
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    MessageBox.Show("No text was recognized in the selected area.", "OCR Quick Capture", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var ocrResultWindow = new UI.OcrResultWindow(text)
+                {
+                    Owner = this
+                };
+                ocrResultWindow.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OCR quick capture failed: {ex.Message}");
+                MessageBox.Show($"OCR failed: {ex.Message}", "OCR Quick Capture", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         private bool IsEditorActionCompleted(UI.RegionSelectionWindow regionWindow)
         {
             return regionWindow.EditorActionCompleted;
@@ -1103,12 +1302,14 @@ namespace SharpShot
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
+                OcrRegionButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
                 CloseButton.Visibility = Visibility.Collapsed;
 
                 // Hide main toolbar separators
+                OcrSectionSeparator.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
@@ -1155,6 +1356,7 @@ namespace SharpShot
                 SettingsButton.Visibility = Visibility.Visible;
                 MinimizeButton.Visibility = Visibility.Visible;
                 CloseButton.Visibility = Visibility.Visible;
+                ApplyDashboardFeatureVisibility();
                 
                 // Reset recording button content to the original Path (video camera icon)
                 // The content is already set correctly in XAML, so we don't need to change it
@@ -1911,6 +2113,7 @@ namespace SharpShot
             // Force all buttons to refresh their styles
             if (RegionButton != null) RegionButton.Style = null;
             if (ScreenshotButton != null) ScreenshotButton.Style = null;
+            if (OcrRegionButton != null) OcrRegionButton.Style = null;
             if (RecordingButton != null) RecordingButton.Style = null;
             if (SettingsButton != null) SettingsButton.Style = null;
             if (MinimizeButton != null) MinimizeButton.Style = null;
@@ -1935,6 +2138,11 @@ namespace SharpShot
                 {
                     ScreenshotButton.Style = buttonStyle;
                     ScreenshotButton.Width = 60;
+                }
+                if (OcrRegionButton != null)
+                {
+                    OcrRegionButton.Style = buttonStyle;
+                    OcrRegionButton.Width = 84;
                 }
                 if (RecordingButton != null) 
                 {

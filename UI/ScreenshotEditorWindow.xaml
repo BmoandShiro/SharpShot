@@ -659,6 +659,18 @@
                                  BorderThickness="0"
                                  CaretBrush="{DynamicResource AccentBrush}"/>
                     </ScrollViewer>
+                    <Button x:Name="OcrCopyTextButton"
+                            Style="{StaticResource EditToolButtonStyle}"
+                            Click="OcrCopyTextButton_Click"
+                            ToolTip="Copy extracted text"
+                            Width="110"
+                            Height="34"
+                            HorizontalAlignment="Right"
+                            Margin="0,10,0,0">
+                        <TextBlock Text="Copy Text"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   FontWeight="SemiBold"/>
+                    </Button>
                 </StackPanel>
             </Border>
         </Popup>

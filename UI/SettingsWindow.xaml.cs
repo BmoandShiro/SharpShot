@@ -455,6 +455,7 @@ namespace SharpShot.UI
             }
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
+            ShowOcrButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowOcrButtonOnDashboard;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
@@ -908,6 +909,7 @@ namespace SharpShot.UI
                 }
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
+                _originalSettings.ShowOcrButtonOnDashboard = ShowOcrButtonOnDashboardCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 _originalSettings.EnableSmartRegionDetection = EnableSmartRegionDetectionCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
@@ -1084,6 +1086,7 @@ namespace SharpShot.UI
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
+            target.ShowOcrButtonOnDashboard = source.ShowOcrButtonOnDashboard;
             target.EnableMagnifier = source.EnableMagnifier;
             target.EnableSmartRegionDetection = source.EnableSmartRegionDetection;
             target.DisableAllPopups = source.DisableAllPopups;
@@ -1475,6 +1478,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(AutoCopyScreenshotsCheckBox, themeColor);
                 if (SkipEditorAndAutoCopyCheckBox != null && SkipEditorAndAutoCopyCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(SkipEditorAndAutoCopyCheckBox, themeColor);
+                if (ShowOcrButtonOnDashboardCheckBox != null && ShowOcrButtonOnDashboardCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(ShowOcrButtonOnDashboardCheckBox, themeColor);
                 if (EnableMagnifierCheckBox != null && EnableMagnifierCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
                 if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)

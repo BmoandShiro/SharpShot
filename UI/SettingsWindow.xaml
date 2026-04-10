@@ -549,6 +549,11 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="When enabled, region screenshots will skip the editor overlay and automatically copy to clipboard for immediate pasting"/>
+                <CheckBox x:Name="ShowOcrButtonOnDashboardCheckBox"
+                          Content="Show OCR quick-capture button on dashboard"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="Adds an OCR button to the main dashboard. Click it to region-select and extract text directly without opening the screenshot editor."/>
                 <CheckBox x:Name="EnableMagnifierCheckBox"
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"

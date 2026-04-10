@@ -57,6 +57,7 @@ namespace SharpShot.Models
         private bool _editorFollowsCaptureMonitor;
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
+        private bool _showOcrButtonOnDashboard;
         private bool _enableAutoUpdateCheck = true;
         private string? _updateRepoOwner;
         private string? _updateRepoName;
@@ -102,6 +103,7 @@ namespace SharpShot.Models
             EditorFollowsCaptureMonitor = false; // Default: editor uses configured monitor
             DisableAllPopups = false; // Default to false - show popups
             SkipEditorAndAutoCopy = false; // Default to false - show editor
+            ShowOcrButtonOnDashboard = false; // Default to false - keep dashboard compact
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
             UpdateRepoOwner = null; // Will use default from UpdateService
             UpdateRepoName = null; // Will use default from UpdateService
@@ -402,6 +404,12 @@ namespace SharpShot.Models
         {
             get => _skipEditorAndAutoCopy;
             set => SetProperty(ref _skipEditorAndAutoCopy, value);
+        }
+
+        public bool ShowOcrButtonOnDashboard
+        {
+            get => _showOcrButtonOnDashboard;
+            set => SetProperty(ref _showOcrButtonOnDashboard, value);
         }
 
         public bool EnableAutoUpdateCheck
