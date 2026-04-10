@@ -201,6 +201,8 @@ namespace SharpShot.UI
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
             InitializeComponent();
+            var av = Assembly.GetExecutingAssembly().GetName().Version;
+            VersionTextBlock.Text = av != null ? $"v{av}" : "v?";
             _settingsService = settingsService;
             _hotkeyManager = hotkeyManager;
             _originalSettings = new Settings();

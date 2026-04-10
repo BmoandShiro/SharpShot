@@ -204,10 +204,12 @@ namespace SharpShot.UI
                 var themeColor = _settingsService.CurrentSettings.IconColor;
                 if (string.IsNullOrEmpty(themeColor)) return;
                 
-                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(themeColor));
+                var parsedColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(themeColor);
+                var brush = new SolidColorBrush(parsedColor);
                 
                 // Update the global AccentBrush resource so all XAML elements using {DynamicResource AccentBrush} update automatically
                 Application.Current.Resources["AccentBrush"] = brush;
+                Application.Current.Resources["AccentColor"] = parsedColor;
                 
                 // Update all overlay edit menu icons to use the theme color
                 UpdateIconColor(BlurButton, brush);

@@ -185,8 +185,20 @@ namespace SharpShot.Services
 
                 progress?.Report(new UpdateProgress { Status = "Preparing update...", Percentage = 75 });
 
+                // Resolve the extracted payload root (must contain SharpShot.exe)
+                var payloadDirectory = FindPortablePayloadDirectory(extractPath);
+                if (string.IsNullOrEmpty(payloadDirectory))
+                {
+                    progress?.Report(new UpdateProgress
+                    {
+                        Status = "Update package is invalid (SharpShot.exe not found).",
+                        Percentage = 0
+                    });
+                    return false;
+                }
+
                 // Create update script
-                var updateScriptPath = CreateUpdateScript(appDirectory, extractPath);
+                var updateScriptPath = CreateUpdateScript(appDirectory, payloadDirectory);
 
                 progress?.Report(new UpdateProgress { Status = "Update ready! Restarting application...", Percentage = 100 });
 
@@ -283,10 +295,8 @@ namespace SharpShot.Services
             if (anyZip != null)
                 return anyZip.BrowserDownloadUrl;
 
-            // 4. As a last resort, construct a tag-based ZIP URL (GitHub auto-generated source archive)
-            var repoOwner = _settingsService.CurrentSettings.UpdateRepoOwner ?? DefaultRepoOwner;
-            var repoName = _settingsService.CurrentSettings.UpdateRepoName ?? DefaultRepoName;
-            return $"https://github.com/{repoOwner}/{repoName}/archive/refs/tags/{release.TagName}.zip";
+            // 4. No valid release asset found
+            throw new InvalidOperationException("No suitable update asset found in the latest release.");
         }
 
         private async Task DownloadFileAsync(string url, string destinationPath, IProgress<UpdateProgress>? progress)
@@ -329,7 +339,7 @@ namespace SharpShot.Services
             } while (isMoreToRead);
         }
 
-        private string CreateUpdateScript(string appDirectory, string extractPath)
+        private string CreateUpdateScript(string appDirectory, string payloadDirectory)
         {
             var scriptPath = Path.Combine(Path.GetTempPath(), "SharpShot_Update", "apply_update.ps1");
             var scriptContent = $@"
@@ -341,29 +351,33 @@ Write-Host ""Applying SharpShot update..."" -ForegroundColor Green
 # Wait for SharpShot to fully close and release the .exe file (single-file app locks it)
 Start-Sleep -Seconds 5
 
-# Find the extracted update files
-$updateSource = ""{extractPath.Replace("\\", "\\\\")}""
+# Use the extracted payload directory that was pre-validated in C#
+$updateSource = ""{payloadDirectory.Replace("\\", "\\\\")}""
 $appTarget = ""{appDirectory.Replace("\\", "\\\\")}""
+# Normalize so FullName prefix checks match (avoids Substring out-of-range and wrong relative paths)
+$srcNorm = ([System.IO.Path]::GetFullPath($updateSource) -replace '[\\/]+$','')
+$appNorm = ([System.IO.Path]::GetFullPath($appTarget) -replace '[\\/]+$','')
+$srcPrefix = $srcNorm + [System.IO.Path]::DirectorySeparatorChar
 
-# Find the actual SharpShot folder in the extracted zip (could be in a subfolder)
-$sharpShotFolder = Get-ChildItem -Path $updateSource -Directory | Where-Object {{ $_.Name -like ""*SharpShot*"" }} | Select-Object -First 1
-
-if ($sharpShotFolder) {{
-    $updateSource = $sharpShotFolder.FullName
-}}
-
-Write-Host ""Copying files from: $updateSource""
-Write-Host ""To: $appTarget""
+Write-Host ""Copying files from: $srcNorm""
+Write-Host ""To: $appNorm""
 
 # Copy all files except settings and user data
 $excludeItems = @(""settings.json"", ""OBS-Studio"", ""ffmpeg"", ""*.log"")
 
 $exeSourcePath = $null
-$exeTargetPath = Join-Path $appTarget ""SharpShot.exe""
+$exeTargetPath = Join-Path $appNorm ""SharpShot.exe""
 
-Get-ChildItem -Path $updateSource -Recurse | ForEach-Object {{
-    $relativePath = $_.FullName.Substring($updateSource.Length + 1)
-    $targetPath = Join-Path $appTarget $relativePath
+Get-ChildItem -Path $srcNorm -Recurse -Force | ForEach-Object {{
+    $full = [System.IO.Path]::GetFullPath($_.FullName)
+    if (-not $full.StartsWith($srcPrefix, [StringComparison]::OrdinalIgnoreCase)) {{
+        return
+    }}
+    $relativePath = $full.Substring($srcPrefix.Length)
+    if ([string]::IsNullOrEmpty($relativePath)) {{
+        return
+    }}
+    $targetPath = Join-Path $appNorm $relativePath
     
     # Skip excluded items
     $shouldExclude = $false
@@ -425,7 +439,7 @@ Start-Sleep -Seconds 1
 Remove-Item -Path ""{Path.GetTempPath().Replace("\\", "\\\\")}SharpShot_Update"" -Recurse -Force -ErrorAction SilentlyContinue
 
 # Restart SharpShot
-$exePath = Join-Path ""{appDirectory.Replace("\\", "\\\\")}"" ""SharpShot.exe""
+$exePath = Join-Path $appNorm ""SharpShot.exe""
 if (Test-Path $exePath) {{
     Start-Process -FilePath $exePath
     Write-Host ""SharpShot restarted!"" -ForegroundColor Green
@@ -624,6 +638,43 @@ Start-Sleep -Seconds 3
             catch
             {
                 return InstallType.Unknown;
+            }
+        }
+
+        private static string? FindPortablePayloadDirectory(string extractRoot)
+        {
+            try
+            {
+                // 1) Exact root contains executable
+                var exeAtRoot = Path.Combine(extractRoot, "SharpShot.exe");
+                if (File.Exists(exeAtRoot))
+                {
+                    return extractRoot;
+                }
+
+                // 2) Common release layout: first-level subfolder contains executable
+                foreach (var dir in Directory.GetDirectories(extractRoot))
+                {
+                    var exePath = Path.Combine(dir, "SharpShot.exe");
+                    if (File.Exists(exePath))
+                    {
+                        return dir;
+                    }
+                }
+
+                // 3) Last resort: recursive search (protect against odd archive layouts)
+                var recursiveExe = Directory.EnumerateFiles(extractRoot, "SharpShot.exe", SearchOption.AllDirectories)
+                    .FirstOrDefault();
+                if (!string.IsNullOrEmpty(recursiveExe))
+                {
+                    return Path.GetDirectoryName(recursiveExe);
+                }
+
+                return null;
+            }
+            catch
+            {
+                return null;
             }
         }
     }

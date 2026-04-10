@@ -1908,8 +1908,10 @@ namespace SharpShot
             try
             {
                 // Update the global AccentBrush resource so all XAML elements using {DynamicResource AccentBrush} update automatically
-                var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color));
+                var parsedColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(color);
+                var brush = new SolidColorBrush(parsedColor);
                 Application.Current.Resources["AccentBrush"] = brush;
+                Application.Current.Resources["AccentColor"] = parsedColor;
                 
                 // Update all icon paths to use the new color
                 if (RegionButton.Content is System.Windows.Shapes.Path regionPath)

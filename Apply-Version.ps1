@@ -53,14 +53,7 @@ if (Test-Path $csprojPath) {
     Write-Host "  Updated SharpShot.csproj" -ForegroundColor Gray
 }
 
-# 2. UI\SettingsWindow.xaml (VersionTextBlock Text="v...")
-$xamlPath = Join-Path $ProjectDir "UI\SettingsWindow.xaml"
-if (Test-Path $xamlPath) {
-    $content = Get-Content $xamlPath -Raw
-    $content = $content -replace 'Text="v\d+\.\d+\.\d+\.\d+"', "Text=`"v$version`""
-    Update-FileContent $xamlPath $content
-    Write-Host "  Updated UI\SettingsWindow.xaml" -ForegroundColor Gray
-}
+# 2. UI\SettingsWindow.xaml — footer version is set at runtime from AssemblyVersion (see SettingsWindow constructor)
 
 # 3. Installer\SharpShot.wxs
 $wxsPath = Join-Path $ProjectDir "Installer\SharpShot.wxs"
