@@ -28,10 +28,10 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="Update Available" FontSize="18" FontWeight="Bold" 
                                Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Content="✕" Width="30" Height="30" 
-                            Click="CloseButton_Click" Background="Transparent" 
-                            BorderThickness="0" Foreground="White" FontSize="16"
-                            Cursor="Hand" ToolTip="Close"/>
+                    <Button x:Name="UpdateCloseButton" Grid.Column="1" Width="30" Height="30"
+                            Click="CloseButton_Click" ToolTip="Close">
+                        <TextBlock Text="✕" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
                 </Grid>
             </Border>
 
@@ -62,63 +62,15 @@
 
             <!-- Buttons -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="15,10,15,10">
-                <Button Name="LaterButton" Content="Later" Width="100" Height="35" 
-                        Click="LaterButton_Click" Margin="0,0,10,0"
-                        Background="#FF3E3E3E" Foreground="White" BorderThickness="0" 
-                        Cursor="Hand">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="border" 
-                                                Background="{TemplateBinding Background}" 
-                                                CornerRadius="5" 
-                                                BorderThickness="{TemplateBinding BorderThickness}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#FF4E4E4E"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="border" Property="Background" Value="#FF2E2E2E"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
+                <Button x:Name="LaterButton"
+                        Click="LaterButton_Click" Margin="0,0,10,0">
+                    <TextBlock Text="Later" FontSize="14" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
-                <Button Name="UpdateButton" Content="Update Now" Width="120" Height="35" 
-                        Click="UpdateButton_Click"
-                        Background="{DynamicResource AccentBrush}" Foreground="White" BorderThickness="0" 
-                        FontWeight="Bold" Cursor="Hand">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="border" 
-                                                Background="{TemplateBinding Background}" 
-                                                CornerRadius="5" 
-                                                BorderThickness="{TemplateBinding BorderThickness}">
-                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
-                                            </Trigger>
-                                            <Trigger Property="IsPressed" Value="True">
-                                                <Setter TargetName="border" Property="Opacity" Value="0.8"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Button.Style>
+                <Button x:Name="UpdateButton"
+                        Click="UpdateButton_Click">
+                    <TextBlock Text="Update Now" FontSize="14" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
             </StackPanel>
 

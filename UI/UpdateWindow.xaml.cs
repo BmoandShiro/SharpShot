@@ -1,8 +1,10 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using SharpShot.Services;
+using SharpShot.Utils;
 
 namespace SharpShot.UI
 {
@@ -18,12 +20,35 @@ namespace SharpShot.UI
             _updateService = updateService;
             _updateInfo = updateInfo;
 
-            // Populate UI with update info
-            VersionText.Text = $"Version {updateInfo.Version} - {updateInfo.ReleaseName}";
+            var current = _updateService.GetCurrentVersion();
+            // Was: Version + ReleaseName (often both "1.2.9.3" / "v1.2.9.3" from GitHub — looked like wrong "current" version)
+            VersionText.Text = $"You have v{current} · New release: v{updateInfo.Version}";
             ReleaseNotesText.Text = updateInfo.ReleaseNotes;
+
+            ApplyThemedButtons();
 
             // Make window draggable
             MouseDown += (s, e) => { if (e.ChangedButton == System.Windows.Input.MouseButton.Left) DragMove(); };
+        }
+
+        private void ApplyThemedButtons()
+        {
+            var s = SharpShot.App.SettingsService.CurrentSettings;
+            var iconColor = string.IsNullOrEmpty(s.IconColor) ? "#FFFF8C00" : s.IconColor;
+            var color = (Color)ColorConverter.ConvertFromString(iconColor);
+            var brush = new SolidColorBrush(color);
+
+            LaterButton.Style = ThemeButtonStyleHelper.CreateModernButtonStyle(color, s.HoverOpacity, s.DropShadowOpacity, 100, 35);
+            if (LaterButton.Content is System.Windows.Controls.TextBlock laterTb)
+                laterTb.Foreground = brush;
+
+            UpdateButton.Style = ThemeButtonStyleHelper.CreateModernButtonStyle(color, s.HoverOpacity, s.DropShadowOpacity, 120, 35);
+            if (UpdateButton.Content is System.Windows.Controls.TextBlock updateTb)
+                updateTb.Foreground = brush;
+
+            UpdateCloseButton.Style = ThemeButtonStyleHelper.CreateCloseButtonStyle(color, s.HoverOpacity, s.DropShadowOpacity);
+            if (UpdateCloseButton.Content is System.Windows.Controls.TextBlock closeTb)
+                closeTb.Foreground = brush;
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

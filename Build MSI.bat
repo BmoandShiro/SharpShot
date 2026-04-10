@@ -7,9 +7,9 @@ echo ========================================
 echo.
 echo This will:
 echo   - Use the existing portable release folder
-echo     SharpShot-Release-v1.2.9.3
+echo     SharpShot-Release-v1.2.9.4
 echo   - Harvest files with WiX
-echo   - Build SharpShot-1.2.9.3.msi in bin\Release
+echo   - Build SharpShot-1.2.9.4.msi in bin\Release
 echo.
 
 if not exist "build-msi.ps1" (
@@ -25,7 +25,7 @@ if errorlevel 1 (
 ) else (
   echo.
   echo [OK] MSI build completed successfully.
-  echo     Check bin\Release\SharpShot-1.2.9.3.msi
+  echo     Check bin\Release\SharpShot-1.2.9.4.msi
 )
 
 :end
