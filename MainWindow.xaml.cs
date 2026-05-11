@@ -1095,10 +1095,11 @@ namespace SharpShot
         {
             try
             {
-                // Don't manipulate the window at all - just capture directly
-                // This prevents any focus changes that would close browser dropdowns
-                // Graphics.CopyFromScreen doesn't require window manipulation
-                var filePath = _screenshotService.CaptureFullScreen();
+                string filePath;
+                using (CaptureUiSuppression.BeginIfEnabled(_settingsService))
+                {
+                    filePath = _screenshotService.CaptureFullScreen();
+                }
                 
                 if (!string.IsNullOrEmpty(filePath))
                 {

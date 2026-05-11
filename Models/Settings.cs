@@ -59,6 +59,7 @@ namespace SharpShot.Models
         private bool _skipEditorAndAutoCopy;
         private bool _showOcrButtonOnDashboard;
         private bool _skipPostCaptureMenu;
+        private bool _hideSharpShotWindowsDuringCapture;
         private bool _enableAutoUpdateCheck = true;
         private string? _updateRepoOwner;
         private string? _updateRepoName;
@@ -106,6 +107,7 @@ namespace SharpShot.Models
             SkipEditorAndAutoCopy = false; // Default to false - show editor
             ShowOcrButtonOnDashboard = false; // Default to false - keep dashboard compact
             SkipPostCaptureMenu = false; // Default to false - show post-capture actions menu
+            HideSharpShotWindowsDuringCapture = false; // Default: same as today; enable to omit dashboard/editor from captures
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
             UpdateRepoOwner = null; // Will use default from UpdateService
             UpdateRepoName = null; // Will use default from UpdateService
@@ -418,6 +420,16 @@ namespace SharpShot.Models
         {
             get => _skipPostCaptureMenu;
             set => SetProperty(ref _skipPostCaptureMenu, value);
+        }
+
+        /// <summary>
+        /// When true, the main dashboard, editor, magnifier, and other SharpShot windows are hidden
+        /// for the moment of a screen capture so they do not appear in the image.
+        /// </summary>
+        public bool HideSharpShotWindowsDuringCapture
+        {
+            get => _hideSharpShotWindowsDuringCapture;
+            set => SetProperty(ref _hideSharpShotWindowsDuringCapture, value);
         }
 
         public bool EnableAutoUpdateCheck

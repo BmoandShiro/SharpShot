@@ -559,6 +559,11 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="When enabled, SharpShot skips the copy/save/cancel dashboard menu after region, fullscreen, and video captures."/>
+                <CheckBox x:Name="HideSharpShotWindowsDuringCaptureCheckBox"
+                          Content="Hide SharpShot windows in screenshots (dashboard, editor, magnifier)"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, SharpShot temporarily hides its own windows while the screen pixels are captured so they do not appear in the image. In the editor, the bottom toolbar, color panel, and OCR popup are hidden briefly when you save or copy so they are not baked into the file."/>
                 <CheckBox x:Name="EnableMagnifierCheckBox"
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"

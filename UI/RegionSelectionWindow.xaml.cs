@@ -614,13 +614,17 @@ namespace SharpShot.UI
                     var actualHeight = SelectedRegion.Value.Height;
                     
                     // Capture the region but don't save yet
-                    using var bitmap = new Bitmap(actualWidth, actualHeight);
-                    using var graphics = Graphics.FromImage(bitmap);
+                    using (CaptureUiSuppression.BeginIfEnabled(_settingsService))
+                    {
+                        using var bitmap = new Bitmap(actualWidth, actualHeight);
+                        using var graphics = Graphics.FromImage(bitmap);
+
+                        graphics.CopyFromScreen(actualX, actualY, 0, 0, new System.Drawing.Size(actualWidth, actualHeight));
+
+                        // Store the bitmap for later use - create a deep copy to avoid disposal issues
+                        CapturedBitmap = new Bitmap(bitmap);
+                    }
                     
-                    graphics.CopyFromScreen(actualX, actualY, 0, 0, new System.Drawing.Size(actualWidth, actualHeight));
-                    
-                    // Store the bitmap for later use - create a deep copy to avoid disposal issues
-                    CapturedBitmap = new Bitmap(bitmap);
                     System.Diagnostics.Debug.WriteLine($"Captured region: {actualWidth}x{actualHeight} at ({actualX},{actualY})");
                     
                     // For OCR quick-capture we only need a raw captured bitmap and should not show editor overlay.

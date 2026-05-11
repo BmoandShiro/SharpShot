@@ -459,6 +459,7 @@ namespace SharpShot.UI
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             ShowOcrButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowOcrButtonOnDashboard;
             SkipPostCaptureMenuCheckBox.IsChecked = _originalSettings.SkipPostCaptureMenu;
+            HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
@@ -914,6 +915,7 @@ namespace SharpShot.UI
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
                 _originalSettings.ShowOcrButtonOnDashboard = ShowOcrButtonOnDashboardCheckBox.IsChecked ?? false;
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
+                _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 _originalSettings.EnableSmartRegionDetection = EnableSmartRegionDetectionCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
@@ -1092,6 +1094,7 @@ namespace SharpShot.UI
             target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
             target.ShowOcrButtonOnDashboard = source.ShowOcrButtonOnDashboard;
             target.SkipPostCaptureMenu = source.SkipPostCaptureMenu;
+            target.HideSharpShotWindowsDuringCapture = source.HideSharpShotWindowsDuringCapture;
             target.EnableMagnifier = source.EnableMagnifier;
             target.EnableSmartRegionDetection = source.EnableSmartRegionDetection;
             target.DisableAllPopups = source.DisableAllPopups;
@@ -1487,6 +1490,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(ShowOcrButtonOnDashboardCheckBox, themeColor);
                 if (SkipPostCaptureMenuCheckBox != null && SkipPostCaptureMenuCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(SkipPostCaptureMenuCheckBox, themeColor);
+                if (HideSharpShotWindowsDuringCaptureCheckBox != null && HideSharpShotWindowsDuringCaptureCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(HideSharpShotWindowsDuringCaptureCheckBox, themeColor);
                 if (EnableMagnifierCheckBox != null && EnableMagnifierCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
                 if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)

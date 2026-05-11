@@ -14,6 +14,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using SharpShot.Services;
+using SharpShot.Utils;
 using Point = System.Windows.Point;
 using Rectangle = System.Windows.Shapes.Rectangle;
 
@@ -1529,21 +1530,82 @@ namespace SharpShot.UI
                 var screenshotWidth = (int)imageControl.ActualWidth;
                 var screenshotHeight = (int)imageControl.ActualHeight;
                 
-                // Take a new screenshot of the same area
-                using var newBitmap = new Bitmap(screenshotWidth, screenshotHeight);
-                using var graphics = Graphics.FromImage(newBitmap);
-                
-                // Copy from screen at the calculated coordinates
-                graphics.CopyFromScreen(screenshotX, screenshotY, 0, 0, new System.Drawing.Size(screenshotWidth, screenshotHeight));
-                
-                // Return a copy of the bitmap
-                return new Bitmap(newBitmap);
+                // Keep this window visible (so pixels under the image exist), hide other SharpShot windows,
+                // and temporarily hide editor chrome that overlaps the image rect (toolbars are composited on top).
+                using (CaptureUiSuppression.BeginIfEnabled(_settingsService, excludeFromHide: this))
+                using (BeginEditorChromeSuppressionForBitmapExport())
+                {
+                    using var newBitmap = new Bitmap(screenshotWidth, screenshotHeight);
+                    using var graphics = Graphics.FromImage(newBitmap);
+
+                    graphics.CopyFromScreen(screenshotX, screenshotY, 0, 0, new System.Drawing.Size(screenshotWidth, screenshotHeight));
+
+                    return new Bitmap(newBitmap);
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to capture new screenshot: {ex.Message}");
                 // Fallback to original bitmap if screenshot fails
                 return new Bitmap(_originalBitmap);
+            }
+        }
+
+        /// <summary>
+        /// While exporting via <see cref="RenderToBitmap"/>, the image element often covers the full window so
+        /// bottom/right toolbars paint on top of the same screen pixels. Collapse them briefly when the user
+        /// opted to exclude SharpShot UI from captures.
+        /// </summary>
+        private IDisposable BeginEditorChromeSuppressionForBitmapExport()
+        {
+            if (_settingsService?.CurrentSettings?.HideSharpShotWindowsDuringCapture != true)
+                return EditorChromeExportNoOp.Instance;
+
+            var bottomVis = BottomToolbarBorder.Visibility;
+            var colorVis = ColorPickerPanel.Visibility;
+            var ocrWasOpen = OcrTextPopup.IsOpen;
+
+            BottomToolbarBorder.Visibility = Visibility.Collapsed;
+            ColorPickerPanel.Visibility = Visibility.Collapsed;
+            OcrTextPopup.IsOpen = false;
+
+            Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            System.Threading.Thread.Sleep(50);
+
+            return new EditorChromeExportRestore(this, bottomVis, colorVis, ocrWasOpen);
+        }
+
+        private sealed class EditorChromeExportNoOp : IDisposable
+        {
+            public static readonly EditorChromeExportNoOp Instance = new();
+            public void Dispose() { }
+        }
+
+        private sealed class EditorChromeExportRestore : IDisposable
+        {
+            private readonly ScreenshotEditorWindow _window;
+            private readonly Visibility _bottomVisibility;
+            private readonly Visibility _colorVisibility;
+            private readonly bool _ocrWasOpen;
+            private bool _disposed;
+
+            public EditorChromeExportRestore(ScreenshotEditorWindow window, Visibility bottomVisibility, Visibility colorVisibility, bool ocrWasOpen)
+            {
+                _window = window;
+                _bottomVisibility = bottomVisibility;
+                _colorVisibility = colorVisibility;
+                _ocrWasOpen = ocrWasOpen;
+            }
+
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+                _disposed = true;
+
+                _window.BottomToolbarBorder.Visibility = _bottomVisibility;
+                _window.ColorPickerPanel.Visibility = _colorVisibility;
+                _window.OcrTextPopup.IsOpen = _ocrWasOpen;
             }
         }
 
