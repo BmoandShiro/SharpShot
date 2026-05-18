@@ -663,7 +663,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 // Commented out false alarm - this can trigger when editor copy/save is successful
-                // MessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
+                // ThemedMessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
                 //               MessageBoxButton.OK, MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Region capture exception (likely harmless): {ex.Message}");
                 Close();
@@ -724,7 +724,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 // Show error to user since editor is not working
-                MessageBox.Show($"Failed to launch editor: {ex.Message}", "Editor Error", 
+                ThemedMessageBox.Show($"Failed to launch editor: {ex.Message}", "Editor Error", 
                               MessageBoxButton.OK, MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Editor launch exception: {ex.Message}");
                 Close();

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
+using SharpShot.UI;
 
 namespace SharpShot.Services
 {
@@ -126,7 +127,7 @@ namespace SharpShot.Services
                 LogToFile("Extracting bundled OBS Studio...");
 
                 // Show progress to user
-                MessageBox.Show(
+                ThemedMessageBox.Show(
                     "Setting up OBS Studio for enhanced audio recording...\n\n" +
                     "This will extract the bundled OBS Studio installation.",
                     "Setup OBS Studio",
@@ -160,7 +161,7 @@ namespace SharpShot.Services
             {
                 LogToFile("Bundled OBS not found, downloading...");
 
-                var result = MessageBox.Show(
+                var result = ThemedMessageBox.Show(
                     "OBS Studio needs to be downloaded for enhanced audio recording.\n\n" +
                     "This will download approximately 100MB. Continue?",
                     "Download OBS Studio",

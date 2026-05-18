@@ -13,9 +13,6 @@
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
     <Window.Resources>
         <SolidColorBrush x:Key="ResizeGripBrush" Color="{DynamicResource AccentColor}"/>
-        <SolidColorBrush x:Key="SettingsScrollBarBrush" Color="{DynamicResource AccentColor}"/>
-        <SolidColorBrush x:Key="SettingsScrollBarTrackHoverBrush" Color="{DynamicResource AccentColor}" Opacity="0.25"/>
-        <SolidColorBrush x:Key="SettingsScrollBarButtonHoverBrush" Color="{DynamicResource AccentColor}" Opacity="0.08"/>
         <Style TargetType="ResizeGrip">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Template">
@@ -90,76 +87,6 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style x:Key="SettingsScrollBarStyle" TargetType="ScrollBar">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource SettingsScrollBarBrush}"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="14"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <RepeatButton Grid.Row="0" Command="ScrollBar.LineUpCommand" Height="18" Margin="1,0,1,1"
-                                          Background="#FF1A1A1A" BorderBrush="#FF404040" BorderThickness="1">
-                                <RepeatButton.Template>
-                                    <ControlTemplate TargetType="RepeatButton">
-                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
-                                            <Path Data="M0,6 L6,6 L3,0 Z" Fill="{StaticResource SettingsScrollBarBrush}"
-                                                  Stretch="Uniform" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </RepeatButton.Template>
-                            </RepeatButton>
-                            <Border Grid.Row="1" Background="#FF1A1A1A">
-                                <Track x:Name="PART_Track" IsDirectionReversed="True">
-                                    <Track.DecreaseRepeatButton>
-                                        <RepeatButton Command="ScrollBar.PageUpCommand" Background="Transparent" BorderThickness="0"/>
-                                    </Track.DecreaseRepeatButton>
-                                    <Track.IncreaseRepeatButton>
-                                        <RepeatButton Command="ScrollBar.PageDownCommand" Background="Transparent" BorderThickness="0"/>
-                                    </Track.IncreaseRepeatButton>
-                                    <Track.Thumb>
-                                        <Thumb MinHeight="24" Margin="2,0">
-                                            <Thumb.Template>
-                                                <ControlTemplate TargetType="Thumb">
-                                                    <Border x:Name="ThumbBorder" Background="#FF404040"
-                                                            BorderBrush="{StaticResource SettingsScrollBarBrush}"
-                                                            BorderThickness="1" CornerRadius="4"/>
-                                                    <ControlTemplate.Triggers>
-                                                        <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="ThumbBorder" Property="Background" Value="#FF505050"/>
-                                                        </Trigger>
-                                                    </ControlTemplate.Triggers>
-                                                </ControlTemplate>
-                                            </Thumb.Template>
-                                        </Thumb>
-                                    </Track.Thumb>
-                                </Track>
-                            </Border>
-                            <RepeatButton Grid.Row="2" Command="ScrollBar.LineDownCommand" Height="18" Margin="1,1,1,0"
-                                          Background="#FF1A1A1A" BorderBrush="#FF404040" BorderThickness="1">
-                                <RepeatButton.Template>
-                                    <ControlTemplate TargetType="RepeatButton">
-                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
-                                            <Path Data="M0,0 L6,0 L3,6 Z" Fill="{StaticResource SettingsScrollBarBrush}"
-                                                  Stretch="Uniform" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </RepeatButton.Template>
-                            </RepeatButton>
-                        </Grid>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Grid Margin="20">
@@ -210,7 +137,7 @@
             <Border Grid.Column="2" Background="#FF1A1A1A" CornerRadius="8" Padding="16" BorderBrush="#FF404040" BorderThickness="1">
                 <ScrollViewer x:Name="SettingsContentScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <ScrollViewer.Resources>
-                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SettingsScrollBarStyle}"/>
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBarStyle}"/>
                     </ScrollViewer.Resources>
                     <StackPanel x:Name="SettingsContentPanel">
 
@@ -517,7 +444,7 @@
                                 Margin="0,0,0,10"
                                 PreviewMouseWheel="NestedScrollViewer_PreviewMouseWheel">
                        <ScrollViewer.Resources>
-                           <Style TargetType="ScrollBar" BasedOn="{StaticResource SettingsScrollBarStyle}"/>
+                           <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBarStyle}"/>
                        </ScrollViewer.Resources>
                        <StackPanel x:Name="MagnifierAutoMonitorList">
                            <!-- Checkboxes will be populated dynamically -->
@@ -561,7 +488,7 @@
                                 Margin="0,0,0,10"
                                 PreviewMouseWheel="NestedScrollViewer_PreviewMouseWheel">
                        <ScrollViewer.Resources>
-                           <Style TargetType="ScrollBar" BasedOn="{StaticResource SettingsScrollBarStyle}"/>
+                           <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBarStyle}"/>
                        </ScrollViewer.Resources>
                        <StackPanel x:Name="MagnifierBoundaryBoxList">
                            <!-- Boundary boxes will be populated dynamically -->
@@ -791,20 +718,34 @@
                            FontSize="11"
                            Margin="0,0,0,8"
                            Visibility="Collapsed"/>
-                <Button x:Name="SaveColorPresetButton"
-                        Style="{StaticResource ModernButtonStyle}"
-                        Click="SaveColorPresetButton_Click"
-                        HorizontalAlignment="Left"
-                        Height="32"
-                        Margin="0,0,0,6"
-                        Padding="12,0">
-                    <TextBlock Text="Save current color"
-                               Foreground="{DynamicResource AccentBrush}"
-                               FontSize="12"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"/>
-                </Button>
-                <TextBlock Text="Click a swatch to apply. Right-click a swatch to remove."
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                    <Button x:Name="SaveColorPresetButton"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Click="SaveColorPresetButton_Click"
+                            Height="32"
+                            Padding="12,0">
+                        <TextBlock Text="Save current color"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                    <ToggleButton x:Name="ColorPresetDeleteModeToggle"
+                                  Click="ColorPresetDeleteModeToggle_Click"
+                                  Height="32"
+                                  Margin="8,0,0,0"
+                                  Padding="12,0"
+                                  ToolTip="Turn on, then click swatches to remove favorites. Turn off when finished.">
+                        <TextBlock x:Name="ColorPresetDeleteModeToggleText"
+                                   Text="Remove favorites"
+                                   Foreground="{DynamicResource AccentBrush}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </ToggleButton>
+                </StackPanel>
+                <TextBlock x:Name="ColorPresetsHintText"
+                           Text="Click a swatch to apply the color live."
                            Foreground="#FF888888"
                            FontSize="11"
                            TextWrapping="Wrap"

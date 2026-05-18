@@ -196,6 +196,8 @@ namespace SharpShot.UI
         private readonly HotkeyManager? _hotkeyManager;
         private TextBox? _currentHotkeyTextBox;
         private bool _isListeningForHotkey = false;
+        private bool _suppressIconColorTextSync;
+        private bool _colorPresetDeleteMode;
         private List<string> _accumulatedModifiers = new List<string>();
 
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
@@ -637,13 +639,7 @@ namespace SharpShot.UI
             // Load theme customization settings
             IconColorTextBox.Text = _originalSettings.IconColor;
             IconColorWheel.SetColor(_originalSettings.IconColor);
-            IconColorWheel.ColorChanged += (s, color) => 
-            {
-                IconColorTextBox.Text = color;
-                UpdateThemeColors();
-                RefreshColorPresetsUI();
-                UpdateSaveColorPresetButtonState();
-            };
+            IconColorWheel.ColorChanged += (_, color) => OnIconColorPickerValueChanged(color);
             HoverOpacitySlider.Value = _originalSettings.HoverOpacity;
             DropShadowOpacitySlider.Value = _originalSettings.DropShadowOpacity;
             UpdateOpacityLabels();
@@ -665,6 +661,7 @@ namespace SharpShot.UI
             _originalSettings.IconColorPresets ??= new List<string>();
             RefreshColorPresetsUI();
             UpdateSaveColorPresetButtonState();
+            UpdateColorPresetDeleteModeToggleAppearance();
             
             // Load triple-click settings
             ScreenshotRegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotRegionTripleClick", "false") == "true";
@@ -1091,7 +1088,7 @@ namespace SharpShot.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Failed to save settings: {ex.Message}", "Error", 
+                ThemedMessageBox.Show($"Failed to save settings: {ex.Message}", "Error", 
                               MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -1104,23 +1101,27 @@ namespace SharpShot.UI
 
         private void ResetRecommendedDefaultsButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!ConfirmDialogWindow.ShowConfirm(
+            if (!ThemedMessageBox.ShowConfirm(
                     this,
-                    "Reset to recommended defaults",
                     "Reset all settings in this window to the recommended defaults?\n\n" +
                     "This includes capture options, dashboard layout, appearance, and suggested global hotkeys. " +
-                    "Your save folder path will be kept.\n\n" +
+                    "Your save folder path and favorite colors will be kept.\n\n" +
                     "Click Save to apply, or Cancel when closing to discard.",
-                    confirmText: "Reset",
-                    cancelText: "Cancel"))
+                    "Reset to recommended defaults",
+                    "Reset",
+                    "Cancel"))
                 return;
 
             try
             {
                 var savedPath = _originalSettings.SavePath;
+                var savedColorPresets = _originalSettings.IconColorPresets != null
+                    ? new List<string>(_originalSettings.IconColorPresets)
+                    : new List<string>();
                 var recommended = Settings.CreateRecommendedDefaults();
                 CopySettings(recommended, _originalSettings);
                 _originalSettings.SavePath = savedPath;
+                _originalSettings.IconColorPresets = savedColorPresets;
 
                 LoadSettings();
                 PopulateMagnifierAutoMonitorList();
@@ -1134,6 +1135,10 @@ namespace SharpShot.UI
                 IconColorWheel.SetColor(_originalSettings.IconColor);
                 RefreshColorPresetsUI();
                 UpdateSaveColorPresetButtonState();
+                if (ColorPresetDeleteModeToggle != null)
+                    ColorPresetDeleteModeToggle.IsChecked = false;
+                _colorPresetDeleteMode = false;
+                UpdateColorPresetDeleteModeToggleAppearance();
                 ApplyOpacityChanges();
                 ApplyCurrentHotkeys();
                 UpdateThemeColors();
@@ -1141,7 +1146,8 @@ namespace SharpShot.UI
             }
             catch (Exception ex)
             {
-                ConfirmDialogWindow.ShowAlert(this, "Error", $"Failed to reset settings: {ex.Message}");
+                ThemedMessageBox.Show(this, $"Failed to reset settings: {ex.Message}", "Error",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1918,13 +1924,13 @@ namespace SharpShot.UI
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Failed to create boundary box: {ex.Message}");
-                    MessageBox.Show($"Failed to create boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ThemedMessageBox.Show($"Failed to create boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to add boundary box: {ex.Message}");
-                MessageBox.Show($"Failed to add boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedMessageBox.Show($"Failed to add boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
@@ -1984,13 +1990,13 @@ namespace SharpShot.UI
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Failed to edit boundary box: {ex.Message}");
-                    MessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ThemedMessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to edit boundary box: {ex.Message}");
-                MessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedMessageBox.Show($"Failed to edit boundary box: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
@@ -2105,7 +2111,7 @@ namespace SharpShot.UI
         {
             try
             {
-                var iconColor = _originalSettings.IconColor;
+                var iconColor = GetCurrentIconColorHex() ?? _originalSettings.IconColor;
                 if (string.IsNullOrEmpty(iconColor))
                     iconColor = "#FFFF8C00"; // Default orange
                 
@@ -2117,7 +2123,6 @@ namespace SharpShot.UI
                 Application.Current.Resources["AccentColor"] = color;
 
                 Resources["ResizeGripBrush"] = brush;
-                Resources["SettingsScrollBarBrush"] = brush;
                 
                 // Headers use {DynamicResource AccentBrush} in XAML; refresh for any code-assigned fallbacks
                 if (SettingsHeader != null)
@@ -2180,6 +2185,8 @@ namespace SharpShot.UI
                     if (SaveColorPresetButton.Content is TextBlock savePresetText)
                         savePresetText.Foreground = brush;
                 }
+
+                UpdateColorPresetDeleteModeToggleAppearance();
                 
                 // Update Add Boundary Box button with dynamic hover effects
                 if (AddBoundaryBoxButton != null)
@@ -2367,6 +2374,8 @@ namespace SharpShot.UI
                     if (SaveColorPresetButton.Content is TextBlock savePresetText)
                         savePresetText.Foreground = brush;
                 }
+
+                UpdateColorPresetDeleteModeToggleAppearance();
                 
                 // Update Close button
                 if (CloseSettingsButton != null)
@@ -2449,6 +2458,53 @@ namespace SharpShot.UI
 
         private string? GetCurrentIconColorHex() => NormalizeColorHex(IconColorTextBox?.Text);
 
+        private void OnIconColorPickerValueChanged(string? colorInput)
+        {
+            var normalized = NormalizeColorHex(colorInput);
+            if (normalized == null)
+                return;
+
+            _suppressIconColorTextSync = true;
+            try
+            {
+                if (!string.Equals(IconColorTextBox.Text, normalized, StringComparison.OrdinalIgnoreCase))
+                    IconColorTextBox.Text = normalized;
+            }
+            finally
+            {
+                _suppressIconColorTextSync = false;
+            }
+
+            ApplyLiveIconColor(normalized);
+        }
+
+        private void ApplyLiveIconColor(string normalized)
+        {
+            _originalSettings.IconColor = normalized;
+            _settingsService.CurrentSettings.IconColor = normalized;
+
+            UpdateThemeColors();
+            RefreshColorPresetsUI();
+            UpdateSaveColorPresetButtonState();
+
+            if (Application.Current.MainWindow is MainWindow mainWindow)
+                mainWindow.ApplyThemeSettings();
+        }
+
+        private void RemoveColorPreset(string hex)
+        {
+            var normalized = NormalizeColorHex(hex);
+            if (normalized == null)
+                return;
+
+            _originalSettings.IconColorPresets ??= new List<string>();
+            _originalSettings.IconColorPresets.RemoveAll(p =>
+                string.Equals(NormalizeColorHex(p), normalized, StringComparison.OrdinalIgnoreCase));
+
+            RefreshColorPresetsUI();
+            UpdateSaveColorPresetButtonState();
+        }
+
         private void RefreshColorPresetsUI()
         {
             if (ColorPresetsPanel == null)
@@ -2463,6 +2519,8 @@ namespace SharpShot.UI
 
             var accentBrush = Application.Current.Resources["AccentBrush"] as SolidColorBrush
                 ?? new SolidColorBrush(Colors.Orange);
+            var deleteModeBrush = Application.Current.TryFindResource("ErrorBrush") as SolidColorBrush
+                ?? new SolidColorBrush(Color.FromRgb(0xFF, 0x6B, 0x6B));
 
             foreach (var preset in presets)
             {
@@ -2480,7 +2538,7 @@ namespace SharpShot.UI
                     continue;
                 }
 
-                bool isSelected = current != null &&
+                bool isSelected = !_colorPresetDeleteMode && current != null &&
                     string.Equals(normalized, current, StringComparison.OrdinalIgnoreCase);
 
                 var swatch = new Border
@@ -2488,28 +2546,130 @@ namespace SharpShot.UI
                     Width = 28,
                     Height = 28,
                     Background = new SolidColorBrush(swatchColor),
-                    BorderBrush = isSelected ? accentBrush : new SolidColorBrush(Color.FromRgb(0x40, 0x40, 0x40)),
-                    BorderThickness = new Thickness(isSelected ? 2 : 1),
+                    BorderBrush = _colorPresetDeleteMode
+                        ? deleteModeBrush
+                        : (isSelected ? accentBrush : new SolidColorBrush(Color.FromRgb(0x40, 0x40, 0x40))),
+                    BorderThickness = new Thickness(_colorPresetDeleteMode ? 2 : (isSelected ? 2 : 1)),
                     CornerRadius = new CornerRadius(4),
-                    ToolTip = normalized,
                     Cursor = Cursors.Hand
                 };
 
-                var button = new Button
+                if (_colorPresetDeleteMode)
+                {
+                    swatch.Opacity = 0.92;
+                }
+
+                var swatchButton = new Button
                 {
                     Tag = normalized,
                     Margin = new Thickness(0, 0, 8, 8),
+                    Width = 28,
+                    Height = 28,
                     Padding = new Thickness(0),
                     Background = Brushes.Transparent,
                     BorderThickness = new Thickness(0),
                     Content = swatch,
-                    ToolTip = $"{normalized}\nClick to apply · Right-click to remove"
+                    ToolTip = _colorPresetDeleteMode
+                        ? $"{normalized}\nClick to remove from favorites"
+                        : $"{normalized}\nClick to apply"
                 };
-
-                button.Click += ColorPresetSwatch_Click;
-                button.MouseRightButtonUp += ColorPresetSwatch_MouseRightButtonUp;
-                ColorPresetsPanel.Children.Add(button);
+                swatchButton.Click += ColorPresetSwatch_Click;
+                ColorPresetsPanel.Children.Add(swatchButton);
             }
+
+            if (ColorPresetsHintText != null)
+            {
+                ColorPresetsHintText.Text = _colorPresetDeleteMode
+                    ? "Remove mode is on — click a swatch to delete it. Toggle Remove favorites off when done."
+                    : "Click a swatch to apply the color live. Toggle Remove favorites to delete saved colors.";
+            }
+        }
+
+        private void UpdateColorPresetDeleteModeToggleAppearance()
+        {
+            if (ColorPresetDeleteModeToggle == null)
+                return;
+
+            var iconColor = GetCurrentIconColorHex() ?? _originalSettings.IconColor;
+            if (string.IsNullOrEmpty(iconColor))
+                iconColor = "#FFFF8C00";
+
+            var color = (Color)ColorConverter.ConvertFromString(iconColor);
+            var brush = new SolidColorBrush(color);
+            _colorPresetDeleteMode = ColorPresetDeleteModeToggle.IsChecked == true;
+
+            if (_colorPresetDeleteMode)
+            {
+                var activeBackground = new SolidColorBrush(Color.FromArgb(72, color.R, color.G, color.B));
+                ColorPresetDeleteModeToggle.Style = CreateToggleButtonStyle(color, activeBackground, 148.0, 32.0);
+                if (ColorPresetDeleteModeToggleText != null)
+                {
+                    ColorPresetDeleteModeToggleText.Text = "Done removing";
+                    ColorPresetDeleteModeToggleText.Foreground = brush;
+                }
+            }
+            else
+            {
+                ColorPresetDeleteModeToggle.Style = CreateToggleButtonStyle(color, Brushes.Transparent, 148.0, 32.0);
+                if (ColorPresetDeleteModeToggleText != null)
+                {
+                    ColorPresetDeleteModeToggleText.Text = "Remove favorites";
+                    ColorPresetDeleteModeToggleText.Foreground = brush;
+                }
+            }
+        }
+
+        private Style CreateToggleButtonStyle(Color themeColor, Brush checkedBackground, double width, double height)
+        {
+            var style = new Style(typeof(ToggleButton));
+
+            style.Setters.Add(new Setter(ToggleButton.BackgroundProperty, Brushes.Transparent));
+            style.Setters.Add(new Setter(ToggleButton.BorderBrushProperty, new SolidColorBrush(themeColor)));
+            style.Setters.Add(new Setter(ToggleButton.BorderThicknessProperty, new Thickness(1.5)));
+            style.Setters.Add(new Setter(ToggleButton.PaddingProperty, new Thickness(12, 8, 12, 8)));
+            style.Setters.Add(new Setter(ToggleButton.MinWidthProperty, width * 0.85));
+            style.Setters.Add(new Setter(ToggleButton.HeightProperty, height));
+            style.Setters.Add(new Setter(ToggleButton.CursorProperty, Cursors.Hand));
+
+            var template = new ControlTemplate(typeof(ToggleButton));
+            var border = new FrameworkElementFactory(typeof(Border));
+            border.Name = "ToggleBorder";
+            border.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(ToggleButton.BackgroundProperty));
+            border.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(ToggleButton.BorderBrushProperty));
+            border.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(ToggleButton.BorderThicknessProperty));
+            border.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+
+            var contentPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
+            contentPresenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            contentPresenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+            border.AppendChild(contentPresenter);
+            template.VisualTree = border;
+
+            var hoverTrigger = new Trigger { Property = ToggleButton.IsMouseOverProperty, Value = true };
+            var hoverAlpha = (byte)(_originalSettings.HoverOpacity * 255);
+            var hoverColor = Color.FromArgb(hoverAlpha, themeColor.R, themeColor.G, themeColor.B);
+            hoverTrigger.Setters.Add(new Setter(ToggleButton.BackgroundProperty, new SolidColorBrush(hoverColor)));
+            template.Triggers.Add(hoverTrigger);
+
+            var checkedTrigger = new Trigger { Property = ToggleButton.IsCheckedProperty, Value = true };
+            checkedTrigger.Setters.Add(new Setter(ToggleButton.BackgroundProperty, checkedBackground));
+            checkedTrigger.Setters.Add(new Setter(ToggleButton.BorderThicknessProperty, new Thickness(2)));
+            template.Triggers.Add(checkedTrigger);
+
+            var pressedTrigger = new Trigger { Property = ToggleButton.IsPressedProperty, Value = true };
+            var pressedColor = Color.FromArgb(48, themeColor.R, themeColor.G, themeColor.B);
+            pressedTrigger.Setters.Add(new Setter(ToggleButton.BackgroundProperty, new SolidColorBrush(pressedColor)));
+            template.Triggers.Add(pressedTrigger);
+
+            style.Setters.Add(new Setter(ToggleButton.TemplateProperty, template));
+            return style;
+        }
+
+        private void ColorPresetDeleteModeToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _colorPresetDeleteMode = ColorPresetDeleteModeToggle.IsChecked == true;
+            UpdateColorPresetDeleteModeToggleAppearance();
+            RefreshColorPresetsUI();
         }
 
         private void UpdateSaveColorPresetButtonState()
@@ -2531,12 +2691,18 @@ namespace SharpShot.UI
             if (normalized == null)
                 return;
 
-            IconColorTextBox.Text = normalized;
-            IconColorWheel.SetColor(normalized);
-            _originalSettings.IconColor = normalized;
-            UpdateThemeColors();
-            RefreshColorPresetsUI();
-            UpdateSaveColorPresetButtonState();
+            _suppressIconColorTextSync = true;
+            try
+            {
+                IconColorTextBox.Text = normalized;
+                IconColorWheel.SetColor(normalized);
+            }
+            finally
+            {
+                _suppressIconColorTextSync = false;
+            }
+
+            ApplyLiveIconColor(normalized);
         }
 
         private void SaveColorPresetButton_Click(object sender, RoutedEventArgs e)
@@ -2553,11 +2719,10 @@ namespace SharpShot.UI
 
             if (_originalSettings.IconColorPresets.Count >= MaxIconColorPresets)
             {
-                MessageBox.Show(
-                    $"You can save up to {MaxIconColorPresets} favorite colors. Remove one (right-click a swatch) to add another.",
-                    "Favorite colors",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                ThemedMessageBox.Show(
+                    this,
+                    $"You can save up to {MaxIconColorPresets} favorite colors. Remove one (toggle Remove favorites) to add another.",
+                    "Favorite colors");
                 return;
             }
 
@@ -2568,40 +2733,37 @@ namespace SharpShot.UI
 
         private void ColorPresetSwatch_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button button && button.Tag is string hex)
-                ApplyIconColor(hex);
-        }
-
-        private void ColorPresetSwatch_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
-        {
             if (sender is not Button button || button.Tag is not string hex)
                 return;
 
-            var normalized = NormalizeColorHex(hex);
-            if (normalized == null)
-                return;
-
-            _originalSettings.IconColorPresets ??= new List<string>();
-            _originalSettings.IconColorPresets.RemoveAll(p =>
-                string.Equals(NormalizeColorHex(p), normalized, StringComparison.OrdinalIgnoreCase));
-
-            RefreshColorPresetsUI();
-            UpdateSaveColorPresetButtonState();
-            e.Handled = true;
+            if (_colorPresetDeleteMode)
+                RemoveColorPreset(hex);
+            else
+                ApplyIconColor(hex);
         }
 
         private void IconColorTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_suppressIconColorTextSync)
+                return;
+
             try
             {
-                var text = IconColorTextBox.Text;
-                if (!string.IsNullOrEmpty(text) && text.StartsWith("#"))
+                var normalized = NormalizeColorHex(IconColorTextBox.Text);
+                if (normalized == null)
+                    return;
+
+                _suppressIconColorTextSync = true;
+                try
                 {
-                    IconColorWheel.SetColor(text);
-                    UpdateThemeColors();
-                    RefreshColorPresetsUI();
-                    UpdateSaveColorPresetButtonState();
+                    IconColorWheel.SetColor(normalized);
                 }
+                finally
+                {
+                    _suppressIconColorTextSync = false;
+                }
+
+                ApplyLiveIconColor(normalized);
             }
             catch
             {
@@ -3637,14 +3799,14 @@ namespace SharpShot.UI
                 message += $"Output devices: {string.Join(", ", outputDevices)}\n\n";
                 message += "Check audio_debug.log for detailed information.";
                 
-                MessageBox.Show(message, "Audio Device Detection Results", 
+                ThemedMessageBox.Show(message, "Audio Device Detection Results", 
                               MessageBoxButton.OK, 
                               MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
                 LogToFile($"Error refreshing audio devices: {ex.Message}");
-                MessageBox.Show($"Error refreshing audio devices: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedMessageBox.Show($"Error refreshing audio devices: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -3714,7 +3876,7 @@ namespace SharpShot.UI
                 LogToFile("OBS recording engine selected - setting up OBS automatically");
                 
                 // Show immediate feedback
-                MessageBox.Show(
+                ThemedMessageBox.Show(
                     "Setting up OBS Studio...\n\n" +
                     "This may take a few moments. Please wait.",
                     "OBS Setup",
@@ -3727,7 +3889,7 @@ namespace SharpShot.UI
                 
                 if (success)
                 {
-                    MessageBox.Show(
+                    ThemedMessageBox.Show(
                         "OBS Studio has been automatically configured and is ready for recording!\n\n" +
                         "• OBS Studio is installed and running\n" +
                         "• Auto-configuration completed\n\n" +
@@ -3742,7 +3904,7 @@ namespace SharpShot.UI
                     var obsPath = SharpShot.Utils.OBSDetection.FindOBSPath();
                     if (!string.IsNullOrEmpty(obsPath))
                     {
-                        MessageBox.Show(
+                        ThemedMessageBox.Show(
                             "OBS Studio is available but setup encountered a minor issue.\n\n" +
                             "Recording will work normally - the setup will complete automatically when you start recording.",
                             "OBS Setup Note",
@@ -3751,7 +3913,7 @@ namespace SharpShot.UI
                     }
                     else
                     {
-                        MessageBox.Show(
+                        ThemedMessageBox.Show(
                             "OBS Studio setup encountered an issue.\n\n" +
                             "Please ensure OBS Studio is available in the application directory.\n" +
                             "Recording will work in fallback mode.",
@@ -3769,7 +3931,7 @@ namespace SharpShot.UI
                 var obsPath = SharpShot.Utils.OBSDetection.FindOBSPath();
                 if (!string.IsNullOrEmpty(obsPath))
                 {
-                    MessageBox.Show(
+                    ThemedMessageBox.Show(
                         "OBS Studio is available but encountered a setup error.\n\n" +
                         "Recording will work normally - the setup will complete automatically when you start recording.",
                         "OBS Setup Note",
@@ -3778,7 +3940,7 @@ namespace SharpShot.UI
                 }
                 else
                 {
-                    MessageBox.Show(
+                    ThemedMessageBox.Show(
                         $"Error setting up OBS Studio: {ex.Message}\n\n" +
                         "Recording will work in fallback mode.",
                         "OBS Setup Error",
@@ -3799,7 +3961,7 @@ namespace SharpShot.UI
                 
                 if (success)
                 {
-                    MessageBox.Show(
+                    ThemedMessageBox.Show(
                         "OBS Studio has been successfully installed and configured!\n\n" +
                         "You can now use OBS recording engine for enhanced audio recording.",
                         "Installation Complete",
@@ -3808,7 +3970,7 @@ namespace SharpShot.UI
                 }
                 else
                 {
-                    MessageBox.Show(
+                    ThemedMessageBox.Show(
                         "Failed to install OBS Studio automatically.\n\n" +
                         "Please install OBS Studio manually from https://obsproject.com/",
                         "Installation Failed",
@@ -3819,7 +3981,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 LogToFile($"Error during OBS installation: {ex.Message}");
-                MessageBox.Show(
+                ThemedMessageBox.Show(
                     $"Error installing OBS Studio: {ex.Message}\n\n" +
                     "Please install OBS Studio manually from https://obsproject.com/",
                     "Installation Error",

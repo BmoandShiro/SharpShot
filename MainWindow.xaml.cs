@@ -9,6 +9,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Interop;
 using SharpShot.Models;
 using SharpShot.Services;
+using SharpShot.UI;
 using SharpShot.Utils;
 using System.Threading.Tasks;
 using System.Linq;
@@ -1278,7 +1279,7 @@ namespace SharpShot
                     var msg = "Text recognition (OCR) needs Tesseract language data.\n\n" +
                               "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
                               "2. Place it in the application folder or in a subfolder named 'tessdata'.";
-                    var result = MessageBox.Show(
+                    var result = ThemedMessageBox.Show(
                         msg + "\n\nOpen the application folder now?",
                         "OCR Quick Capture",
                         MessageBoxButton.YesNo,
@@ -1316,7 +1317,7 @@ namespace SharpShot
                 string text = string.Join(" ", words.Select(w => w.Text).Where(t => !string.IsNullOrWhiteSpace(t))).Trim();
                 if (string.IsNullOrWhiteSpace(text))
                 {
-                    MessageBox.Show("No text was recognized in the selected area.", "OCR Quick Capture", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ThemedMessageBox.Show("No text was recognized in the selected area.", "OCR Quick Capture", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
@@ -1329,7 +1330,7 @@ namespace SharpShot
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"OCR quick capture failed: {ex.Message}");
-                MessageBox.Show($"OCR failed: {ex.Message}", "OCR Quick Capture", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedMessageBox.Show($"OCR failed: {ex.Message}", "OCR Quick Capture", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1568,7 +1569,7 @@ namespace SharpShot
                     if (!_settingsService.CurrentSettings.DisableAllPopups)
                     {
                         var fileType = filePath.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ? "Recording" : "Screenshot";
-                        var result = MessageBox.Show(
+                        var result = ThemedMessageBox.Show(
                             $"{fileType} saved to:\n{filePath}\n\nWould you like to open the folder?",
                             "File Saved",
                             MessageBoxButton.YesNo,
@@ -1843,7 +1844,7 @@ namespace SharpShot
             // TODO: Implement proper toast notification
             // For now, just show a message box
             var icon = isError ? MessageBoxImage.Error : MessageBoxImage.Information;
-            MessageBox.Show(message, "SharpShot", MessageBoxButton.OK, icon);
+            ThemedMessageBox.Show(message, "SharpShot", MessageBoxButton.OK, icon);
         }
 
         private void LogToFile(string message)

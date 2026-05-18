@@ -32,7 +32,7 @@ namespace SharpShot.UI
                 else
                 {
                     // File is already saved, just show confirmation
-                    var result = MessageBox.Show(
+                    var result = ThemedMessageBox.Show(
                         $"Screenshot saved to:\n{_filePath}\n\nWould you like to open the folder?",
                         "SharpShot",
                         MessageBoxButton.YesNo,
@@ -52,7 +52,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 // Always show error messages regardless of popup setting
-                MessageBox.Show($"Failed to save screenshot: {ex.Message}", "Error", 
+                ThemedMessageBox.Show($"Failed to save screenshot: {ex.Message}", "Error", 
                               MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
@@ -75,14 +75,14 @@ namespace SharpShot.UI
                 }
                 else
                 {
-                    MessageBox.Show("Screenshot copied to clipboard!", "SharpShot", 
+                    ThemedMessageBox.Show("Screenshot copied to clipboard!", "SharpShot", 
                                   MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
                 // Always show error messages regardless of popup setting
-                MessageBox.Show($"Failed to copy to clipboard: {ex.Message}", "Error", 
+                ThemedMessageBox.Show($"Failed to copy to clipboard: {ex.Message}", "Error", 
                               MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally

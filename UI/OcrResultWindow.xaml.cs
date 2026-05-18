@@ -96,7 +96,7 @@ namespace SharpShot.UI
             }
             catch (System.Exception ex)
             {
-                MessageBox.Show($"Failed to copy text: {ex.Message}", "OCR Result", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedMessageBox.Show($"Failed to copy text: {ex.Message}", "OCR Result", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

@@ -37,6 +37,9 @@
 
             <!-- Content -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="15">
+                <ScrollViewer.Resources>
+                    <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBarStyle}"/>
+                </ScrollViewer.Resources>
                 <StackPanel>
                     <TextBlock TextWrapping="Wrap" Foreground="White" Margin="0,0,0,10">
                         <Run Text="A new version of SharpShot is available!" FontWeight="Bold"/>
@@ -47,6 +50,9 @@
                     <TextBlock Text="Release Notes:" FontWeight="Bold" Foreground="White" Margin="0,10,0,5"/>
                     <Border Background="#FF2D2D2D" CornerRadius="5" Padding="10" MaxHeight="200">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ScrollViewer.Resources>
+                                <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBarStyle}"/>
+                            </ScrollViewer.Resources>
                             <TextBlock Name="ReleaseNotesText" TextWrapping="Wrap" Foreground="#FFCCCCCC"/>
                         </ScrollViewer>
                     </Border>

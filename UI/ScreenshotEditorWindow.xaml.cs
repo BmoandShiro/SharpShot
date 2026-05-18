@@ -1285,7 +1285,7 @@ namespace SharpShot.UI
                     var msg = "Text recognition (OCR) needs Tesseract language data.\n\n" +
                         "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
                         "2. Place it in the application folder or in a subfolder named 'tessdata'.";
-                    var result = MessageBox.Show(this,
+                    var result = ThemedMessageBox.Show(this,
                         msg + "\n\nOpen the application folder now?",
                         "Extract Text",
                         MessageBoxButton.YesNo,
@@ -1310,7 +1310,7 @@ namespace SharpShot.UI
                 var bitmap = FinalBitmap ?? _originalBitmap;
                 if (bitmap == null)
                 {
-                    MessageBox.Show(this, "No image to read text from.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ThemedMessageBox.Show(this, "No image to read text from.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -1322,7 +1322,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ExtractTextButton_Click error: {ex.Message}\n{ex.StackTrace}");
-                MessageBox.Show(this, $"Something went wrong: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedMessageBox.Show(this, $"Something went wrong: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1359,7 +1359,7 @@ namespace SharpShot.UI
                 {
                     words = Array.Empty<OcrWordResult>();
                     await Dispatcher.InvokeAsync(() =>
-                        MessageBox.Show(this, "Text recognition took too long. Try a smaller area.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning));
+                        ThemedMessageBox.Show(this, "Text recognition took too long. Try a smaller area.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning));
                 }
                 else
                 {
@@ -1370,7 +1370,7 @@ namespace SharpShot.UI
                 {
                     if (words.Count == 0 && completed != timeoutTask)
                     {
-                        MessageBox.Show(this, "No text was recognized in the selected area.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Information);
+                        ThemedMessageBox.Show(this, "No text was recognized in the selected area.", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else if (words.Count > 0)
                     {
@@ -1385,7 +1385,7 @@ namespace SharpShot.UI
             {
                 System.Diagnostics.Debug.WriteLine($"OCR failed: {ex.Message}\n{ex.StackTrace}");
                 await Dispatcher.InvokeAsync(() =>
-                    MessageBox.Show(this, $"OCR failed: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning));
+                    ThemedMessageBox.Show(this, $"OCR failed: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning));
             }
             finally
             {
@@ -1415,7 +1415,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"OCR copy text failed: {ex.Message}");
-                MessageBox.Show(this, $"Failed to copy text: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ThemedMessageBox.Show(this, $"Failed to copy text: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1478,7 +1478,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to prepare copy: {ex.Message}");
-                MessageBox.Show($"Failed to prepare copy: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedMessageBox.Show($"Failed to prepare copy: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1499,14 +1499,14 @@ namespace SharpShot.UI
                 }
                 else
                 {
-                    MessageBox.Show($"Screenshot saved to: {filePath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ThemedMessageBox.Show($"Screenshot saved to: {filePath}", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 Close();
             }
             catch (Exception ex)
             {
                 // Always show error messages regardless of popup setting
-                MessageBox.Show($"Failed to save image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ThemedMessageBox.Show($"Failed to save image: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
