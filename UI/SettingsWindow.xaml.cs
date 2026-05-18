@@ -250,6 +250,7 @@ namespace SharpShot.UI
                 MagnifierZoomPanel.Visibility = Visibility.Collapsed;
                 MagnifierModePanel.Visibility = Visibility.Collapsed;
                 MagnifierStationaryPanel.Visibility = Visibility.Collapsed;
+                MagnifierAutoModePanel.Visibility = Visibility.Collapsed;
             };
             
             // Add event handlers for magnifier mode
@@ -290,6 +291,45 @@ namespace SharpShot.UI
             MagnifierZoomPanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
             MagnifierModePanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
             UpdateMagnifierStationaryPanelVisibility();
+
+            Loaded += SettingsWindow_Loaded;
+        }
+
+        private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (SettingsNavListBox.SelectedItem == null)
+                SettingsNavListBox.SelectedIndex = 0;
+            else
+                ApplySelectedSettingsSection();
+        }
+
+        private void SettingsNavListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // SelectionChanged can fire during InitializeComponent before category panels exist.
+            if (!IsLoaded || GeneralSection == null)
+                return;
+
+            ApplySelectedSettingsSection();
+        }
+
+        private void ApplySelectedSettingsSection()
+        {
+            if (SettingsNavListBox.SelectedItem is ListBoxItem item && item.Tag is string section)
+                ShowSettingsSection(section);
+        }
+
+        private void ShowSettingsSection(string section)
+        {
+            if (GeneralSection == null)
+                return;
+
+            GeneralSection.Visibility = section == "General" ? Visibility.Visible : Visibility.Collapsed;
+            CaptureSection.Visibility = section == "Capture" ? Visibility.Visible : Visibility.Collapsed;
+            RecordingSection.Visibility = section == "Recording" ? Visibility.Visible : Visibility.Collapsed;
+            DashboardSection.Visibility = section == "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
+            AppearanceSection.Visibility = section == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
+            HotkeysSection.Visibility = section == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
+            UpdatesSection.Visibility = section == "Updates" ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -388,18 +428,23 @@ namespace SharpShot.UI
                     break;
                 }
             }
-            
-            // Set recording engine combo box
-            foreach (var item in RecordingEngineComboBox.Items)
+
+            if (DashboardDisplayMonitorComboBox != null)
             {
-                if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.RecordingEngine)
+                foreach (var item in DashboardDisplayMonitorComboBox.Items)
                 {
-                    RecordingEngineComboBox.SelectedItem = item;
-                    break;
+                    if (item is System.Windows.Controls.ComboBoxItem comboItem &&
+                        comboItem.Content?.ToString() == _originalSettings.DashboardDisplayMonitor)
+                    {
+                        DashboardDisplayMonitorComboBox.SelectedItem = item;
+                        break;
+                    }
                 }
             }
             
+            if (!string.Equals(_originalSettings.RecordingEngine, "FFmpeg", StringComparison.OrdinalIgnoreCase))
+                _originalSettings.RecordingEngine = "FFmpeg";
+
             // Audio recording mode combo box commented out
             // foreach (var item in AudioRecordingModeComboBox.Items)
             // {
@@ -596,6 +641,8 @@ namespace SharpShot.UI
             {
                 IconColorTextBox.Text = color;
                 UpdateThemeColors();
+                RefreshColorPresetsUI();
+                UpdateSaveColorPresetButtonState();
             };
             HoverOpacitySlider.Value = _originalSettings.HoverOpacity;
             DropShadowOpacitySlider.Value = _originalSettings.DropShadowOpacity;
@@ -614,6 +661,10 @@ namespace SharpShot.UI
             
             // Apply initial theme colors and close button style
             UpdateThemeColors();
+
+            _originalSettings.IconColorPresets ??= new List<string>();
+            RefreshColorPresetsUI();
+            UpdateSaveColorPresetButtonState();
             
             // Load triple-click settings
             ScreenshotRegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotRegionTripleClick", "false") == "true";
@@ -834,22 +885,8 @@ namespace SharpShot.UI
                 _originalSettings.DashboardWidth = ParseDashboardDimensionField(DashboardWidthTextBox.Text);
                 _originalSettings.DashboardHeight = ParseDashboardDimensionField(DashboardHeightTextBox.Text);
                 
-                if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem recordingEngineItem)
-                {
-                    var engine = recordingEngineItem.Content?.ToString() ?? "FFmpeg";
-                    _originalSettings.RecordingEngine = engine;
-                    
-                    // Show OBS-specific settings if OBS is selected
-                    if (engine == "OBS")
-                    {
-                        ShowOBSSettings();
-                    }
-                    else
-                    {
-                        HideOBSSettings();
-                    }
-                }
-                
+                _originalSettings.RecordingEngine = "FFmpeg";
+
                 // Audio recording mode combo box commented out
                 // if (AudioRecordingModeComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem audioModeItem)
                 // {
@@ -1065,6 +1102,49 @@ namespace SharpShot.UI
             Close();
         }
 
+        private void ResetRecommendedDefaultsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!ConfirmDialogWindow.ShowConfirm(
+                    this,
+                    "Reset to recommended defaults",
+                    "Reset all settings in this window to the recommended defaults?\n\n" +
+                    "This includes capture options, dashboard layout, appearance, and suggested global hotkeys. " +
+                    "Your save folder path will be kept.\n\n" +
+                    "Click Save to apply, or Cancel when closing to discard.",
+                    confirmText: "Reset",
+                    cancelText: "Cancel"))
+                return;
+
+            try
+            {
+                var savedPath = _originalSettings.SavePath;
+                var recommended = Settings.CreateRecommendedDefaults();
+                CopySettings(recommended, _originalSettings);
+                _originalSettings.SavePath = savedPath;
+
+                LoadSettings();
+                PopulateMagnifierAutoMonitorList();
+                PopulateMagnifierBoundaryBoxList();
+
+                bool magnifierEnabled = _originalSettings.EnableMagnifier;
+                MagnifierZoomPanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
+                MagnifierModePanel.Visibility = magnifierEnabled ? Visibility.Visible : Visibility.Collapsed;
+                UpdateMagnifierStationaryPanelVisibility();
+
+                IconColorWheel.SetColor(_originalSettings.IconColor);
+                RefreshColorPresetsUI();
+                UpdateSaveColorPresetButtonState();
+                ApplyOpacityChanges();
+                ApplyCurrentHotkeys();
+                UpdateThemeColors();
+                ApplyFfmpegOutputAudioPanelVisibility();
+            }
+            catch (Exception ex)
+            {
+                ConfirmDialogWindow.ShowAlert(this, "Error", $"Failed to reset settings: {ex.Message}");
+            }
+        }
+
         /// <summary>Parses dashboard width/height text; empty or invalid → 0 (use defaults). Raw value is clamped when assigned to <see cref="Settings"/>.</summary>
         private static double ParseDashboardDimensionField(string? text)
         {
@@ -1087,6 +1167,9 @@ namespace SharpShot.UI
             target.StartWithWindowsMinimized = source.StartWithWindowsMinimized;
             target.EnableAutoUpdateCheck = source.EnableAutoUpdateCheck;
             target.IconColor = source.IconColor;
+            target.IconColorPresets = source.IconColorPresets != null
+                ? new List<string>(source.IconColorPresets)
+                : new List<string>();
             target.HoverOpacity = source.HoverOpacity;
             target.DropShadowOpacity = source.DropShadowOpacity;
             target.SelectedScreen = source.SelectedScreen;
@@ -1254,50 +1337,34 @@ namespace SharpShot.UI
             // Don't handle mouse wheel events in nested ScrollViewers
             // Instead, let the main ScrollViewer handle them
             // Find the main ScrollViewer and scroll it instead
-            var mainScrollViewer = FindMainScrollViewer(this);
-            if (mainScrollViewer != null)
+            if (SettingsContentScrollViewer != null)
             {
-                double offset = mainScrollViewer.VerticalOffset - (e.Delta / 3.0);
-                double newOffset = Math.Max(0, Math.Min(offset, mainScrollViewer.ScrollableHeight));
-                mainScrollViewer.ScrollToVerticalOffset(newOffset);
+                double offset = SettingsContentScrollViewer.VerticalOffset - (e.Delta / 3.0);
+                double newOffset = Math.Max(0, Math.Min(offset, SettingsContentScrollViewer.ScrollableHeight));
+                SettingsContentScrollViewer.ScrollToVerticalOffset(newOffset);
                 e.Handled = true;
             }
         }
         
-        private ScrollViewer FindMainScrollViewer(DependencyObject parent)
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-                if (child is ScrollViewer scrollViewer)
-                {
-                    // Check if this is the main ScrollViewer (has Grid.Row="1" or is at the root level)
-                    if (scrollViewer.Parent is Grid grid && Grid.GetRow(scrollViewer) == 1)
-                    {
-                        return scrollViewer;
-                    }
-                }
-                var result = FindMainScrollViewer(child);
-                if (result != null) return result;
-            }
-            return null;
-        }
-        
         private void UpdateMagnifierStationaryPanelVisibility()
         {
+            if (MagnifierStationaryPanel == null || MagnifierAutoModePanel == null)
+                return;
+
             if (MagnifierModeComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
             {
                 string mode = selectedItem.Tag?.ToString() ?? "Follow";
-                bool showStationary = (mode == "Stationary" || mode == "Auto");
-                bool showAutoMode = (mode == "Auto");
-                
+                bool showStationary = mode == "Stationary" || mode == "Auto";
+                bool showAutoMode = mode == "Auto";
+
                 MagnifierStationaryPanel.Visibility = showStationary ? Visibility.Visible : Visibility.Collapsed;
                 MagnifierAutoModePanel.Visibility = showAutoMode ? Visibility.Visible : Visibility.Collapsed;
-                
-                // Show stationary size slider only for Stationary mode, follow size slider for Follow/Auto
+
                 if (MagnifierSizeStationaryPanel != null)
                 {
-                    MagnifierSizeStationaryPanel.Visibility = (mode == "Stationary") ? Visibility.Visible : Visibility.Collapsed;
+                    MagnifierSizeStationaryPanel.Visibility = mode == "Stationary"
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
                 }
             }
             else
@@ -1309,6 +1376,9 @@ namespace SharpShot.UI
         
         private void MagnifierModeComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (!IsLoaded)
+                return;
+
             UpdateMagnifierStationaryPanelVisibility();
         }
         
@@ -2045,8 +2115,11 @@ namespace SharpShot.UI
                 // Update global resources so all DynamicResource bindings update automatically
                 Application.Current.Resources["AccentBrush"] = brush;
                 Application.Current.Resources["AccentColor"] = color;
+
+                Resources["ResizeGripBrush"] = brush;
+                Resources["SettingsScrollBarBrush"] = brush;
                 
-                // Update colored text elements
+                // Headers use {DynamicResource AccentBrush} in XAML; refresh for any code-assigned fallbacks
                 if (SettingsHeader != null)
                     SettingsHeader.Foreground = brush;
                 if (ThemeCustomizationHeader != null)
@@ -2068,6 +2141,13 @@ namespace SharpShot.UI
                     SaveButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
                     if (SaveButton.Content is TextBlock saveText)
                         saveText.Foreground = brush;
+                }
+
+                if (ResetRecommendedDefaultsButton != null)
+                {
+                    ResetRecommendedDefaultsButton.Style = CreateModernButtonStyle(color, 260.0, 36.0, allowDynamicWidth: true);
+                    if (ResetRecommendedDefaultsButton.Content is TextBlock resetDefaultsText)
+                        resetDefaultsText.Foreground = brush;
                 }
                 
                 // Update Check for Updates button with dynamic hover effects
@@ -2092,6 +2172,13 @@ namespace SharpShot.UI
                     DashboardSizeResetButton.Style = CreateModernButtonStyle(color, 128.0, 32.0);
                     if (DashboardSizeResetButton.Content is TextBlock resetSizeText)
                         resetSizeText.Foreground = brush;
+                }
+
+                if (SaveColorPresetButton != null)
+                {
+                    SaveColorPresetButton.Style = CreateModernButtonStyle(color, 140.0, 32.0, allowDynamicWidth: true);
+                    if (SaveColorPresetButton.Content is TextBlock savePresetText)
+                        savePresetText.Foreground = brush;
                 }
                 
                 // Update Add Boundary Box button with dynamic hover effects
@@ -2242,6 +2329,13 @@ namespace SharpShot.UI
                     if (SaveButton.Content is TextBlock saveText)
                         saveText.Foreground = brush;
                 }
+
+                if (ResetRecommendedDefaultsButton != null)
+                {
+                    ResetRecommendedDefaultsButton.Style = CreateModernButtonStyle(color, 260.0, 36.0, allowDynamicWidth: true);
+                    if (ResetRecommendedDefaultsButton.Content is TextBlock resetDefaultsText)
+                        resetDefaultsText.Foreground = brush;
+                }
                 
                 // Update Check for Updates button
                 if (CheckForUpdatesButton != null)
@@ -2265,6 +2359,13 @@ namespace SharpShot.UI
                     DashboardSizeResetButton.Style = CreateModernButtonStyle(color, 128.0, 32.0);
                     if (DashboardSizeResetButton.Content is TextBlock resetSizeText)
                         resetSizeText.Foreground = brush;
+                }
+
+                if (SaveColorPresetButton != null)
+                {
+                    SaveColorPresetButton.Style = CreateModernButtonStyle(color, 140.0, 32.0, allowDynamicWidth: true);
+                    if (SaveColorPresetButton.Content is TextBlock savePresetText)
+                        savePresetText.Foreground = brush;
                 }
                 
                 // Update Close button
@@ -2324,6 +2425,171 @@ namespace SharpShot.UI
             }
         }
         
+        private const int MaxIconColorPresets = 16;
+
+        private static string? NormalizeColorHex(string? hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex))
+                return null;
+
+            var value = hex.Trim();
+            if (!value.StartsWith("#", StringComparison.Ordinal))
+                value = "#" + value;
+
+            try
+            {
+                var color = (Color)ColorConverter.ConvertFromString(value);
+                return $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private string? GetCurrentIconColorHex() => NormalizeColorHex(IconColorTextBox?.Text);
+
+        private void RefreshColorPresetsUI()
+        {
+            if (ColorPresetsPanel == null)
+                return;
+
+            ColorPresetsPanel.Children.Clear();
+            var presets = _originalSettings.IconColorPresets ?? new List<string>();
+            var current = GetCurrentIconColorHex();
+
+            if (ColorPresetsEmptyText != null)
+                ColorPresetsEmptyText.Visibility = presets.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+
+            var accentBrush = Application.Current.Resources["AccentBrush"] as SolidColorBrush
+                ?? new SolidColorBrush(Colors.Orange);
+
+            foreach (var preset in presets)
+            {
+                var normalized = NormalizeColorHex(preset);
+                if (normalized == null)
+                    continue;
+
+                Color swatchColor;
+                try
+                {
+                    swatchColor = (Color)ColorConverter.ConvertFromString(normalized);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                bool isSelected = current != null &&
+                    string.Equals(normalized, current, StringComparison.OrdinalIgnoreCase);
+
+                var swatch = new Border
+                {
+                    Width = 28,
+                    Height = 28,
+                    Background = new SolidColorBrush(swatchColor),
+                    BorderBrush = isSelected ? accentBrush : new SolidColorBrush(Color.FromRgb(0x40, 0x40, 0x40)),
+                    BorderThickness = new Thickness(isSelected ? 2 : 1),
+                    CornerRadius = new CornerRadius(4),
+                    ToolTip = normalized,
+                    Cursor = Cursors.Hand
+                };
+
+                var button = new Button
+                {
+                    Tag = normalized,
+                    Margin = new Thickness(0, 0, 8, 8),
+                    Padding = new Thickness(0),
+                    Background = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    Content = swatch,
+                    ToolTip = $"{normalized}\nClick to apply · Right-click to remove"
+                };
+
+                button.Click += ColorPresetSwatch_Click;
+                button.MouseRightButtonUp += ColorPresetSwatch_MouseRightButtonUp;
+                ColorPresetsPanel.Children.Add(button);
+            }
+        }
+
+        private void UpdateSaveColorPresetButtonState()
+        {
+            if (SaveColorPresetButton == null)
+                return;
+
+            var current = GetCurrentIconColorHex();
+            var presets = _originalSettings.IconColorPresets ?? new List<string>();
+            bool isDuplicate = current != null && presets.Any(p =>
+                string.Equals(NormalizeColorHex(p), current, StringComparison.OrdinalIgnoreCase));
+
+            SaveColorPresetButton.IsEnabled = current != null && !isDuplicate && presets.Count < MaxIconColorPresets;
+        }
+
+        private void ApplyIconColor(string hex)
+        {
+            var normalized = NormalizeColorHex(hex);
+            if (normalized == null)
+                return;
+
+            IconColorTextBox.Text = normalized;
+            IconColorWheel.SetColor(normalized);
+            _originalSettings.IconColor = normalized;
+            UpdateThemeColors();
+            RefreshColorPresetsUI();
+            UpdateSaveColorPresetButtonState();
+        }
+
+        private void SaveColorPresetButton_Click(object sender, RoutedEventArgs e)
+        {
+            var hex = GetCurrentIconColorHex();
+            if (hex == null)
+                return;
+
+            _originalSettings.IconColorPresets ??= new List<string>();
+
+            if (_originalSettings.IconColorPresets.Any(p =>
+                string.Equals(NormalizeColorHex(p), hex, StringComparison.OrdinalIgnoreCase)))
+                return;
+
+            if (_originalSettings.IconColorPresets.Count >= MaxIconColorPresets)
+            {
+                MessageBox.Show(
+                    $"You can save up to {MaxIconColorPresets} favorite colors. Remove one (right-click a swatch) to add another.",
+                    "Favorite colors",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            _originalSettings.IconColorPresets.Add(hex);
+            RefreshColorPresetsUI();
+            UpdateSaveColorPresetButtonState();
+        }
+
+        private void ColorPresetSwatch_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is string hex)
+                ApplyIconColor(hex);
+        }
+
+        private void ColorPresetSwatch_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not Button button || button.Tag is not string hex)
+                return;
+
+            var normalized = NormalizeColorHex(hex);
+            if (normalized == null)
+                return;
+
+            _originalSettings.IconColorPresets ??= new List<string>();
+            _originalSettings.IconColorPresets.RemoveAll(p =>
+                string.Equals(NormalizeColorHex(p), normalized, StringComparison.OrdinalIgnoreCase));
+
+            RefreshColorPresetsUI();
+            UpdateSaveColorPresetButtonState();
+            e.Handled = true;
+        }
+
         private void IconColorTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             try
@@ -2331,22 +2597,10 @@ namespace SharpShot.UI
                 var text = IconColorTextBox.Text;
                 if (!string.IsNullOrEmpty(text) && text.StartsWith("#"))
                 {
-                    // Temporarily remove the event handler to avoid infinite loop
-                    IconColorWheel.ColorChanged -= (s, color) => 
-                    {
-                        IconColorTextBox.Text = color;
-                        UpdateThemeColors();
-                    };
-                    
-                    // Update the color wheel
                     IconColorWheel.SetColor(text);
-                    
-                    // Re-add the event handler
-                    IconColorWheel.ColorChanged += (s, color) => 
-                    {
-                        IconColorTextBox.Text = color;
-                        UpdateThemeColors();
-                    };
+                    UpdateThemeColors();
+                    RefreshColorPresetsUI();
+                    UpdateSaveColorPresetButtonState();
                 }
             }
             catch
@@ -3234,30 +3488,10 @@ namespace SharpShot.UI
             return string.Empty;
         }
 
-        private void RecordingEngineComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (RecordingEngineComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem selectedItem)
-            {
-                _originalSettings.RecordingEngine = selectedItem.Content?.ToString() ?? "FFmpeg";
-            }
-            ApplyFfmpegOutputAudioPanelVisibility();
-        }
-
         private void ApplyFfmpegOutputAudioPanelVisibility()
         {
-            try
-            {
-                if (RecordingEngineComboBox?.SelectedItem is not System.Windows.Controls.ComboBoxItem item)
-                    return;
-                var engine = item.Content?.ToString() ?? "";
-                OutputAudioDevicePanel.Visibility = string.Equals(engine, "FFmpeg", StringComparison.OrdinalIgnoreCase)
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-            }
-            catch
-            {
-                // Controls may not be initialized yet
-            }
+            if (OutputAudioDevicePanel != null)
+                OutputAudioDevicePanel.Visibility = Visibility.Visible;
         }
 
         // Audio recording mode combo box event handler commented out since combo box is disabled

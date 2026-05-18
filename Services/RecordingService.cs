@@ -457,10 +457,21 @@ namespace SharpShot.Services
             });
         }
 
+        private static (string Preset, int Crf) GetVideoEncodingOptions(string? videoQuality, bool hasAudio)
+        {
+            return videoQuality switch
+            {
+                "Low" => (hasAudio ? "veryfast" : "ultrafast", 28),
+                "Medium" => (hasAudio ? "veryfast" : "fast", 23),
+                _ => (hasAudio ? "veryfast" : "fast", 18), // High (default)
+            };
+        }
+
         private string ComposeFfmpegArguments(string videoInputArgs, string? rawAudioInputClause)
         {
-            var vPreset = string.IsNullOrEmpty(rawAudioInputClause) ? "fast" : "veryfast";
-            var outputArgs = $"-c:v libx264 -preset {vPreset} -crf 20 -pix_fmt yuv420p -profile:v baseline -level 3.0";
+            var hasAudio = !string.IsNullOrEmpty(rawAudioInputClause);
+            var (vPreset, crf) = GetVideoEncodingOptions(_settingsService.CurrentSettings.VideoQuality, hasAudio);
+            var outputArgs = $"-c:v libx264 -preset {vPreset} -crf {crf} -pix_fmt yuv420p -profile:v baseline -level 3.0";
             outputArgs += " -g 60 -keyint_min 30";
             if (!string.IsNullOrEmpty(rawAudioInputClause))
                 outputArgs += " -map 0:v:0 -map 1:0 -c:a aac -b:a 192k";

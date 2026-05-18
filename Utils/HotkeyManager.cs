@@ -33,6 +33,12 @@ namespace SharpShot.Utils
         private const int VK_MENU = 0x12; // Alt key
         private const int VK_ESCAPE = 0x1B;
 
+        // RegisterHotKey modifier flags (winuser.h)
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_SHIFT = 0x0004;
+        private const uint MOD_NOREPEAT = 0x4000;
+
         // Windows API imports
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -177,15 +183,19 @@ namespace SharpShot.Utils
                 var hotkeyId = _nextHotkeyId++;
                 if (_windowHandle != IntPtr.Zero)
                 {
-                    if (RegisterHotKey(_windowHandle, hotkeyId, modifiers, keyCode))
+                    var registerModifiers = modifiers | MOD_NOREPEAT;
+                    if (RegisterHotKey(_windowHandle, hotkeyId, registerModifiers, keyCode))
                     {
                         _registeredHotkeys[hotkeyId] = GetActionForHotkey(actionName);
                         _hotkeyIds[actionName] = hotkeyId;
-                        System.Diagnostics.Debug.WriteLine($"Registered hotkey: {actionName} = {hotkeyString}");
+                        System.Diagnostics.Debug.WriteLine($"Registered hotkey: {actionName} = {hotkeyString} (mods=0x{registerModifiers:X}, vk=0x{keyCode:X})");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Failed to register hotkey: {actionName} = {hotkeyString}");
+                        var err = GetLastError();
+                        System.Diagnostics.Debug.WriteLine(
+                            $"Failed to register hotkey: {actionName} = {hotkeyString} (mods=0x{registerModifiers:X}, vk=0x{keyCode:X}, Win32 error {err}). " +
+                            "Another app may already use this shortcut (error 1409 = already registered).");
                     }
                 }
                 else
@@ -226,13 +236,13 @@ namespace SharpShot.Utils
                 {
                     case "CTRL":
                     case "CONTROL":
-                        modifiers |= 0x0003; // MOD_CONTROL
+                        modifiers |= MOD_CONTROL;
                         break;
                     case "SHIFT":
-                        modifiers |= 0x0004; // MOD_SHIFT
+                        modifiers |= MOD_SHIFT;
                         break;
                     case "ALT":
-                        modifiers |= 0x0001; // MOD_ALT
+                        modifiers |= MOD_ALT;
                         break;
                     default:
                         // Try to parse as a key

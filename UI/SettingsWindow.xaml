@@ -3,287 +3,220 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:SharpShot.UI"
         Title="SharpShot Settings"
-        Height="700" Width="600"
+        Height="640" Width="820"
+        MinHeight="480" MinWidth="720"
         Style="{StaticResource DarkWindowStyle}"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
         WindowStyle="None"
         AllowsTransparency="True"
         MouseLeftButtonDown="Window_MouseLeftButtonDown">
-        <Window.Resources>
-            <SolidColorBrush x:Key="ResizeGripBrush" Color="#FFFF8C00"/>
-            <SolidColorBrush x:Key="ScrollBarBrush" Color="#FFFF8C00"/>
-            <SolidColorBrush x:Key="ScrollBarTrackHoverBrush" Color="#40FF8C00"/>
-            <SolidColorBrush x:Key="ScrollBarButtonHoverBrush" Color="#15FF8C00"/>
-            <Style TargetType="ResizeGrip">
-                <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ResizeGrip">
-                            <Grid>
-                                <Canvas Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1">
-                                    <!-- Bottom-left square -->
-                                    <Rectangle Canvas.Left="0" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
-                                    <!-- Bottom-right square -->
-                                    <Rectangle Canvas.Left="6" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
-                                    <!-- Top-right square -->
-                                    <Rectangle Canvas.Left="6" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
-                                </Canvas>
-                            </Grid>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-        </Window.Resources>
-    
+    <Window.Resources>
+        <SolidColorBrush x:Key="ResizeGripBrush" Color="{DynamicResource AccentColor}"/>
+        <SolidColorBrush x:Key="SettingsScrollBarBrush" Color="{DynamicResource AccentColor}"/>
+        <SolidColorBrush x:Key="SettingsScrollBarTrackHoverBrush" Color="{DynamicResource AccentColor}" Opacity="0.25"/>
+        <SolidColorBrush x:Key="SettingsScrollBarButtonHoverBrush" Color="{DynamicResource AccentColor}" Opacity="0.08"/>
+        <Style TargetType="ResizeGrip">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ResizeGrip">
+                        <Grid>
+                            <Canvas Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1">
+                                <Rectangle Canvas.Left="0" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
+                                <Rectangle Canvas.Left="6" Canvas.Top="6" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
+                                <Rectangle Canvas.Left="6" Canvas.Top="0" Width="4" Height="4" Fill="Transparent" Stroke="{StaticResource ResizeGripBrush}" StrokeThickness="1"/>
+                            </Canvas>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsNavListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        </Style>
+        <Style x:Key="SettingsNavItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.19"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.08"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SettingsCategoryTitleStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+        </Style>
+        <Style x:Key="SettingsGroupHeaderStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,8,0,8"/>
+            <Setter Property="Opacity" Value="0.85"/>
+        </Style>
+        <Style x:Key="SettingsExpanderStyle" TargetType="Expander">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style x:Key="SettingsScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource SettingsScrollBarBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <RepeatButton Grid.Row="0" Command="ScrollBar.LineUpCommand" Height="18" Margin="1,0,1,1"
+                                          Background="#FF1A1A1A" BorderBrush="#FF404040" BorderThickness="1">
+                                <RepeatButton.Template>
+                                    <ControlTemplate TargetType="RepeatButton">
+                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                            <Path Data="M0,6 L6,6 L3,0 Z" Fill="{StaticResource SettingsScrollBarBrush}"
+                                                  Stretch="Uniform" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </RepeatButton.Template>
+                            </RepeatButton>
+                            <Border Grid.Row="1" Background="#FF1A1A1A">
+                                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageUpCommand" Background="Transparent" BorderThickness="0"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageDownCommand" Background="Transparent" BorderThickness="0"/>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb MinHeight="24" Margin="2,0">
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Border x:Name="ThumbBorder" Background="#FF404040"
+                                                            BorderBrush="{StaticResource SettingsScrollBarBrush}"
+                                                            BorderThickness="1" CornerRadius="4"/>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="ThumbBorder" Property="Background" Value="#FF505050"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Border>
+                            <RepeatButton Grid.Row="2" Command="ScrollBar.LineDownCommand" Height="18" Margin="1,1,1,0"
+                                          Background="#FF1A1A1A" BorderBrush="#FF404040" BorderThickness="1">
+                                <RepeatButton.Template>
+                                    <ControlTemplate TargetType="RepeatButton">
+                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                                            <Path Data="M0,0 L6,0 L3,6 Z" Fill="{StaticResource SettingsScrollBarBrush}"
+                                                  Stretch="Uniform" Width="6" Height="6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </RepeatButton.Template>
+                            </RepeatButton>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
-        <!-- Resize Handles -->
-        <Border Grid.Row="0" 
-                Height="8" 
-                Background="Transparent" 
-                Cursor="SizeNS" 
-                MouseLeftButtonDown="TopResizeHandle_MouseLeftButtonDown"/>
-        <Border Grid.Row="2" 
-                Height="8" 
-                Background="Transparent" 
-                Cursor="SizeNS" 
-                MouseLeftButtonDown="BottomResizeHandle_MouseLeftButtonDown"/>
-        <Border Grid.Column="0" 
-                Width="8" 
-                Background="Transparent" 
-                Cursor="SizeWE" 
-                MouseLeftButtonDown="LeftResizeHandle_MouseLeftButtonDown"/>
-        <Border Grid.Column="2" 
-                Width="8" 
-                Background="Transparent" 
-                Cursor="SizeWE" 
-                MouseLeftButtonDown="RightResizeHandle_MouseLeftButtonDown"/>
 
-        <!-- Header -->
-        <Grid Grid.Row="0" Margin="0,0,0,20">
+        <Border Grid.Row="0" Height="8" Background="Transparent" Cursor="SizeNS" MouseLeftButtonDown="TopResizeHandle_MouseLeftButtonDown"/>
+        <Border Grid.Row="2" Height="8" Background="Transparent" Cursor="SizeNS" MouseLeftButtonDown="BottomResizeHandle_MouseLeftButtonDown"/>
+        <Border Grid.Column="0" Width="8" Background="Transparent" Cursor="SizeWE" MouseLeftButtonDown="LeftResizeHandle_MouseLeftButtonDown"/>
+        <Border Grid.Column="2" Width="8" Background="Transparent" Cursor="SizeWE" MouseLeftButtonDown="RightResizeHandle_MouseLeftButtonDown"/>
+
+        <Grid Grid.Row="0" Margin="0,0,0,16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" 
-                       Text="Settings" 
-                       FontSize="24" 
-                       FontWeight="Bold" 
-                       x:Name="SettingsHeader"
-                       Foreground="#FFFF8C00"
-                       MouseLeftButtonDown="Window_MouseLeftButtonDown"
-                       Cursor="Hand"/>
-            <Button Grid.Column="1" 
-                    x:Name="CloseSettingsButton"
-                    Style="{StaticResource ToolbarButtonStyle}"
-                    Width="38" 
-                    Height="38"
-                    Padding="6"
-                    Click="CloseSettingsButton_Click"
-                    Cursor="Hand">
-                <Path Data="M1 1L11 11M11 1L1 11" 
-                      Stroke="{DynamicResource AccentBrush}" 
-                      StrokeThickness="2" 
-                      Fill="Transparent"
-                      Stretch="Uniform"
-                      Width="22" Height="22"/>
+            <TextBlock Grid.Column="0" Text="Settings" FontSize="24" FontWeight="Bold" x:Name="SettingsHeader"
+                       Foreground="{DynamicResource AccentBrush}" MouseLeftButtonDown="Window_MouseLeftButtonDown" Cursor="Hand"/>
+            <Button Grid.Column="1" x:Name="CloseSettingsButton" Style="{StaticResource ToolbarButtonStyle}"
+                    Width="38" Height="38" Padding="6" Click="CloseSettingsButton_Click" Cursor="Hand">
+                <Path Data="M1 1L11 11M11 1L1 11" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"
+                      Fill="Transparent" Stretch="Uniform" Width="22" Height="22"/>
             </Button>
         </Grid>
 
-        <!-- Settings Content -->
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
-                <ScrollViewer.Resources>
-                    <Style TargetType="ScrollBar">
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Foreground" Value="{StaticResource ScrollBarBrush}"/>
-                        <Setter Property="BorderBrush" Value="Transparent"/>
-                        <Setter Property="BorderThickness" Value="0"/>
-                        <Setter Property="Width" Value="16"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ScrollBar">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        
-                                        <!-- Custom Top Button -->
-                                        <RepeatButton Grid.Row="0" 
-                                                     x:Name="PART_LineUpButton"
-                                                     Command="ScrollBar.LineUpCommand"
-                                                     Background="#FF1A1A1A"
-                                                     BorderBrush="#FF404040"
-                                                     BorderThickness="1"
-                                                     Height="20"
-                                                     Margin="2,0,2,1">
-                                            <RepeatButton.Template>
-                                                <ControlTemplate TargetType="RepeatButton">
-                                                    <Border Background="{TemplateBinding Background}"
-                                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                                            CornerRadius="3"
-                                                            Margin="{TemplateBinding Margin}">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
-                                                                <Style.Triggers>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter Property="Background" Value="{StaticResource ScrollBarButtonHoverBrush}"/>
-                                                                        <Setter Property="BorderBrush" Value="{StaticResource ScrollBarBrush}"/>
-                                                                    </Trigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Border.Style>
-                                                        <Path Data="M0,6 L6,6 L3,0 Z" 
-                                                              Fill="{StaticResource ScrollBarBrush}" 
-                                                              Stretch="Uniform"
-                                                              Width="6" 
-                                                              Height="6"
-                                                              HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </RepeatButton.Template>
-                                        </RepeatButton>
-                                        
-                                        <!-- Custom Track -->
-                                        <Border Grid.Row="1" Background="#FF1A1A1A">
-                                            <Track x:Name="PART_Track"
-                                                   IsDirectionReversed="True">
-                                                <Track.DecreaseRepeatButton>
-                                                    <RepeatButton Background="Transparent" 
-                                                                  BorderThickness="0"
-                                                                  Margin="2,1,2,1"
-                                                                  x:Name="PART_DecreaseRepeatButton"
-                                                                  Command="ScrollBar.PageUpCommand">
-                                                        <RepeatButton.Template>
-                                                            <ControlTemplate TargetType="RepeatButton">
-                                                                <Border Background="{TemplateBinding Background}"
-                                                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                                                        Margin="{TemplateBinding Margin}">
-                                                                    <Border.Style>
-                                                                        <Style TargetType="Border">
-                                                                            <Style.Triggers>
-                                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                                    <Setter Property="Background" Value="{StaticResource ScrollBarTrackHoverBrush}"/>
-                                                                                </Trigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Border.Style>
-                                                                </Border>
-                                                            </ControlTemplate>
-                                                        </RepeatButton.Template>
-                                                    </RepeatButton>
-                                                </Track.DecreaseRepeatButton>
-                                                <Track.IncreaseRepeatButton>
-                                                    <RepeatButton Background="Transparent" 
-                                                                  BorderThickness="0"
-                                                                  Margin="2,1,2,1"
-                                                                  x:Name="PART_IncreaseRepeatButton"
-                                                                  Command="ScrollBar.PageDownCommand">
-                                                        <RepeatButton.Template>
-                                                            <ControlTemplate TargetType="RepeatButton">
-                                                                <Border Background="{TemplateBinding Background}"
-                                                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                                                        Margin="{TemplateBinding Margin}">
-                                                                    <Border.Style>
-                                                                        <Style TargetType="Border">
-                                                                            <Style.Triggers>
-                                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                                    <Setter Property="Background" Value="{StaticResource ScrollBarTrackHoverBrush}"/>
-                                                                                </Trigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Border.Style>
-                                                                </Border>
-                                                            </ControlTemplate>
-                                                        </RepeatButton.Template>
-                                                    </RepeatButton>
-                                                </Track.IncreaseRepeatButton>
-                                                <Track.Thumb>
-                                                    <Thumb Background="#FF404040" 
-                                                           BorderBrush="{StaticResource ScrollBarBrush}"
-                                                           BorderThickness="1"
-                                                           Margin="2,0,2,0"
-                                                           MinHeight="20">
-                                                        <Thumb.Template>
-                                                            <ControlTemplate TargetType="Thumb">
-                                                                <Border Background="{TemplateBinding Background}"
-                                                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                                                        BorderThickness="{TemplateBinding BorderThickness}"
-                                                                        CornerRadius="4"
-                                                                        Margin="{TemplateBinding Margin}">
-                                                                    <Border.Style>
-                                                                        <Style TargetType="Border">
-                                                                            <Style.Triggers>
-                                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                                    <Setter Property="Background" Value="#FF505050"/>
-                                                                                    <Setter Property="BorderBrush" Value="{StaticResource ScrollBarBrush}"/>
-                                                                                </Trigger>
-                                                                            </Style.Triggers>
-                                                                        </Style>
-                                                                    </Border.Style>
-                                                                </Border>
-                                                            </ControlTemplate>
-                                                        </Thumb.Template>
-                                                    </Thumb>
-                                                </Track.Thumb>
-                                            </Track>
-                                        </Border>
-                                        
-                                        <!-- Custom Bottom Button -->
-                                        <RepeatButton Grid.Row="2" 
-                                                     x:Name="PART_LineDownButton"
-                                                     Command="ScrollBar.LineDownCommand"
-                                                     Background="#FF1A1A1A"
-                                                     BorderBrush="#FF404040"
-                                                     BorderThickness="1"
-                                                     Height="20"
-                                                     Margin="2,1,2,0">
-                                            <RepeatButton.Template>
-                                                <ControlTemplate TargetType="RepeatButton">
-                                                    <Border Background="{TemplateBinding Background}"
-                                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                                            CornerRadius="3"
-                                                            Margin="{TemplateBinding Margin}">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
-                                                                <Style.Triggers>
-                                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                                        <Setter Property="Background" Value="{StaticResource ScrollBarButtonHoverBrush}"/>
-                                                                        <Setter Property="BorderBrush" Value="{StaticResource ScrollBarBrush}"/>
-                                                                    </Trigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Border.Style>
-                                                        <Path Data="M0,0 L6,0 L3,6 Z" 
-                                                              Fill="{StaticResource ScrollBarBrush}" 
-                                                              Stretch="Uniform"
-                                                              Width="6" 
-                                                              Height="6"
-                                                              HorizontalAlignment="Center"
-                                                              VerticalAlignment="Center"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </RepeatButton.Template>
-                                        </RepeatButton>
-                                    </Grid>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ScrollViewer.Resources>
-            <StackPanel Margin="0,0,15,0">
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="168"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ListBox x:Name="SettingsNavListBox" Grid.Column="0" Style="{StaticResource SettingsNavListBoxStyle}"
+                     ItemContainerStyle="{StaticResource SettingsNavItemStyle}"
+                     SelectionChanged="SettingsNavListBox_SelectionChanged">
+                <ListBoxItem Content="General" Tag="General"/>
+                <ListBoxItem Content="Capture" Tag="Capture"/>
+                <ListBoxItem Content="Recording" Tag="Recording"/>
+                <ListBoxItem Content="Dashboard" Tag="Dashboard"/>
+                <ListBoxItem Content="Appearance" Tag="Appearance"/>
+                <ListBoxItem Content="Hotkeys" Tag="Hotkeys"/>
+                <ListBoxItem Content="Updates" Tag="Updates"/>
+            </ListBox>
+
+            <Border Grid.Column="2" Background="#FF1A1A1A" CornerRadius="8" Padding="16" BorderBrush="#FF404040" BorderThickness="1">
+                <ScrollViewer x:Name="SettingsContentScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer.Resources>
+                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SettingsScrollBarStyle}"/>
+                    </ScrollViewer.Resources>
+                    <StackPanel x:Name="SettingsContentPanel">
+
+                        <StackPanel x:Name="GeneralSection" Visibility="Visible">
+                            <TextBlock Text="General" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                            <TextBlock Text="Storage" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <!-- Save Path -->
                 <TextBlock Text="Save Path:" 
                            Foreground="{StaticResource TextBrush}" 
@@ -325,20 +258,31 @@
                     <ComboBoxItem Content="JPG"/>
                     <ComboBoxItem Content="BMP"/>
                 </ComboBox>
+                            <TextBlock Text="Startup &amp; tray" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <CheckBox x:Name="GlobalHotkeysCheckBox" 
+                          Content="Enable Global Hotkeys" 
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
+                <CheckBox x:Name="StartMinimizedCheckBox" 
+                          Content="Start Minimized" 
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,4"/>
+                <CheckBox x:Name="StartWithWindowsMinimizedCheckBox"
+                          Content="Start SharpShot with Windows (minimized)"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="16,0,0,10"
+                          ToolTip="Adds SharpShot to your Windows startup apps and starts it minimized to the tray when Windows starts"/>
+                            <TextBlock Text="Notifications" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <CheckBox x:Name="DisableAllPopupsCheckBox"
+                          Content="Disable all popup notifications"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, all popup dialogs (success messages, file saved confirmations, etc.) will be suppressed"/>
+                        </StackPanel>
 
-                <!-- Video Quality -->
-                <TextBlock Text="Video Quality:" 
-                           Foreground="{StaticResource TextBrush}" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,5"/>
-                <ComboBox x:Name="QualityComboBox" 
-                          Style="{StaticResource DarkComboBoxStyle}"
-                          Margin="0,0,0,15">
-                    <ComboBoxItem Content="High"/>
-                    <ComboBoxItem Content="Medium"/>
-                    <ComboBoxItem Content="Low"/>
-                </ComboBox>
-
+                        <StackPanel x:Name="CaptureSection" Visibility="Collapsed">
+                            <TextBlock Text="Capture" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                            <TextBlock Text="Screen capture" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <!-- Screen Selection for Full-Screen Capture -->
                 <TextBlock Text="Full-Screen Capture Target:" 
                            Foreground="{StaticResource TextBrush}" 
@@ -354,191 +298,7 @@
                     <ComboBoxItem Content="Monitor 3"/>
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
-
-                <!-- Screenshot Editor Display Monitor -->
-                <TextBlock Text="Screenshot Editor Display Monitor:" 
-                           Foreground="{StaticResource TextBrush}" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,5"/>
-                <ComboBox x:Name="EditorDisplayMonitorComboBox" 
-                          Style="{StaticResource DarkComboBoxStyle}"
-                          Margin="0,0,0,15"
-                          ToolTip="Choose which monitor displays the screenshot editor toolbar and preview when editing screenshots">
-                    <ComboBoxItem Content="Primary Monitor"/>
-                    <ComboBoxItem Content="Monitor 1"/>
-                    <ComboBoxItem Content="Monitor 2"/>
-                    <ComboBoxItem Content="Monitor 3"/>
-                    <ComboBoxItem Content="Monitor 4"/>
-                </ComboBox>
-
-                <!-- Dashboard Display Monitor -->
-                <TextBlock Text="Dashboard Display Monitor:" 
-                           Foreground="{StaticResource TextBrush}" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,5"/>
-                <ComboBox x:Name="DashboardDisplayMonitorComboBox" 
-                          Style="{StaticResource DarkComboBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="Choose which monitor shows the main SharpShot dashboard window">
-                    <ComboBoxItem Content="Primary Monitor"/>
-                    <ComboBoxItem Content="Monitor 1"/>
-                    <ComboBoxItem Content="Monitor 2"/>
-                    <ComboBoxItem Content="Monitor 3"/>
-                    <ComboBoxItem Content="Monitor 4"/>
-                </ComboBox>
-
-                <TextBlock Text="Dashboard window size (pixels):"
-                           Foreground="{StaticResource TextBrush}"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,5"/>
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition Width="24"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="80"/>
-                        <ColumnDefinition Width="8"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Width" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Foreground="{StaticResource TextBrush}"/>
-                    <TextBox x:Name="DashboardWidthTextBox" Grid.Column="1"
-                             Style="{StaticResource DarkTextBoxStyle}"
-                             ToolTip="Dashboard width in logical pixels. Leave empty for default (500). Range: 280ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“2400."/>
-                    <TextBlock Grid.Column="3" Text="Height" VerticalAlignment="Center" Margin="12,0,8,0"
-                               Foreground="{StaticResource TextBrush}"/>
-                    <TextBox x:Name="DashboardHeightTextBox" Grid.Column="4"
-                             Style="{StaticResource DarkTextBoxStyle}"
-                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“400."/>
-                    <Button x:Name="DashboardSizeResetButton" Grid.Column="6"
-                            Style="{StaticResource ModernButtonStyle}"
-                            VerticalAlignment="Center"
-                            Click="DashboardSizeResetButton_Click"
-                            Width="128"
-                            Height="32"
-                            ToolTip="Set width and height to the default dashboard size (500 ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 80)">
-                        <TextBlock Text="Reset to default"
-                                   Foreground="#FFFF8C00"
-                                   FontSize="12"
-                                   FontWeight="SemiBold"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                    </Button>
-                </Grid>
-
-                <!-- Recording Engine -->
-                <TextBlock Text="Recording Engine:" 
-                           Foreground="{StaticResource TextBrush}" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,5"/>
-                <ComboBox x:Name="RecordingEngineComboBox" 
-                          Style="{StaticResource DarkComboBoxStyle}"
-                          Margin="0,0,0,10"
-                          SelectionChanged="RecordingEngineComboBox_SelectionChanged">
-                    <ComboBoxItem Content="FFmpeg"/>
-                    <ComboBoxItem Content="OBS"/>
-                </ComboBox>
-
-                <!-- Audio Recording Mode -->
-                <!-- Commented out - Audio recording disabled for now
-                <TextBlock Text="Audio Recording Mode:" 
-                           Foreground="{StaticResource TextBrush}" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,5"/>
-                <ComboBox x:Name="AudioRecordingModeComboBox" 
-                          Style="{StaticResource DarkComboBoxStyle}"
-                          Margin="0,0,0,10"
-                          SelectionChanged="AudioRecordingModeComboBox_SelectionChanged">
-                    <ComboBoxItem Content="No Audio"/>
-                    <ComboBoxItem Content="System Audio Only"/>
-                    <ComboBoxItem Content="Microphone Only"/>
-                    <ComboBoxItem Content="System Audio + Microphone"/>
-                </ComboBox>
-                -->
-
-                <!-- Output Audio Device Selection -->
-                <StackPanel x:Name="OutputAudioDevicePanel" 
-                           Margin="0,0,0,10" 
-                           Visibility="Collapsed"
-                           ToolTip="FFmpeg region and full-screen recordings: capture system audio from the chosen playback device (WASAPI loopback). Choose No system audio for video-only.">
-                    <TextBlock Text="FFmpeg - system audio (playback device):" 
-                               Foreground="{StaticResource TextBrush}" 
-                               FontWeight="SemiBold" 
-                               Margin="0,0,0,5"/>
-                    <ComboBox x:Name="OutputAudioDeviceComboBox" 
-                              Style="{StaticResource DarkComboBoxStyle}"
-                              Margin="0,0,0,10"
-                              ToolTip="Uses WASAPI loopback on the selected output. Auto-detect uses the default playback device."/>
-                </StackPanel>
-
-                <!-- Input Audio Device Selection -->
-                <StackPanel x:Name="InputAudioDevicePanel" 
-                           Margin="0,0,0,10" 
-                           Visibility="Collapsed">
-                    <TextBlock Text="Input Audio Device (Microphone):" 
-                               Foreground="{StaticResource TextBrush}" 
-                               FontWeight="SemiBold" 
-                               Margin="0,0,0,5"/>
-                    <ComboBox x:Name="InputAudioDeviceComboBox" 
-                              Style="{StaticResource DarkComboBoxStyle}"
-                              Margin="0,0,0,10"/>
-                </StackPanel>
-
-                <!-- Refresh Audio Devices Button -->
-                <!-- Commented out - Audio recording disabled for now
-                <Button x:Name="RefreshAudioDevicesButton"
-                        Style="{StaticResource ModernButtonStyle}"
-                        Margin="0,0,0,15"
-                        Click="RefreshAudioDevicesButton_Click"
-                        Width="150"
-                        Height="32">
-                    <TextBlock Text="Refresh Audio Devices" 
-                               Foreground="#FFFF8C00" 
-                               FontSize="12" 
-                               FontWeight="SemiBold"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                </Button>
-                -->
-                <CheckBox x:Name="GlobalHotkeysCheckBox" 
-                          Content="Enable Global Hotkeys" 
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"/>
-                <CheckBox x:Name="StartMinimizedCheckBox" 
-                          Content="Start Minimized" 
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,4"/>
-                <CheckBox x:Name="StartWithWindowsMinimizedCheckBox"
-                          Content="Start SharpShot with Windows (minimized)"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="16,0,0,10"
-                          ToolTip="Adds SharpShot to your Windows startup apps and starts it minimized to the tray when Windows starts"/>
-                <CheckBox x:Name="MinimizeOnCloseCheckBox"
-                          Content="When closing dashboard, minimize to tray instead of exiting"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="16,0,0,10"
-                          ToolTip="When enabled, clicking the Close button on the main SharpShot dashboard will minimize it to the tray. Use the tray menu's Exit option to fully close SharpShot."/>
-                <CheckBox x:Name="RestoreDashboardPositionCheckBox"
-                          Content="Restore dashboard to last position"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="When enabled, SharpShot remembers where you moved the main dashboard window and restores it there on next launch. When disabled, the dashboard will always open in its default position on the selected monitor."/>
-                <CheckBox x:Name="DashboardFollowsCaptureMonitorCheckBox"
-                          Content="After region capture, show dashboard on capture monitor"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,4"
-                          ToolTip="When enabled, the main SharpShot dashboard moves to the monitor where you took the region screenshot before showing the post-capture options."/>
-                <CheckBox x:Name="DashboardAutoReturnAfterCaptureCheckBox"
-                          Content="Then return dashboard to previous position"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="16,0,0,10"
-                          ToolTip="When enabled, the dashboard is only moved to the capture monitor temporarily and then returned to where it was before the region capture."/>
-                <CheckBox x:Name="EditorFollowsCaptureMonitorCheckBox"
-                          Content="Open editor overlay on capture monitor"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="When enabled, the screenshot editor opens on the same monitor where you took the screenshot, instead of always using the configured editor display monitor."/>
+                            <TextBlock Text="After capture" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <CheckBox x:Name="AutoCopyScreenshotsCheckBox" 
                           Content="Auto-copy fullscreen and region screenshots to clipboard (failsafe after editor closes)" 
                           Style="{StaticResource DarkCheckBoxStyle}"
@@ -564,28 +324,18 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="When enabled, SharpShot temporarily hides its own windows while the screen pixels are captured so they do not appear in the image. In the editor, the bottom toolbar, color panel, and OCR popup are hidden briefly when you save or copy so they are not baked into the file."/>
+                            <TextBlock Text="Magnifier" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <CheckBox x:Name="EnableMagnifierCheckBox"
                           Content="Enable magnifier during region selection"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"/>
-                <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
-                          Content="Highlight detected regions (images, text blocks) during region selection"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="When enabled, detects elements like images and text on the screen (e.g. in browsers) and lets you click a highlight to capture that region. Similar to Snipping Tool behavior."/>
-                <CheckBox x:Name="DisableAllPopupsCheckBox"
-                          Content="Disable all popup notifications"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="When enabled, all popup dialogs (success messages, file saved confirmations, etc.) will be suppressed"/>
-               
                <!-- Magnifier Zoom Level -->
                <StackPanel x:Name="MagnifierZoomPanel"
                           Margin="0,0,0,20"
                           Visibility="Collapsed">
                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                        <TextBlock Text="Magnifier Zoom Level:"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0"/>
                        <ComboBox x:Name="MagnifierZoomComboBox"
@@ -620,7 +370,7 @@
                               Margin="0,0,0,10"
                               Visibility="Collapsed">
                        <TextBlock Text="Magnifier Size (Stationary):"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0"
                                   Width="180"/>
@@ -635,7 +385,7 @@
                                Margin="0,0,10,0"/>
                        <TextBlock x:Name="MagnifierSizeText"
                                   Text="200px"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Width="60"/>
                    </StackPanel>
@@ -643,7 +393,7 @@
                    <!-- Magnifier Size (Follow Cursor/Auto Mode) -->
                    <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
                        <TextBlock Text="Magnifier Size (Follow/Auto):"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0"
                                   Width="180"/>
@@ -658,7 +408,7 @@
                                Margin="0,0,10,0"/>
                        <TextBlock x:Name="MagnifierFollowSizeText"
                                   Text="200px"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Width="60"/>
                    </StackPanel>
@@ -669,13 +419,12 @@
                           Margin="0,0,0,20"
                           Visibility="Collapsed">
                    <TextBlock Text="Magnifier Mode:"
-                              Foreground="White"
+                              Foreground="{StaticResource TextBrush}"
                               VerticalAlignment="Center"
                               Margin="0,0,0,5"/>
                    <ComboBox x:Name="MagnifierModeComboBox"
                              Width="200"
-                             Style="{StaticResource DarkComboBoxStyle}"
-                             SelectionChanged="MagnifierModeComboBox_SelectionChanged">
+                             Style="{StaticResource DarkComboBoxStyle}">
                        <ComboBoxItem Content="Follow Cursor" Tag="Follow"/>
                        <ComboBoxItem Content="Stationary" Tag="Stationary"/>
                        <ComboBoxItem Content="Auto (Stationary on non-100% monitors)" Tag="Auto"/>
@@ -687,13 +436,13 @@
                           Margin="0,0,0,20"
                           Visibility="Collapsed">
                    <TextBlock Text="Stationary Magnifier Settings:"
-                              Foreground="White"
+                              Foreground="{StaticResource TextBrush}"
                               FontWeight="SemiBold"
                               Margin="0,0,0,10"/>
                    
                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                        <TextBlock Text="Monitor:"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0"
                                   Width="80"/>
@@ -704,7 +453,7 @@
                    
                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                        <TextBlock Text="Position X (%):"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0"
                                   Width="100"/>
@@ -718,14 +467,14 @@
                                Margin="0,0,10,0"/>
                        <TextBlock x:Name="MagnifierStationaryXText"
                                   Text="50"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Width="40"/>
                    </StackPanel>
                    
                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                        <TextBlock Text="Position Y (%):"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Margin="0,0,10,0"
                                   Width="100"/>
@@ -739,7 +488,7 @@
                                Margin="0,0,10,0"/>
                        <TextBlock x:Name="MagnifierStationaryYText"
                                   Text="50"
-                                  Foreground="White"
+                                  Foreground="{StaticResource TextBrush}"
                                   VerticalAlignment="Center"
                                   Width="40"/>
                    </StackPanel>
@@ -751,12 +500,15 @@
                               Margin="0,5,0,0"/>
                </StackPanel>
                
-               <!-- Auto Mode Monitor Selection -->
+               
+               <Expander Header="Advanced magnifier (auto mode &amp; boundary boxes)" Style="{StaticResource SettingsExpanderStyle}" IsExpanded="False">
+                   <StackPanel Margin="0,8,0,0">
+<!-- Auto Mode Monitor Selection -->
                <StackPanel x:Name="MagnifierAutoModePanel"
                           Margin="0,0,0,20"
                           Visibility="Collapsed">
                    <TextBlock Text="Select monitors that should use stationary mode:"
-                              Foreground="White"
+                              Foreground="{StaticResource TextBrush}"
                               FontWeight="SemiBold"
                               Margin="0,0,0,10"/>
                    
@@ -764,6 +516,9 @@
                                 VerticalScrollBarVisibility="Auto"
                                 Margin="0,0,0,10"
                                 PreviewMouseWheel="NestedScrollViewer_PreviewMouseWheel">
+                       <ScrollViewer.Resources>
+                           <Style TargetType="ScrollBar" BasedOn="{StaticResource SettingsScrollBarStyle}"/>
+                       </ScrollViewer.Resources>
                        <StackPanel x:Name="MagnifierAutoMonitorList">
                            <!-- Checkboxes will be populated dynamically -->
                        </StackPanel>
@@ -776,7 +531,7 @@
                               Margin="0,5,0,10"/>
                    
                    <TextBlock Text="Boundary Boxes (for DPI-scaled monitors):"
-                              Foreground="White"
+                              Foreground="{StaticResource TextBrush}"
                               FontWeight="SemiBold"
                               Margin="0,10,0,10"/>
                    
@@ -805,20 +560,197 @@
                                 VerticalScrollBarVisibility="Auto"
                                 Margin="0,0,0,10"
                                 PreviewMouseWheel="NestedScrollViewer_PreviewMouseWheel">
+                       <ScrollViewer.Resources>
+                           <Style TargetType="ScrollBar" BasedOn="{StaticResource SettingsScrollBarStyle}"/>
+                       </ScrollViewer.Resources>
                        <StackPanel x:Name="MagnifierBoundaryBoxList">
                            <!-- Boundary boxes will be populated dynamically -->
                        </StackPanel>
                    </ScrollViewer>
                </StackPanel>
+                   </StackPanel>
+               </Expander>
 
-                <!-- Theme Customization Section -->
-                <TextBlock Text="Theme Customization:" 
-                           x:Name="ThemeCustomizationHeader"
-                           Foreground="#FFFF8C00" 
+                            <TextBlock Text="Region selection" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
+                          Content="Highlight detected regions (images, text blocks) during region selection"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, detects elements like images and text on the screen (e.g. in browsers) and lets you click a highlight to capture that region. Similar to Snipping Tool behavior."/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="RecordingSection" Visibility="Collapsed">
+                            <TextBlock Text="Recording" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                            <TextBlock Text="Video &amp; audio" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <!-- Video Quality -->
+                <TextBlock Text="Video Quality:" 
+                           Foreground="{StaticResource TextBrush}" 
                            FontWeight="SemiBold" 
-                           FontSize="16"
-                           Margin="0,0,0,10"/>
-                
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="QualityComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15">
+                    <ComboBoxItem Content="High"/>
+                    <ComboBoxItem Content="Medium"/>
+                    <ComboBoxItem Content="Low"/>
+                </ComboBox>
+                <TextBlock Text="Screen recordings use FFmpeg."
+                           Foreground="#FF888888"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,12"/>
+
+                <!-- Audio Recording Mode -->
+                <!-- Commented out - Audio recording disabled for now
+                <TextBlock Text="Audio Recording Mode:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="AudioRecordingModeComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,10"
+                          SelectionChanged="AudioRecordingModeComboBox_SelectionChanged">
+                    <ComboBoxItem Content="No Audio"/>
+                    <ComboBoxItem Content="System Audio Only"/>
+                    <ComboBoxItem Content="Microphone Only"/>
+                    <ComboBoxItem Content="System Audio + Microphone"/>
+                </ComboBox>
+                -->
+
+                <!-- Output Audio Device Selection -->
+                <StackPanel x:Name="OutputAudioDevicePanel" 
+                           Margin="0,0,0,10" 
+                           ToolTip="FFmpeg region and full-screen recordings: capture system audio from the chosen playback device (WASAPI loopback). Choose No system audio for video-only.">
+                    <TextBlock Text="FFmpeg - system audio (playback device):" 
+                               Foreground="{StaticResource TextBrush}" 
+                               FontWeight="SemiBold" 
+                               Margin="0,0,0,5"/>
+                    <ComboBox x:Name="OutputAudioDeviceComboBox" 
+                              Style="{StaticResource DarkComboBoxStyle}"
+                              Margin="0,0,0,10"
+                              ToolTip="Uses WASAPI loopback on the selected output. Auto-detect uses the default playback device."/>
+                </StackPanel>
+
+                <!-- Input Audio Device Selection -->
+                <StackPanel x:Name="InputAudioDevicePanel" 
+                           Margin="0,0,0,10" 
+                           Visibility="Collapsed">
+                    <TextBlock Text="Input Audio Device (Microphone):" 
+                               Foreground="{StaticResource TextBrush}" 
+                               FontWeight="SemiBold" 
+                               Margin="0,0,0,5"/>
+                    <ComboBox x:Name="InputAudioDeviceComboBox" 
+                              Style="{StaticResource DarkComboBoxStyle}"
+                              Margin="0,0,0,10"/>
+                </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel x:Name="DashboardSection" Visibility="Collapsed">
+                            <TextBlock Text="Dashboard &amp; windows" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                            <TextBlock Text="Display" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <!-- Screenshot Editor Display Monitor -->
+                <TextBlock Text="Screenshot Editor Display Monitor:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="EditorDisplayMonitorComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,15"
+                          ToolTip="Choose which monitor displays the screenshot editor toolbar and preview when editing screenshots">
+                    <ComboBoxItem Content="Primary Monitor"/>
+                    <ComboBoxItem Content="Monitor 1"/>
+                    <ComboBoxItem Content="Monitor 2"/>
+                    <ComboBoxItem Content="Monitor 3"/>
+                    <ComboBoxItem Content="Monitor 4"/>
+                </ComboBox>
+                <!-- Dashboard Display Monitor -->
+                <TextBlock Text="Dashboard Display Monitor:" 
+                           Foreground="{StaticResource TextBrush}" 
+                           FontWeight="SemiBold" 
+                           Margin="0,0,0,5"/>
+                <ComboBox x:Name="DashboardDisplayMonitorComboBox" 
+                          Style="{StaticResource DarkComboBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="Choose which monitor shows the main SharpShot dashboard window">
+                    <ComboBoxItem Content="Primary Monitor"/>
+                    <ComboBoxItem Content="Monitor 1"/>
+                    <ComboBoxItem Content="Monitor 2"/>
+                    <ComboBoxItem Content="Monitor 3"/>
+                    <ComboBoxItem Content="Monitor 4"/>
+                </ComboBox>
+
+                <TextBlock Text="Dashboard window size (pixels):"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="24"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Width" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBox x:Name="DashboardWidthTextBox" Grid.Column="1"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             ToolTip="Dashboard width in logical pixels. Leave empty for default (618). Range: 280ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“2400."/>
+                    <TextBlock Grid.Column="3" Text="Height" VerticalAlignment="Center" Margin="12,0,8,0"
+                               Foreground="{StaticResource TextBrush}"/>
+                    <TextBox x:Name="DashboardHeightTextBox" Grid.Column="4"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“400."/>
+                    <Button x:Name="DashboardSizeResetButton" Grid.Column="6"
+                            Style="{StaticResource ModernButtonStyle}"
+                            VerticalAlignment="Center"
+                            Click="DashboardSizeResetButton_Click"
+                            Width="128"
+                            Height="32"
+                            ToolTip="Set width and height to the default dashboard size (618 ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 80)">
+                        <TextBlock Text="Reset to default"
+                                   Foreground="#FFFF8C00"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+                            <TextBlock Text="Position &amp; behavior" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <CheckBox x:Name="RestoreDashboardPositionCheckBox"
+                          Content="Restore dashboard to last position"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, SharpShot remembers where you moved the main dashboard window and restores it there on next launch. When disabled, the dashboard will always open in its default position on the selected monitor."/>
+                <CheckBox x:Name="DashboardFollowsCaptureMonitorCheckBox"
+                          Content="After region capture, show dashboard on capture monitor"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,4"
+                          ToolTip="When enabled, the main SharpShot dashboard moves to the monitor where you took the region screenshot before showing the post-capture options."/>
+                <CheckBox x:Name="DashboardAutoReturnAfterCaptureCheckBox"
+                          Content="Then return dashboard to previous position"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="16,0,0,10"
+                          ToolTip="When enabled, the dashboard is only moved to the capture monitor temporarily and then returned to where it was before the region capture."/>
+                <CheckBox x:Name="EditorFollowsCaptureMonitorCheckBox"
+                          Content="Open editor overlay on capture monitor"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="When enabled, the screenshot editor opens on the same monitor where you took the screenshot, instead of always using the configured editor display monitor."/>
+                            <TextBlock Text="Tray &amp; close" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <CheckBox x:Name="MinimizeOnCloseCheckBox"
+                          Content="When closing dashboard, minimize to tray instead of exiting"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="16,0,0,10"
+                          ToolTip="When enabled, clicking the Close button on the main SharpShot dashboard will minimize it to the tray. Use the tray menu's Exit option to fully close SharpShot."/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="AppearanceSection" Visibility="Collapsed">
+                            <TextBlock Text="Appearance" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                            <TextBlock Text="Theme Customization:" x:Name="ThemeCustomizationHeader"
+                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,10"/>
                 <!-- Icon Color -->
                 <TextBlock Text="Icon Color:" 
                            Foreground="{StaticResource TextBrush}" 
@@ -847,6 +779,36 @@
                                  TextChanged="IconColorTextBox_TextChanged"/>
                     </StackPanel>
                 </Border>
+
+                <TextBlock Text="Favorite colors"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,4,0,8"/>
+                <WrapPanel x:Name="ColorPresetsPanel" Margin="0,0,0,8"/>
+                <TextBlock x:Name="ColorPresetsEmptyText"
+                           Text="No saved colors yet."
+                           Foreground="#FF888888"
+                           FontSize="11"
+                           Margin="0,0,0,8"
+                           Visibility="Collapsed"/>
+                <Button x:Name="SaveColorPresetButton"
+                        Style="{StaticResource ModernButtonStyle}"
+                        Click="SaveColorPresetButton_Click"
+                        HorizontalAlignment="Left"
+                        Height="32"
+                        Margin="0,0,0,6"
+                        Padding="12,0">
+                    <TextBlock Text="Save current color"
+                               Foreground="{DynamicResource AccentBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </Button>
+                <TextBlock Text="Click a swatch to apply. Right-click a swatch to remove."
+                           Foreground="#FF888888"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,12"/>
                 
                 <!-- Hover Opacity -->
                 <TextBlock Text="Hover Highlight Opacity:" 
@@ -903,58 +865,11 @@
                                VerticalAlignment="Center"
                                MinWidth="40"/>
                 </Grid>
+                        </StackPanel>
 
-                <!-- Hotkeys Section -->
-                <TextBlock Text="Hotkeys:" 
-                           x:Name="HotkeysHeader"
-                           Foreground="#FFFF8C00" 
-                           FontWeight="SemiBold" 
-                           FontSize="16"
-                           Margin="0,0,0,10"/>
-                
-                <!-- Updates -->
-                <TextBlock Text="Updates" 
-                           Foreground="{StaticResource TextBrush}" 
-                           FontWeight="SemiBold" 
-                           FontSize="14"
-                           Margin="0,20,0,10"/>
-                
-                <CheckBox x:Name="EnableAutoUpdateCheckBox" 
-                          Content="Automatically check for updates"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"/>
-                
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" 
-                               Text="Check for updates manually:" 
-                               Foreground="{StaticResource TextBrush}"
-                               VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" 
-                            x:Name="CheckForUpdatesButton"
-                            Style="{StaticResource ModernButtonStyle}"
-                            Width="100"
-                            Height="36"
-                            Click="CheckForUpdatesButton_Click">
-                        <TextBlock Text="Check Now" 
-                                   Foreground="#FFFF8C00" 
-                                   FontSize="14" 
-                                   FontWeight="SemiBold"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
-                    </Button>
-                </Grid>
-                
-                <TextBlock Name="UpdateStatusText"
-                           TextWrapping="Wrap"
-                           Foreground="{StaticResource TextBrush}"
-                           FontSize="11"
-                           Margin="0,5,0,15"
-                           Visibility="Collapsed"/>
-
+                        <StackPanel x:Name="HotkeysSection" Visibility="Collapsed">
+                            <TextBlock Text="Hotkeys:" x:Name="HotkeysHeader"
+                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,10"/>
                 <!-- Hotkey Instructions -->
                 <TextBlock Text="Click a hotkey field and press your combo (up to 3 keys). Examples: Ctrl+A, Shift+Ctrl+K, Shift+OemComma. Single modifiers (Ctrl, Shift, Alt) use triple-click mode."
                            Foreground="{StaticResource TextBrush}" 
@@ -1178,71 +1093,93 @@
                               Margin="8,0,0,0"
                               VerticalAlignment="Center"/>
                 </Grid>
-            </StackPanel>
-        </ScrollViewer>
+                        </StackPanel>
 
-        <!-- Buttons and Footer -->
-        <Grid Grid.Row="2" Margin="0,20,0,-18">
+                        <StackPanel x:Name="UpdatesSection" Visibility="Collapsed">
+                            <TextBlock Text="Updates" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                <CheckBox x:Name="EnableAutoUpdateCheckBox" 
+                          Content="Automatically check for updates"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"/>
+                
+                <Grid Margin="0,0,0,15">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="Check for updates manually:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" 
+                            x:Name="CheckForUpdatesButton"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Width="100"
+                            Height="36"
+                            Click="CheckForUpdatesButton_Click">
+                        <TextBlock Text="Check Now" 
+                                   Foreground="#FFFF8C00" 
+                                   FontSize="14" 
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Button>
+                </Grid>
+                
+                <TextBlock Name="UpdateStatusText"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource TextBrush}"
+                           FontSize="11"
+                           Margin="0,5,0,15"
+                           Visibility="Collapsed"/>
+                        </StackPanel>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,16,0,-18">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            
-            <!-- Buttons -->
-            <StackPanel Grid.Row="0"
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Right">
-                <Button x:Name="CancelButton" 
+            <Grid Grid.Row="0">
+                <Button x:Name="ResetRecommendedDefaultsButton"
                         Style="{StaticResource ModernButtonStyle}"
-                        Click="CancelButton_Click"
-                        Margin="0,0,12,0"
-                        Width="100"
-                        Height="36">
-                    <TextBlock Text="Cancel" 
-                               Foreground="#FFFF8C00" 
-                               FontSize="14" 
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        Height="36"
+                        Padding="14,0"
+                        Click="ResetRecommendedDefaultsButton_Click"
+                        ToolTip="Restore settings and hotkeys to the recommended profile. Click Save to keep changes.">
+                    <TextBlock Text="Reset to recommended defaults"
+                               Foreground="#FFFF8C00"
+                               FontSize="13"
                                FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               MaxWidth="280"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center"/>
                 </Button>
-                <Button x:Name="SaveButton" 
-                        Style="{StaticResource ModernButtonStyle}"
-                        Click="SaveButton_Click"
-                        Width="100"
-                        Height="36">
-                    <TextBlock Text="Save" 
-                               Foreground="#FFFF8C00" 
-                               FontSize="14" 
-                               FontWeight="SemiBold"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="CancelButton" Style="{StaticResource ModernButtonStyle}" Click="CancelButton_Click"
+                        Margin="0,0,12,0" Width="100" Height="36">
+                    <TextBlock Text="Cancel" Foreground="#FFFF8C00" FontSize="14" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
-            </StackPanel>
-            
-            <!-- Footer: Version and Credits (right-aligned, at absolute bottom in line with resize grip) -->
-            <StackPanel Grid.Row="1"
-                        Orientation="Horizontal" 
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Bottom"
-                        Margin="0,0,15,0">
-                <TextBlock x:Name="VersionTextBlock"
-                           Text=""
-                           Foreground="{StaticResource TextBrush}"
-                           FontSize="11"
-                           Opacity="0.6"
-                           VerticalAlignment="Center"/>
-                <TextBlock Text=" | "
-                           Foreground="{StaticResource TextBrush}"
-                           FontSize="11"
-                           Opacity="0.6"
-                           VerticalAlignment="Center"
-                           Margin="4,0"/>
-                <TextBlock Text="Created by: BMOandShiro"
-                           Foreground="{StaticResource TextBrush}"
-                           FontSize="11"
-                           Opacity="0.6"
-                           VerticalAlignment="Center"/>
+                <Button x:Name="SaveButton" Style="{StaticResource ModernButtonStyle}" Click="SaveButton_Click"
+                        Width="100" Height="36">
+                    <TextBlock Text="Save" Foreground="#FFFF8C00" FontSize="14" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+                </StackPanel>
+            </Grid>
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,15,0">
+                <TextBlock x:Name="VersionTextBlock" Text="" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
+                <TextBlock Text=" | " Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" Margin="4,0"/>
+                <TextBlock Text="Created by: BMOandShiro" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
     </Grid>
-</Window> 
+</Window>

@@ -20,6 +20,7 @@ namespace SharpShot.Models
         private bool _startWithWindowsMinimized;
         private Dictionary<string, string> _hotkeys = new();
         private string _iconColor = string.Empty;
+        private List<string> _iconColorPresets = new();
         private double _hoverOpacity;
         private double _dropShadowOpacity;
         private string _selectedScreen = string.Empty;
@@ -44,7 +45,7 @@ namespace SharpShot.Models
         private bool _restoreDashboardPosition = true;
 
         /// <summary>Default main dashboard width in DIPs when <see cref="DashboardWidth"/> is 0 or unset.</summary>
-        public const double DefaultDashboardWidth = 500;
+        public const double DefaultDashboardWidth = 618;
         /// <summary>Default main dashboard height in DIPs when <see cref="DashboardHeight"/> is 0 or unset.</summary>
         public const double DefaultDashboardHeight = 80;
         public const double MinDashboardWidth = 280;
@@ -74,9 +75,10 @@ namespace SharpShot.Models
             RecordingEngine = "FFmpeg";
             SelectedOutputAudioDevice = string.Empty;
             SelectedInputAudioDevice = string.Empty;
-            EnableGlobalHotkeys = false;
+            EnableGlobalHotkeys = true;
             StartMinimized = false;
             IconColor = "#FFFF8C00";
+            IconColorPresets = new List<string>();
             HoverOpacity = 0.125;
             DropShadowOpacity = 0.15;
             SelectedScreen = "Primary Monitor"; // Default to primary monitor
@@ -96,17 +98,17 @@ namespace SharpShot.Models
             DashboardDisplayMonitor = "Primary Monitor"; // Default to primary monitor for main dashboard
             DashboardLeft = double.NaN; // Use auto positioning by default
             DashboardTop = double.NaN;  // Use auto positioning by default
-            DashboardWidth = 0; // 0 = use DefaultDashboardWidth
-            DashboardHeight = 0; // 0 = use DefaultDashboardHeight
+            DashboardWidth = DefaultDashboardWidth;
+            DashboardHeight = DefaultDashboardHeight;
             RestoreDashboardPosition = true; // Default to restoring last position
             MinimizeOnClose = false; // Default to closing app on close button
             DashboardFollowsCaptureMonitor = false; // Default: don't move dashboard to capture monitor
             DashboardAutoReturnAfterCapture = false; // Default: don't auto-return after capture
             EditorFollowsCaptureMonitor = false; // Default: editor uses configured monitor
-            DisableAllPopups = false; // Default to false - show popups
+            DisableAllPopups = true;
             SkipEditorAndAutoCopy = false; // Default to false - show editor
-            ShowOcrButtonOnDashboard = false; // Default to false - keep dashboard compact
-            SkipPostCaptureMenu = false; // Default to false - show post-capture actions menu
+            ShowOcrButtonOnDashboard = true;
+            SkipPostCaptureMenu = true;
             HideSharpShotWindowsDuringCapture = false; // Default: same as today; enable to omit dashboard/editor from captures
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
             UpdateRepoOwner = null; // Will use default from UpdateService
@@ -114,6 +116,30 @@ namespace SharpShot.Models
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
+        }
+
+        /// <summary>
+        /// Fresh-install style settings plus suggested global hotkey bindings.
+        /// </summary>
+        public static Settings CreateRecommendedDefaults()
+        {
+            var settings = new Settings();
+            settings.Hotkeys = new Dictionary<string, string>
+            {
+                ["ScreenshotRegion"] = "Ctrl+Shift+S",
+                ["ScreenshotFullscreen"] = "Ctrl+Shift+F",
+                ["RecordRegion"] = "Ctrl+Shift+R",
+                ["RecordFullscreen"] = "Ctrl+Shift+Alt+R",
+                ["Copy"] = "Ctrl+Shift+C",
+                ["Save"] = "Ctrl+Shift+Alt+S",
+                ["ScreenshotRegionTripleClick"] = "false",
+                ["ScreenshotFullscreenTripleClick"] = "false",
+                ["RecordRegionTripleClick"] = "false",
+                ["RecordFullscreenTripleClick"] = "false",
+                ["CopyTripleClick"] = "false",
+                ["SaveTripleClick"] = "false",
+            };
+            return settings;
         }
 
         public string SavePath
@@ -197,6 +223,13 @@ namespace SharpShot.Models
         {
             get => _iconColor;
             set => SetProperty(ref _iconColor, value);
+        }
+
+        /// <summary>Saved theme/icon color hex values (e.g. #FFFF8C00) for quick reuse in settings.</summary>
+        public List<string> IconColorPresets
+        {
+            get => _iconColorPresets;
+            set => SetProperty(ref _iconColorPresets, value ?? new List<string>());
         }
 
         public double HoverOpacity
