@@ -212,9 +212,18 @@ namespace SharpShot.Services
                 };
                 Process.Start(scriptPsi);
 
-                // Give the script a moment to start, then exit
-                await Task.Delay(500);
-                Application.Current.Shutdown();
+                // Give the script a moment to start, then exit gracefully.
+                await Task.Delay(300);
+                Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
+
+                // Safety net: if something cancels/blocks the graceful shutdown, force the
+                // process to exit so the running SharpShot.exe is released and the update can
+                // replace it. The update script also waits on our PID before touching files.
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(3000);
+                    try { Environment.Exit(0); } catch { /* process already gone */ }
+                });
 
                 return true;
             }
@@ -342,14 +351,33 @@ namespace SharpShot.Services
         private string CreateUpdateScript(string appDirectory, string payloadDirectory)
         {
             var scriptPath = Path.Combine(Path.GetTempPath(), "SharpShot_Update", "apply_update.ps1");
+
+            // Pass the exact PID so the script waits deterministically for THIS process to exit,
+            // instead of a blind sleep. This is the single most important fix: the running
+            // single-file exe stays memory-mapped (locked) until the process is gone.
+            var currentPid = Process.GetCurrentProcess().Id;
+
             var scriptContent = $@"
 # SharpShot Update Script
-# This script applies the update after the application closes
+# Applies the update after the application closes.
+$ErrorActionPreference = 'Continue'
 
 Write-Host ""Applying SharpShot update..."" -ForegroundColor Green
 
-# Wait for SharpShot to fully close and release the .exe file (single-file app locks it)
-Start-Sleep -Seconds 5
+$processId = {currentPid}
+
+# Wait for the SharpShot process that launched us to fully exit (up to 30s).
+# This releases the lock on the running single-file SharpShot.exe.
+try {{
+    $proc = Get-Process -Id $processId -ErrorAction SilentlyContinue
+    if ($proc) {{
+        Write-Host ""Waiting for SharpShot (PID $processId) to exit...""
+        Wait-Process -Id $processId -Timeout 30 -ErrorAction SilentlyContinue
+    }}
+}} catch {{ }}
+
+# Give the OS a moment to release the memory-mapped image / AV scan to finish.
+Start-Sleep -Milliseconds 750
 
 # Use the extracted payload directory that was pre-validated in C#
 $updateSource = ""{payloadDirectory.Replace("\\", "\\\\")}""
@@ -361,6 +389,11 @@ $srcPrefix = $srcNorm + [System.IO.Path]::DirectorySeparatorChar
 
 Write-Host ""Copying files from: $srcNorm""
 Write-Host ""To: $appNorm""
+
+# Clean up any leftover backup exes from a previous update.
+Get-ChildItem -Path $appNorm -Filter ""SharpShot.exe.*.old"" -Force -ErrorAction SilentlyContinue | ForEach-Object {{
+    Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+}}
 
 # Copy all files except settings and user data
 $excludeItems = @(""settings.json"", ""OBS-Studio"", ""ffmpeg"", ""*.log"")
@@ -398,7 +431,7 @@ Get-ChildItem -Path $srcNorm -Recurse -Force | ForEach-Object {{
             New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
         }}
     }} else {{
-        # Defer copying SharpShot.exe until last so process has time to release it
+        # Defer copying SharpShot.exe until last (rename-then-replace below).
         if ($_.Name -eq ""SharpShot.exe"") {{
             $exeSourcePath = $_.FullName
             return
@@ -407,38 +440,57 @@ Get-ChildItem -Path $srcNorm -Recurse -Force | ForEach-Object {{
         if (!(Test-Path $targetDir)) {{
             New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
         }}
-        Copy-Item $_.FullName $targetPath -Force
+        Copy-Item $_.FullName $targetPath -Force -ErrorAction SilentlyContinue
         Write-Host ""Updated: $relativePath""
     }}
 }}
 
-# Copy SharpShot.exe last with retries (single-file app may still hold the handle)
+# Swap SharpShot.exe using rename-then-replace.
+# Windows allows RENAMING a running/locked exe even when it can't be overwritten,
+# so this succeeds even if a stray handle lingers after the process exits.
 if ($exeSourcePath) {{
-    $maxRetries = 15
-    $retryDelaySeconds = 1
-    for ($i = 1; $i -le $maxRetries; $i++) {{
+    $swapped = $false
+    for ($i = 1; $i -le 20; $i++) {{
         try {{
-            Copy-Item $exeSourcePath $exeTargetPath -Force -ErrorAction Stop
+            if (Test-Path $exeTargetPath) {{
+                $stamp = Get-Date -Format ""yyyyMMddHHmmssfff""
+                $backupName = ""SharpShot.exe.$stamp.old""
+                Rename-Item -LiteralPath $exeTargetPath -NewName $backupName -Force -ErrorAction Stop
+            }}
+            Copy-Item -LiteralPath $exeSourcePath -Destination $exeTargetPath -Force -ErrorAction Stop
             Write-Host ""Updated: SharpShot.exe"" -ForegroundColor Green
+            $swapped = $true
             break
         }} catch {{
-            if ($i -eq $maxRetries) {{
-                Write-Host ""Error: Could not overwrite SharpShot.exe after $maxRetries attempts. Close any other SharpShot windows and try the update again."" -ForegroundColor Red
-                exit 1
-            }}
-            Write-Host ""Waiting for SharpShot to release file (attempt $i/$maxRetries)..."" -ForegroundColor Yellow
-            Start-Sleep -Seconds $retryDelaySeconds
+            Write-Host ""Waiting for SharpShot to release file (attempt $i/20)..."" -ForegroundColor Yellow
+            Start-Sleep -Seconds 1
         }}
+    }}
+
+    if (-not $swapped) {{
+        # Last resort: direct overwrite in case rename is blocked (e.g. permissions).
+        try {{
+            Copy-Item -LiteralPath $exeSourcePath -Destination $exeTargetPath -Force -ErrorAction Stop
+            Write-Host ""Updated: SharpShot.exe (direct)"" -ForegroundColor Green
+            $swapped = $true
+        }} catch {{
+            Write-Host ""Error: Could not update SharpShot.exe. Please close all SharpShot windows and try again, or download the latest version from GitHub."" -ForegroundColor Red
+        }}
+    }}
+
+    # Best-effort cleanup of the renamed old exe (may still be locked; retried next launch).
+    Get-ChildItem -Path $appNorm -Filter ""SharpShot.exe.*.old"" -Force -ErrorAction SilentlyContinue | ForEach-Object {{
+        Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+    }}
+
+    if (-not $swapped) {{
+        exit 1
     }}
 }}
 
 Write-Host ""Update applied successfully!"" -ForegroundColor Green
 
-# Clean up temp files
-Start-Sleep -Seconds 1
-Remove-Item -Path ""{Path.GetTempPath().Replace("\\", "\\\\")}SharpShot_Update"" -Recurse -Force -ErrorAction SilentlyContinue
-
-# Restart SharpShot
+# Restart SharpShot BEFORE cleaning temp so a failure here doesn't leave the app closed.
 $exePath = Join-Path $appNorm ""SharpShot.exe""
 if (Test-Path $exePath) {{
     Start-Process -FilePath $exePath
@@ -447,8 +499,12 @@ if (Test-Path $exePath) {{
     Write-Host ""Error: SharpShot.exe not found at $exePath"" -ForegroundColor Red
 }}
 
+# Clean up temp files
+Start-Sleep -Seconds 1
+Remove-Item -Path ""{Path.GetTempPath().Replace("\\", "\\\\")}SharpShot_Update"" -Recurse -Force -ErrorAction SilentlyContinue
+
 # Close this window after a moment
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 2
 ";
 
             File.WriteAllText(scriptPath, scriptContent);

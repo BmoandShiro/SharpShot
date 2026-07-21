@@ -33,6 +33,9 @@ namespace SharpShot
             
             // Ensure default save directory exists
             EnsureDefaultSaveDirectoryExists();
+
+            // Clean up any backup exe left behind by a previous update swap.
+            CleanupUpdateBackups();
             
             // Debug: Verify settings are loaded
             System.Diagnostics.Debug.WriteLine($"App startup - Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
@@ -61,6 +64,34 @@ namespace SharpShot
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to create default save directory: {ex.Message}");
+            }
+        }
+
+        private void CleanupUpdateBackups()
+        {
+            try
+            {
+                var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                if (string.IsNullOrEmpty(appDir) || !Directory.Exists(appDir))
+                {
+                    return;
+                }
+
+                foreach (var backup in Directory.EnumerateFiles(appDir, "SharpShot.exe.*.old"))
+                {
+                    try
+                    {
+                        File.Delete(backup);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Could not delete update backup '{backup}': {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CleanupUpdateBackups failed: {ex.Message}");
             }
         }
 
