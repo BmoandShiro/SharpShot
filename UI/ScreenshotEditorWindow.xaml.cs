@@ -74,6 +74,14 @@ namespace SharpShot.UI
         /// </summary>
         private System.Drawing.Rectangle _monitorBoundsForEditor;
 
+        /// <summary>
+        /// DPI scale of the monitor the editor is displayed on. The screenshot is shown at
+        /// (bitmap pixels / this scale) DIPs so it renders 1:1 with physical pixels. Tools that
+        /// operate directly on bitmap pixels (blur/mosaic, OCR crop) multiply their OverlayCanvas
+        /// DIP coordinates by this value to convert back into bitmap pixel coordinates.
+        /// </summary>
+        private double _imageDpiScale = 1.0;
+
         public Bitmap? FinalBitmap { get; private set; }
         public bool ImageSaved { get; private set; } = false;
         public bool ImageCopied { get; private set; } = false;
@@ -373,30 +381,51 @@ namespace SharpShot.UI
             // Get the bounds of the selected monitor for editor display
             var selectedMonitorBounds = GetSelectedMonitorBounds();
             
-            var screenWidth = selectedMonitorBounds.Width;
-            var screenHeight = selectedMonitorBounds.Height;
+            // Use Windows API to force the window to the correct monitor first
+            ForceWindowToMonitor(selectedMonitorBounds);
             
-            var imageWidth = _originalBitmap.Width;
-            var imageHeight = _originalBitmap.Height;
+            // Then lay out the screenshot at native (1:1 physical) resolution for that monitor
+            LayoutImageForMonitor(selectedMonitorBounds);
+        }
+
+        /// <summary>
+        /// Sizes and centers the screenshot (and its overlay canvases) in logical DIP units so
+        /// the image is shown at true 1:1 physical resolution on the given monitor, regardless of
+        /// its DPI scale. All editor coordinates (drawings, OCR) therefore live in one consistent
+        /// DIP space that maps back to native pixels when re-captured in <see cref="RenderToBitmap"/>.
+        /// </summary>
+        private void LayoutImageForMonitor(System.Drawing.Rectangle monitorBounds)
+        {
+            double dpi = GetDpiScaleForMonitorBounds(monitorBounds);
+            if (dpi <= 0) dpi = 1.0;
+            _imageDpiScale = dpi;
             
-            // Center the image on the selected monitor
-            Canvas.SetLeft(ScreenshotImage, (screenWidth - imageWidth) / 2);
-            Canvas.SetTop(ScreenshotImage, (screenHeight - imageHeight) / 2);
+            // Physical -> DIP so 1 image pixel maps to exactly 1 physical screen pixel.
+            double screenWidth = monitorBounds.Width / dpi;
+            double screenHeight = monitorBounds.Height / dpi;
+            double imageWidth = _originalBitmap.Width / dpi;
+            double imageHeight = _originalBitmap.Height / dpi;
+            
+            double offsetX = (screenWidth - imageWidth) / 2;
+            double offsetY = (screenHeight - imageHeight) / 2;
+            
+            // Image is Stretch="Fill", so explicit Width/Height render the bitmap at native size.
+            ScreenshotImage.Width = imageWidth;
+            ScreenshotImage.Height = imageHeight;
+            Canvas.SetLeft(ScreenshotImage, offsetX);
+            Canvas.SetTop(ScreenshotImage, offsetY);
             
             // Set overlay canvas to same position and size
-            Canvas.SetLeft(OverlayCanvas, (screenWidth - imageWidth) / 2);
-            Canvas.SetTop(OverlayCanvas, (screenHeight - imageHeight) / 2);
+            Canvas.SetLeft(OverlayCanvas, offsetX);
+            Canvas.SetTop(OverlayCanvas, offsetY);
             OverlayCanvas.Width = imageWidth;
             OverlayCanvas.Height = imageHeight;
             
             // OCR overlay same position and size as image
-            Canvas.SetLeft(OcrOverlayCanvas, (screenWidth - imageWidth) / 2);
-            Canvas.SetTop(OcrOverlayCanvas, (screenHeight - imageHeight) / 2);
+            Canvas.SetLeft(OcrOverlayCanvas, offsetX);
+            Canvas.SetTop(OcrOverlayCanvas, offsetY);
             OcrOverlayCanvas.Width = imageWidth;
             OcrOverlayCanvas.Height = imageHeight;
-            
-            // Use Windows API to force the window to the correct monitor
-            ForceWindowToMonitor(selectedMonitorBounds);
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -407,6 +436,22 @@ namespace SharpShot.UI
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [System.Runtime.InteropServices.DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        private const int MDT_EFFECTIVE_DPI = 0;
+        private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
 
         [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
         private struct MONITORINFO
@@ -423,6 +468,25 @@ namespace SharpShot.UI
             public int left, top, right, bottom;
         }
 
+        private double GetDpiScaleForMonitorBounds(System.Drawing.Rectangle bounds)
+        {
+            try
+            {
+                var pt = new POINT { X = bounds.X + bounds.Width / 2, Y = bounds.Y + bounds.Height / 2 };
+                IntPtr hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+                if (hMonitor != IntPtr.Zero &&
+                    GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out uint dpiX, out _) == 0)
+                {
+                    return dpiX / 96.0;
+                }
+            }
+            catch
+            {
+                // Fall through to default.
+            }
+            return 1.0;
+        }
+
         private void ForceWindowToMonitor(System.Drawing.Rectangle targetMonitorBounds)
         {
             _monitorBoundsForEditor = targetMonitorBounds;
@@ -433,10 +497,16 @@ namespace SharpShot.UI
 
                 WindowState = WindowState.Normal;
 
-                Width = targetMonitorBounds.Width;
-                Height = targetMonitorBounds.Height;
-                Left = targetMonitorBounds.X;
-                Top = targetMonitorBounds.Y;
+                // targetMonitorBounds are physical pixels (Per-Monitor-V2). Convert to DIPs for
+                // WPF's logical Left/Top/Width/Height so the WPF-managed size matches the physical
+                // monitor rectangle; SetWindowPos below then pins it exactly in physical pixels.
+                double dpi = GetDpiScaleForMonitorBounds(targetMonitorBounds);
+                if (dpi <= 0) dpi = 1.0;
+
+                Width = targetMonitorBounds.Width / dpi;
+                Height = targetMonitorBounds.Height / dpi;
+                Left = targetMonitorBounds.X / dpi;
+                Top = targetMonitorBounds.Y / dpi;
 
                 // HWND is only valid after the window is shown — skip Win32 until then (constructor path).
                 if (windowHandle == IntPtr.Zero)
@@ -448,10 +518,10 @@ namespace SharpShot.UI
                 SetWindowPos(
                     windowHandle,
                     HWND_TOPMOST,
-                    (int)Left,
-                    (int)Top,
-                    (int)Width,
-                    (int)Height,
+                    targetMonitorBounds.X,
+                    targetMonitorBounds.Y,
+                    targetMonitorBounds.Width,
+                    targetMonitorBounds.Height,
                     SWP_SHOWWINDOW);
 
                 Activate();
@@ -469,6 +539,8 @@ namespace SharpShot.UI
         public void MoveToMonitorBounds(System.Drawing.Rectangle targetMonitorBounds)
         {
             ForceWindowToMonitor(targetMonitorBounds);
+            // Re-lay out the screenshot for the new monitor's DPI so it stays 1:1 physical there.
+            LayoutImageForMonitor(targetMonitorBounds);
         }
 
         private System.Drawing.Rectangle GetSelectedMonitorBounds()
@@ -1331,10 +1403,11 @@ namespace SharpShot.UI
             var bitmap = FinalBitmap ?? _originalBitmap;
             if (bitmap == null) return;
 
-            int x = Math.Max(0, (int)left);
-            int y = Math.Max(0, (int)top);
-            int w = Math.Max(1, (int)width);
-            int h = Math.Max(1, (int)height);
+            // Incoming coords are OverlayCanvas DIPs; convert to bitmap pixels.
+            int x = Math.Max(0, (int)(left * _imageDpiScale));
+            int y = Math.Max(0, (int)(top * _imageDpiScale));
+            int w = Math.Max(1, (int)(width * _imageDpiScale));
+            int h = Math.Max(1, (int)(height * _imageDpiScale));
             if (x + w > bitmap.Width) w = bitmap.Width - x;
             if (y + h > bitmap.Height) h = bitmap.Height - y;
             if (w <= 0 || h <= 0) return;
@@ -1514,21 +1587,18 @@ namespace SharpShot.UI
         {
             try
             {
-                // Get the current window position and size
-                var windowLeft = (int)Left;
-                var windowTop = (int)Top;
-                var windowWidth = (int)Width;
-                var windowHeight = (int)Height;
-                
-                // Calculate the actual screenshot area (accounting for window borders and title bar)
-                // The image is displayed in the ImageControl, so we need to find its screen coordinates
+                // Calculate the actual screenshot area in physical screen pixels. PointToScreen
+                // returns physical device pixels, so mapping both corners yields a DPI-correct
+                // rectangle on monitors of any scale (ActualWidth/Height alone are DIPs and would
+                // be wrong at non-100% scaling).
                 var imageControl = ScreenshotImage;
-                var imagePoint = imageControl.PointToScreen(new Point(0, 0));
+                var topLeft = imageControl.PointToScreen(new Point(0, 0));
+                var bottomRight = imageControl.PointToScreen(new Point(imageControl.ActualWidth, imageControl.ActualHeight));
                 
-                var screenshotX = (int)imagePoint.X;
-                var screenshotY = (int)imagePoint.Y;
-                var screenshotWidth = (int)imageControl.ActualWidth;
-                var screenshotHeight = (int)imageControl.ActualHeight;
+                var screenshotX = (int)Math.Round(topLeft.X);
+                var screenshotY = (int)Math.Round(topLeft.Y);
+                var screenshotWidth = (int)Math.Round(bottomRight.X - topLeft.X);
+                var screenshotHeight = (int)Math.Round(bottomRight.Y - topLeft.Y);
                 
                 // Keep this window visible (so pixels under the image exist), hide other SharpShot windows,
                 // and temporarily hide editor chrome that overlaps the image rect (toolbars are composited on top).
@@ -1701,11 +1771,11 @@ namespace SharpShot.UI
                 // Create a copy of the current bitmap to work with
                 var workingBitmap = new Bitmap(FinalBitmap ?? _originalBitmap);
                 
-                // Get the area to apply the effect to
-                var left = Math.Max(0, (int)Math.Min(start.X, end.X));
-                var top = Math.Max(0, (int)Math.Min(start.Y, end.Y));
-                var right = Math.Min(workingBitmap.Width - 1, (int)Math.Max(start.X, end.X));
-                var bottom = Math.Min(workingBitmap.Height - 1, (int)Math.Max(start.Y, end.Y));
+                // Get the area to apply the effect to (convert DIP overlay coords -> bitmap pixels)
+                var left = Math.Max(0, (int)(Math.Min(start.X, end.X) * _imageDpiScale));
+                var top = Math.Max(0, (int)(Math.Min(start.Y, end.Y) * _imageDpiScale));
+                var right = Math.Min(workingBitmap.Width - 1, (int)(Math.Max(start.X, end.X) * _imageDpiScale));
+                var bottom = Math.Min(workingBitmap.Height - 1, (int)(Math.Max(start.Y, end.Y) * _imageDpiScale));
                 
                 // Apply mosaic effect
                 ApplyMosaicEffect(workingBitmap, left, top, right, bottom);
@@ -1802,11 +1872,11 @@ namespace SharpShot.UI
                 // Create a new preview bitmap from the current state
                 var previewBitmap = new Bitmap(FinalBitmap ?? _originalBitmap);
                 
-                // Get the area to apply the effect to
-                var left = Math.Max(0, (int)Math.Min(start.X, end.X));
-                var top = Math.Max(0, (int)Math.Min(start.Y, end.Y));
-                var right = Math.Min(previewBitmap.Width - 1, (int)Math.Max(start.X, end.X));
-                var bottom = Math.Min(previewBitmap.Height - 1, (int)Math.Max(start.Y, end.Y));
+                // Get the area to apply the effect to (convert DIP overlay coords -> bitmap pixels)
+                var left = Math.Max(0, (int)(Math.Min(start.X, end.X) * _imageDpiScale));
+                var top = Math.Max(0, (int)(Math.Min(start.Y, end.Y) * _imageDpiScale));
+                var right = Math.Min(previewBitmap.Width - 1, (int)(Math.Max(start.X, end.X) * _imageDpiScale));
+                var bottom = Math.Min(previewBitmap.Height - 1, (int)(Math.Max(start.Y, end.Y) * _imageDpiScale));
                 
                 // Apply mosaic effect to the preview bitmap
                 ApplyMosaicEffect(previewBitmap, left, top, right, bottom);
@@ -1835,11 +1905,11 @@ namespace SharpShot.UI
                 // Create a copy of the current bitmap to work with
                 var workingBitmap = new Bitmap(FinalBitmap ?? _originalBitmap);
 
-                // Get the area to apply the effect to
-                var left = Math.Max(0, (int)Math.Min(_startPoint.X, _endPoint.X));
-                var top = Math.Max(0, (int)Math.Min(_startPoint.Y, _endPoint.Y));
-                var right = Math.Min(workingBitmap.Width - 1, (int)Math.Max(_startPoint.X, _endPoint.X));
-                var bottom = Math.Min(workingBitmap.Height - 1, (int)Math.Max(_startPoint.Y, _endPoint.Y));
+                // Get the area to apply the effect to (convert DIP overlay coords -> bitmap pixels)
+                var left = Math.Max(0, (int)(Math.Min(_startPoint.X, _endPoint.X) * _imageDpiScale));
+                var top = Math.Max(0, (int)(Math.Min(_startPoint.Y, _endPoint.Y) * _imageDpiScale));
+                var right = Math.Min(workingBitmap.Width - 1, (int)(Math.Max(_startPoint.X, _endPoint.X) * _imageDpiScale));
+                var bottom = Math.Min(workingBitmap.Height - 1, (int)(Math.Max(_startPoint.Y, _endPoint.Y) * _imageDpiScale));
 
                 // Apply mosaic effect to the working bitmap using the preview bitmap's pixel data
                 ApplyMosaicEffect(workingBitmap, left, top, right, bottom);

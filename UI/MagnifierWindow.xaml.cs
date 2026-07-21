@@ -60,6 +60,26 @@ namespace SharpShot.UI
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+        
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+        
+        // SetWindowPos flags. We position/size the magnifier in true physical pixels so it
+        // lands exactly where we want regardless of the target monitor's DPI scale.
+        private const uint SWP_NOZORDER = 0x0004;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        
         private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
         private const int MONITOR_DEFAULTTOPRIMARY = 0x00000001;
         
@@ -458,18 +478,11 @@ namespace SharpShot.UI
                     {
                         _magnifierSize = newSize;
                         _captureSize = (int)(_magnifierSize / _zoomLevel);
-                        UpdateCrosshair();
                     }
                 }
                 
-                // Ensure window size is set BEFORE positioning (critical for proper image display)
-                Dispatcher.Invoke(() =>
-                {
-                    Width = _magnifierSize;
-                    Height = _magnifierSize;
-                });
-                
-                // Position magnifier
+                // Position + size the magnifier (physical pixels, DPI-aware).
+                // Sizing is handled inside the Position* methods via ApplyPhysicalPlacement.
                 if (useStationary)
                 {
                     // If we're in a boundary box, use the monitor that the boundary box is on
@@ -516,17 +529,12 @@ namespace SharpShot.UI
                     // Convert to WPF ImageSource
                     var imageSource = ConvertBitmapToImageSource(capturedBitmap);
                     
-                    // Update the magnified image (use same simple logic as stationary mode)
+                    // Update the magnified image. The Image uses Stretch="Fill" inside a
+                    // Border with a 2px margin, so it fills the available space automatically
+                    // at whatever DPI the current monitor uses - no manual sizing needed.
                     Dispatcher.Invoke(() =>
                     {
-                        // Window size is already set before positioning, so use simple calculation
-                        // Border has 2px margin on each side = 4px total
-                        double displaySize = _magnifierSize - 4;
-                        
-                        // Ensure image fills the entire available space
                         MagnifiedImage.Source = imageSource;
-                        MagnifiedImage.Width = displaySize;
-                        MagnifiedImage.Height = displaySize;
                     });
                     
                     // Clean up
@@ -560,11 +568,25 @@ namespace SharpShot.UI
                     graphics.ReleaseHdc(hdcBitmap);
                 }
                 
-                // Calculate magnifier bounds in screen coordinates (including border)
-                int magnifierLeft = (int)_currentX - 2; // Include border
-                int magnifierTop = (int)_currentY - 2; // Include border
-                int magnifierRight = magnifierLeft + _magnifierSize + 4; // Include border
-                int magnifierBottom = magnifierTop + _magnifierSize + 4; // Include border
+                // Calculate magnifier bounds in physical screen pixels. Prefer the real
+                // window rectangle (exact, includes the border at the current DPI); fall
+                // back to the tracked position if the HWND isn't available yet.
+                var winRect = GetPhysicalWindowRect();
+                int magnifierLeft, magnifierTop, magnifierRight, magnifierBottom;
+                if (winRect.HasValue)
+                {
+                    magnifierLeft = winRect.Value.Left;
+                    magnifierTop = winRect.Value.Top;
+                    magnifierRight = winRect.Value.Right;
+                    magnifierBottom = winRect.Value.Bottom;
+                }
+                else
+                {
+                    magnifierLeft = (int)_currentX - 2;
+                    magnifierTop = (int)_currentY - 2;
+                    magnifierRight = magnifierLeft + _magnifierSize + 4;
+                    magnifierBottom = magnifierTop + _magnifierSize + 4;
+                }
                 
                 // Calculate intersection with capture area
                 int intersectLeft = Math.Max(x, magnifierLeft);
@@ -744,66 +766,35 @@ namespace SharpShot.UI
                 System.Diagnostics.Debug.WriteLine($"Adjusted Y to virtual desktop bottom: {magnifierY}");
             }
             
-            // Additional DPI-aware positioning for 4K monitors
+            // Keep the magnifier fully within the current monitor's physical bounds.
+            // (All coordinates here are true physical pixels because the process is
+            // Per-Monitor-V2 DPI aware, so monitor bounds and cursor share one space.)
             if (currentScreen != null)
             {
-                // Check if this is a high-DPI monitor (4K, etc.)
-                bool isHighDPI = currentScreen.Bounds.Width >= 3840 || currentScreen.Bounds.Height >= 2160;
+                var monitorBounds = currentScreen.Bounds;
                 
-                if (isHighDPI)
+                if (magnifierX < monitorBounds.X)
                 {
-                    System.Diagnostics.Debug.WriteLine($"High-DPI monitor detected: {currentScreen.Bounds.Width}x{currentScreen.Bounds.Height}");
-                    
-                    // For 4K monitors, we need to be more careful about positioning
-                    // Ensure the magnifier doesn't get cut off by the monitor's actual bounds
-                    var monitorBounds = currentScreen.Bounds;
-                    
-                    // Adjust position to stay within the current monitor's bounds
-                    if (magnifierX < monitorBounds.X)
-                    {
-                        magnifierX = monitorBounds.X + 10; // Small margin from left edge
-                        System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor left edge: {magnifierX}");
-                    }
-                    if (magnifierX + _magnifierSize > monitorBounds.X + monitorBounds.Width)
-                    {
-                        magnifierX = monitorBounds.X + monitorBounds.Width - _magnifierSize - 10; // Small margin from right edge
-                        System.Diagnostics.Debug.WriteLine($"Adjusted X to monitor right edge: {magnifierX}");
-                    }
-                    if (magnifierY < monitorBounds.Y)
-                    {
-                        magnifierY = monitorBounds.Y + 10; // Small margin from top edge
-                        System.Diagnostics.Debug.WriteLine($"Adjusted Y to monitor top edge: {magnifierY}");
-                    }
-                    if (magnifierY + _magnifierSize > monitorBounds.Y + monitorBounds.Height)
-                    {
-                        magnifierY = monitorBounds.Y + monitorBounds.Height - _magnifierSize - 10; // Small margin from bottom edge
-                        System.Diagnostics.Debug.WriteLine($"Adjusted Y to monitor bottom edge: {magnifierY}");
-                    }
+                    magnifierX = monitorBounds.X + 10;
+                }
+                if (magnifierX + _magnifierSize > monitorBounds.X + monitorBounds.Width)
+                {
+                    magnifierX = monitorBounds.X + monitorBounds.Width - _magnifierSize - 10;
+                }
+                if (magnifierY < monitorBounds.Y)
+                {
+                    magnifierY = monitorBounds.Y + 10;
+                }
+                if (magnifierY + _magnifierSize > monitorBounds.Y + monitorBounds.Height)
+                {
+                    magnifierY = monitorBounds.Y + monitorBounds.Height - _magnifierSize - 10;
                 }
             }
             
             System.Diagnostics.Debug.WriteLine($"Final magnifier position: ({magnifierX}, {magnifierY})");
             
-            // Store current position for exclusion logic
-            _currentX = magnifierX;
-            _currentY = magnifierY;
-            
-            // Update window position (size is already set in UpdateMagnifier)
-            Dispatcher.Invoke(() =>
-            {
-                // Ensure the window can be positioned at negative coordinates (for top monitors)
-                // Windows sometimes has issues with this, so we need to be explicit
-                Left = magnifierX;
-                Top = magnifierY;
-                
-                // Force a window position update to ensure it actually moves
-                // This is especially important for monitors with negative coordinates
-                if (WindowState == WindowState.Normal)
-                {
-                    // Force window to update its position
-                    UpdateLayout();
-                }
-            });
+            // Position + size the window in physical pixels (handles per-monitor DPI).
+            ApplyPhysicalPlacement(magnifierX, magnifierY);
         }
 
         private System.Drawing.Rectangle GetVirtualDesktopBounds()
@@ -886,29 +877,9 @@ namespace SharpShot.UI
         
         private void UpdateCrosshair()
         {
-            Dispatcher.Invoke(() =>
-            {
-                if (HorizontalLine == null || VerticalLine == null || CenterDot == null)
-                    return;
-                
-                double center = _magnifierSize / 2.0;
-                
-                // Update horizontal line (centered vertically, full width)
-                HorizontalLine.X1 = 0;
-                HorizontalLine.Y1 = center;
-                HorizontalLine.X2 = _magnifierSize;
-                HorizontalLine.Y2 = center;
-                
-                // Update vertical line (centered horizontally, full height)
-                VerticalLine.X1 = center;
-                VerticalLine.Y1 = 0;
-                VerticalLine.X2 = center;
-                VerticalLine.Y2 = _magnifierSize;
-                
-                // Update center dot (4x4 pixel dot, centered)
-                Canvas.SetLeft(CenterDot, center - 2);
-                Canvas.SetTop(CenterDot, center - 2);
-            });
+            // The crosshair is now defined in XAML using stretch-based layout
+            // (a centered Grid with stretched lines and a centered dot), so it stays
+            // correct at any window size / DPI without manual pixel recalculation.
         }
         
         private void PositionMagnifierStationary(string? overrideMonitor = null)
@@ -972,19 +943,62 @@ namespace SharpShot.UI
                 physicalX = Math.Max(bounds.X, Math.Min(bounds.X + bounds.Width - _magnifierSize, physicalX));
                 physicalY = Math.Max(bounds.Y, Math.Min(bounds.Y + bounds.Height - _magnifierSize, physicalY));
                 
-                _currentX = physicalX;
-                _currentY = physicalY;
-                
-                Dispatcher.Invoke(() =>
-                {
-                    Left = physicalX;
-                    Top = physicalY;
-                    if (WindowState == WindowState.Normal)
-                    {
-                        UpdateLayout();
-                    }
-                });
+                // Position + size the window in physical pixels (handles per-monitor DPI).
+                ApplyPhysicalPlacement(physicalX, physicalY);
             }
+        }
+        
+        /// <summary>
+        /// Positions and sizes the magnifier window using true physical pixel coordinates
+        /// via SetWindowPos, so it lands exactly on the target monitor regardless of that
+        /// monitor's DPI scale. WPF's logical Width/Height are kept in sync (physical / dpi)
+        /// so WPF layout does not fight the Win32 sizing.
+        /// </summary>
+        private void ApplyPhysicalPlacement(double physX, double physY)
+        {
+            int px = (int)Math.Round(physX);
+            int py = (int)Math.Round(physY);
+            
+            // DPI scale of the monitor the magnifier will sit on (sampled at its center).
+            double dpi = GetDpiScaleForPosition(px + _magnifierSize / 2, py + _magnifierSize / 2);
+            if (dpi <= 0) dpi = 1.0;
+            
+            _currentX = px;
+            _currentY = py;
+            
+            Dispatcher.Invoke(() =>
+            {
+                // WidthDip * dpi == physical px, so WPF's logical size matches the physical size.
+                double dipSize = _magnifierSize / dpi;
+                Width = dipSize;
+                Height = dipSize;
+                
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd != IntPtr.Zero)
+                {
+                    SetWindowPos(hwnd, IntPtr.Zero, px, py, _magnifierSize, _magnifierSize, SWP_NOZORDER | SWP_NOACTIVATE);
+                }
+                else
+                {
+                    // HWND not created yet (window not shown yet) - best-effort logical placement.
+                    Left = px / dpi;
+                    Top = py / dpi;
+                }
+            });
+        }
+        
+        /// <summary>
+        /// Returns the magnifier window's rectangle in true physical screen pixels
+        /// (including the accent border), or null if the HWND is not available yet.
+        /// </summary>
+        private System.Drawing.Rectangle? GetPhysicalWindowRect()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd != IntPtr.Zero && GetWindowRect(hwnd, out RECT r))
+            {
+                return new System.Drawing.Rectangle(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
+            }
+            return null;
         }
         
         private double GetDpiScaleForPosition(int x, int y)

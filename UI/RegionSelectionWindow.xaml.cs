@@ -45,10 +45,34 @@ namespace SharpShot.UI
         [DllImport("user32.dll")]
         private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
         
+        [DllImport("shcore.dll")]
+        private static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
+        
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
+        
+        [DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hWnd);
+        
+        [DllImport("user32.dll")]
+        private static extern bool GetCursorPos(out POINT lpPoint);
+        
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+        
+        private const int MDT_EFFECTIVE_DPI = 0;
+        private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
+        
         private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
         private const uint SWP_NOMOVE = 0x0002;
         private const uint SWP_NOSIZE = 0x0001;
         private const uint SWP_SHOWWINDOW = 0x0040;
+        private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_NOZORDER = 0x0004;
         
         private readonly ScreenshotService _screenshotService;
         private readonly SettingsService? _settingsService;
@@ -71,6 +95,7 @@ namespace SharpShot.UI
         }
         
         private Point _startPoint;
+        private System.Drawing.Point _startCursorPhysical; // true physical-pixel cursor pos at drag start
         private bool _isSelecting;
         public Rectangle? SelectedRegion { get; private set; }
         public Bitmap? CapturedBitmap { get; private set; }
@@ -219,6 +244,11 @@ namespace SharpShot.UI
                 
                 System.Diagnostics.Debug.WriteLine("RegionSelectionWindow: Applied non-focus-stealing window style");
                 
+                // Now that the HWND exists, cover the whole virtual desktop using physical
+                // pixels so the overlay lines up 1:1 with the screen regardless of per-monitor
+                // DPI (needed for accurate PointToScreen coordinate mapping below).
+                ApplyPhysicalDesktopBounds();
+                
                 // Capture mouse input immediately after window is initialized
                 // This ensures mouse clicks go to our overlay, not the browser
                 Dispatcher.BeginInvoke(new Action(() =>
@@ -272,11 +302,86 @@ namespace SharpShot.UI
 
         private void PositionWindowForAllMonitors()
         {
-            // Position the window to cover the entire virtual desktop
-            Left = _virtualDesktopBounds.X;
-            Top = _virtualDesktopBounds.Y;
-            Width = _virtualDesktopBounds.Width;
-            Height = _virtualDesktopBounds.Height;
+            // Initial logical placement (used before the HWND exists). Under Per-Monitor-V2
+            // DPI awareness this is corrected precisely in OnSourceInitialized via
+            // ApplyPhysicalDesktopBounds, which places the overlay using physical pixels.
+            double dpi = GetDpiScaleForPoint(_virtualDesktopBounds.X + 1, _virtualDesktopBounds.Y + 1);
+            if (dpi <= 0) dpi = 1.0;
+            Left = _virtualDesktopBounds.X / dpi;
+            Top = _virtualDesktopBounds.Y / dpi;
+            Width = _virtualDesktopBounds.Width / dpi;
+            Height = _virtualDesktopBounds.Height / dpi;
+        }
+
+        /// <summary>
+        /// Places and sizes the overlay to cover the entire virtual desktop using true physical
+        /// pixels (via SetWindowPos), then syncs WPF's logical Left/Top/Width/Height using the
+        /// window's ACTUAL assigned DPI (GetDpiForWindow). Using the real window DPI - rather than
+        /// a guessed per-monitor value - guarantees WPF's logical size matches the physical window
+        /// rectangle on mixed-DPI desktops, so the overlay fully covers every monitor (no dead
+        /// click zones) and PointToScreen / PointFromScreen stay accurate.
+        /// </summary>
+        private void ApplyPhysicalDesktopBounds()
+        {
+            var b = _virtualDesktopBounds; // physical pixels (process is Per-Monitor-V2 aware)
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
+                return;
+
+            SetWindowPos(hwnd, HWND_TOPMOST, b.X, b.Y, b.Width, b.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+            double dpi = GetWindowDpiScale(hwnd);
+            if (dpi <= 0) dpi = 1.0;
+
+            Left = b.X / dpi;
+            Top = b.Y / dpi;
+            Width = b.Width / dpi;
+            Height = b.Height / dpi;
+
+            // Re-pin the physical rectangle in case assigning the WPF size/pos nudged the HWND.
+            SetWindowPos(hwnd, HWND_TOPMOST, b.X, b.Y, b.Width, b.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        }
+
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            // Windows reassigned the window's DPI (e.g., its majority moved to another monitor);
+            // re-apply so the overlay keeps covering the whole desktop at the new scale.
+            ApplyPhysicalDesktopBounds();
+        }
+
+        private double GetWindowDpiScale(IntPtr hwnd)
+        {
+            try
+            {
+                uint dpi = GetDpiForWindow(hwnd);
+                if (dpi > 0)
+                    return dpi / 96.0;
+            }
+            catch
+            {
+                // GetDpiForWindow unavailable (pre-Win10 1607) - fall back below.
+            }
+            return GetDpiScaleForPoint(_virtualDesktopBounds.X + 1, _virtualDesktopBounds.Y + 1);
+        }
+
+        private double GetDpiScaleForPoint(int x, int y)
+        {
+            try
+            {
+                var pt = new POINT { X = x, Y = y };
+                IntPtr hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+                if (hMonitor != IntPtr.Zero &&
+                    GetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, out uint dpiX, out _) == 0)
+                {
+                    return dpiX / 96.0;
+                }
+            }
+            catch
+            {
+                // Fall through to default on any failure.
+            }
+            return 1.0;
         }
 
         private void InitializeMagnifier()
@@ -380,20 +485,25 @@ namespace SharpShot.UI
         {
             SmartHighlightsCanvas.Children.Clear();
             _smartRegionRects.Clear();
-            double winLeft = Left;
-            double winTop = Top;
             var accent = (SolidColorBrush)TryFindResource("AccentBrush") ?? new SolidColorBrush(Colors.Orange);
             foreach (var r in screenRects)
             {
-                double x = r.X - winLeft;
-                double y = r.Y - winTop;
-                if (x + r.Width < 0 || y + r.Height < 0 || x > SelectionCanvas.ActualWidth || y > SelectionCanvas.ActualHeight)
+                // Detection rects are in physical screen pixels; map them into the overlay's
+                // logical (DIP) space via PointFromScreen so highlights land in the right place
+                // and size on monitors of any DPI scale.
+                var topLeft = SelectionCanvas.PointFromScreen(new Point(r.X, r.Y));
+                var bottomRight = SelectionCanvas.PointFromScreen(new Point(r.X + r.Width, r.Y + r.Height));
+                double x = topLeft.X;
+                double y = topLeft.Y;
+                double w = bottomRight.X - topLeft.X;
+                double h = bottomRight.Y - topLeft.Y;
+                if (x + w < 0 || y + h < 0 || x > SelectionCanvas.ActualWidth || y > SelectionCanvas.ActualHeight)
                     continue;
                 _smartRegionRects.Add(r);
                 var rect = new System.Windows.Shapes.Rectangle
                 {
-                    Width = r.Width,
-                    Height = r.Height,
+                    Width = w,
+                    Height = h,
                     Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x18, accent.Color.R, accent.Color.G, accent.Color.B)),
                     Stroke = accent,
                     StrokeThickness = 1.5
@@ -420,6 +530,8 @@ namespace SharpShot.UI
             CaptureMouseInput();
             var canvasPoint = e.GetPosition(SelectionCanvas);
             _startPoint = canvasPoint;
+            GetCursorPos(out POINT startCursor);
+            _startCursorPhysical = new System.Drawing.Point(startCursor.X, startCursor.Y);
             _isSelecting = true;
             _isPotentialClick = true;
             SelectionRect.Visibility = Visibility.Visible;
@@ -435,15 +547,13 @@ namespace SharpShot.UI
             if (!_isSelecting) return;
             ReleaseCapture();
             _isSelecting = false;
-            var endPoint = e.GetPosition(SelectionCanvas);
-            var x = Math.Min(_startPoint.X, endPoint.X);
-            var y = Math.Min(_startPoint.Y, endPoint.Y);
-            var width = Math.Abs(endPoint.X - _startPoint.X);
-            var height = Math.Abs(endPoint.Y - _startPoint.Y);
 
-            int screenX = (int)(Left + _startPoint.X);
-            int screenY = (int)(Top + _startPoint.Y);
-            var smartRect = GetSmartRegionAtScreenPoint(screenX, screenY);
+            // Use the true physical-pixel cursor positions (captured at drag start + read now) so
+            // the region matches the screen exactly, independent of the overlay's DPI/transform.
+            GetCursorPos(out POINT endCursor);
+            int startX = _startCursorPhysical.X;
+            int startY = _startCursorPhysical.Y;
+            var smartRect = GetSmartRegionAtScreenPoint(startX, startY);
             if (_isPotentialClick && smartRect.HasValue && _smartRegionRects.Count > 0)
             {
                 SelectedRegion = smartRect;
@@ -455,11 +565,13 @@ namespace SharpShot.UI
                 return;
             }
 
-            if (width > 10 && height > 10)
+            var screenRectX = Math.Min(startX, endCursor.X);
+            var screenRectY = Math.Min(startY, endCursor.Y);
+            var screenWidth = Math.Abs(endCursor.X - startX);
+            var screenHeight = Math.Abs(endCursor.Y - startY);
+            if (screenWidth > 10 && screenHeight > 10)
             {
-                var screenRectX = (int)(Left + x);
-                var screenRectY = (int)(Top + y);
-                SelectedRegion = new Rectangle(screenRectX, screenRectY, (int)width, (int)height);
+                SelectedRegion = new Rectangle(screenRectX, screenRectY, screenWidth, screenHeight);
                 if (_isRecordingMode)
                     Close();
                 else
@@ -494,6 +606,8 @@ namespace SharpShot.UI
         {
             CaptureMouseInput();
             _startPoint = e.GetPosition(SelectionCanvas);
+            GetCursorPos(out POINT startCursor);
+            _startCursorPhysical = new System.Drawing.Point(startCursor.X, startCursor.Y);
             _isSelecting = true;
             _isPotentialClick = true;
             SelectionRect.Visibility = Visibility.Visible;
@@ -508,14 +622,12 @@ namespace SharpShot.UI
             if (!_isSelecting) return;
             ReleaseCapture();
             _isSelecting = false;
-            var endPoint = e.GetPosition(SelectionCanvas);
-            var x = Math.Min(_startPoint.X, endPoint.X);
-            var y = Math.Min(_startPoint.Y, endPoint.Y);
-            var width = Math.Abs(endPoint.X - _startPoint.X);
-            var height = Math.Abs(endPoint.Y - _startPoint.Y);
-            int screenX = (int)(Left + _startPoint.X);
-            int screenY = (int)(Top + _startPoint.Y);
-            var smartRect = GetSmartRegionAtScreenPoint(screenX, screenY);
+
+            // Use true physical-pixel cursor positions (DPI/transform independent).
+            GetCursorPos(out POINT endCursor);
+            int startX = _startCursorPhysical.X;
+            int startY = _startCursorPhysical.Y;
+            var smartRect = GetSmartRegionAtScreenPoint(startX, startY);
             if (_isPotentialClick && smartRect.HasValue && _smartRegionRects.Count > 0)
             {
                 SelectedRegion = smartRect;
@@ -524,11 +636,13 @@ namespace SharpShot.UI
                 else CaptureRegion();
                 return;
             }
-            if (width > 10 && height > 10)
+            var screenRectX = Math.Min(startX, endCursor.X);
+            var screenRectY = Math.Min(startY, endCursor.Y);
+            var screenWidth = Math.Abs(endCursor.X - startX);
+            var screenHeight = Math.Abs(endCursor.Y - startY);
+            if (screenWidth > 10 && screenHeight > 10)
             {
-                var screenRectX = (int)(Left + x);
-                var screenRectY = (int)(Top + y);
-                SelectedRegion = new Rectangle(screenRectX, screenRectY, (int)width, (int)height);
+                SelectedRegion = new Rectangle(screenRectX, screenRectY, screenWidth, screenHeight);
                 if (_isRecordingMode) Close();
                 else CaptureRegion();
             }

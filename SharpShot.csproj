@@ -18,6 +18,13 @@
     <Platform>x64</Platform>
     <Platforms>x64</Platforms>
     <ApplicationIcon>output_color.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!--
+      WFAC010: the WinForms analyzer prefers ApplicationHighDpiMode, but this is a WPF-driven
+      app (no WinForms bootstrap), so Per-Monitor-V2 DPI awareness is declared via app.manifest,
+      which the OS/WPF honor at process start. Silence the advisory to keep the build clean.
+    -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <RestoreFallbackFolders></RestoreFallbackFolders>
     
     <!-- Enhanced Runtime Compatibility -->

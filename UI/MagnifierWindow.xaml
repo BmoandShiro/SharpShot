@@ -32,29 +32,28 @@
                        VerticalAlignment="Stretch"/>
             </Border>
             
-            <!-- Crosshair overlay -->
-            <Canvas x:Name="CrosshairCanvas" 
-                    Background="Transparent">
+            <!-- Crosshair overlay (stretch-based so it stays centered and DPI-independent) -->
+            <Grid x:Name="CrosshairGrid" IsHitTestVisible="False">
                 <!-- Horizontal line -->
-                <Line x:Name="HorizontalLine"
-                      X1="0" Y1="100" X2="200" Y2="100"
-                      Stroke="{DynamicResource AccentBrush}"
-                      StrokeThickness="1"
-                      Opacity="0.8"/>
-                
+                <Rectangle Height="1"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Center"
+                           Fill="{DynamicResource AccentBrush}"
+                           Opacity="0.8"/>
+
                 <!-- Vertical line -->
-                <Line x:Name="VerticalLine"
-                      X1="100" Y1="0" X2="100" Y2="200"
-                      Stroke="{DynamicResource AccentBrush}"
-                      StrokeThickness="1"
-                      Opacity="0.8"/>
-                
+                <Rectangle Width="1"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Stretch"
+                           Fill="{DynamicResource AccentBrush}"
+                           Opacity="0.8"/>
+
                 <!-- Center dot -->
-                <Ellipse x:Name="CenterDot"
-                         Width="4" Height="4"
-                         Fill="{DynamicResource AccentBrush}"
-                         Canvas.Left="98" Canvas.Top="98"/>
-            </Canvas>
+                <Ellipse Width="4" Height="4"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center"
+                         Fill="{DynamicResource AccentBrush}"/>
+            </Grid>
             
             <!-- Zoom level indicator -->
             <Border Background="#80000000"

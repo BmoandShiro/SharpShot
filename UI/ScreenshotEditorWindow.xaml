@@ -62,9 +62,9 @@
                 Background="Transparent"
                 ClipToBounds="True">
             
-            <!-- Screenshot image -->
+            <!-- Screenshot image (sized in code to native 1:1 physical resolution per monitor DPI) -->
             <Image x:Name="ScreenshotImage" 
-                   Stretch="None"
+                   Stretch="Fill"
                    RenderOptions.BitmapScalingMode="HighQuality"/>
             
             <!-- Editing overlay canvas for drawings -->
