@@ -241,6 +241,16 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="Adds an OCR button to the main dashboard. Click it to region-select and extract text directly without opening the screenshot editor."/>
+                <CheckBox x:Name="ShowSmartRegionButtonOnDashboardCheckBox"
+                          Content="Show Smart Regions toggle on dashboard"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="Adds a Smart toggle to the dashboard. When on, SharpShot highlights content regions on the active window so you can click to copy text."/>
+                <CheckBox x:Name="UseDenseOcrForSmartRegionsCheckBox"
+                          Content="Use dense OCR for Smart Regions (more text, slower)"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="Runs overlapping tiled OCR (SparseText + Auto) so Smart Regions find more on-screen text in browsers, games, and Electron apps. Turn off for a faster but thinner pass."/>
                 <CheckBox x:Name="SkipPostCaptureMenuCheckBox"
                           Content="Skip post-capture menu for screenshots and videos"
                           Style="{StaticResource DarkCheckBoxStyle}"
@@ -500,10 +510,10 @@
 
                             <TextBlock Text="Region selection" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
-                          Content="Highlight detected regions during selection (click to OCR text)"
+                          Content="Enable Smart Regions (also toggled from the dashboard Smart button)"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
-                          ToolTip="When enabled, detects content like images and text blocks and highlights the region under your cursor. Click a highlight to extract text with OCR (copyable). Drag-select still captures an image. Detection runs before the overlay appears so open menus are included when possible."/>
+                          ToolTip="When enabled, detects content blocks on the active window and lets you click them to OCR/copy text. Prefer the dashboard Smart toggle for day-to-day use."/>
                         </StackPanel>
 
                         <StackPanel x:Name="RecordingSection" Visibility="Collapsed">

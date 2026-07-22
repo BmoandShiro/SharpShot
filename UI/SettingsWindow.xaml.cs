@@ -505,6 +505,8 @@ namespace SharpShot.UI
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             ShowOcrButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowOcrButtonOnDashboard;
+            ShowSmartRegionButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowSmartRegionButtonOnDashboard;
+            UseDenseOcrForSmartRegionsCheckBox.IsChecked = _originalSettings.UseDenseOcrForSmartRegions;
             SkipPostCaptureMenuCheckBox.IsChecked = _originalSettings.SkipPostCaptureMenu;
             HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
@@ -948,6 +950,8 @@ namespace SharpShot.UI
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
                 _originalSettings.ShowOcrButtonOnDashboard = ShowOcrButtonOnDashboardCheckBox.IsChecked ?? false;
+                _originalSettings.ShowSmartRegionButtonOnDashboard = ShowSmartRegionButtonOnDashboardCheckBox.IsChecked ?? false;
+                _originalSettings.UseDenseOcrForSmartRegions = UseDenseOcrForSmartRegionsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
@@ -1182,6 +1186,8 @@ namespace SharpShot.UI
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
             target.ShowOcrButtonOnDashboard = source.ShowOcrButtonOnDashboard;
+            target.ShowSmartRegionButtonOnDashboard = source.ShowSmartRegionButtonOnDashboard;
+            target.UseDenseOcrForSmartRegions = source.UseDenseOcrForSmartRegions;
             target.SkipPostCaptureMenu = source.SkipPostCaptureMenu;
             target.HideSharpShotWindowsDuringCapture = source.HideSharpShotWindowsDuringCapture;
             target.EnableMagnifier = source.EnableMagnifier;
@@ -1564,12 +1570,18 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(SkipEditorAndAutoCopyCheckBox, themeColor);
                 if (ShowOcrButtonOnDashboardCheckBox != null && ShowOcrButtonOnDashboardCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(ShowOcrButtonOnDashboardCheckBox, themeColor);
+                if (ShowSmartRegionButtonOnDashboardCheckBox != null && ShowSmartRegionButtonOnDashboardCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(ShowSmartRegionButtonOnDashboardCheckBox, themeColor);
+                if (UseDenseOcrForSmartRegionsCheckBox != null && UseDenseOcrForSmartRegionsCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(UseDenseOcrForSmartRegionsCheckBox, themeColor);
                 if (SkipPostCaptureMenuCheckBox != null && SkipPostCaptureMenuCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(SkipPostCaptureMenuCheckBox, themeColor);
                 if (HideSharpShotWindowsDuringCaptureCheckBox != null && HideSharpShotWindowsDuringCaptureCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(HideSharpShotWindowsDuringCaptureCheckBox, themeColor);
                 if (EnableMagnifierCheckBox != null && EnableMagnifierCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
+                if (EnableSmartRegionDetectionCheckBox != null && EnableSmartRegionDetectionCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(EnableSmartRegionDetectionCheckBox, themeColor);
                 if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(DisableAllPopupsCheckBox, themeColor);
                 if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox && startWithWindowsCheckBox.IsLoaded)

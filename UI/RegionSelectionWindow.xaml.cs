@@ -564,18 +564,17 @@ namespace SharpShot.UI
             try
             {
                 InitializeMagnifier();
+
+                // Detect BEFORE starting the magnifier timer. ApplicationIdle never runs once the
+                // 50ms Background-priority timer is pumping, which made smart regions vanish.
+                StartSmartRegionDetectionIfEnabled();
+
                 StartMagnifier();
                 EnsureMagnifierOnTop();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Deferred magnifier start failed: {ex.Message}");
-            }
-            finally
-            {
-                // After magnifier is up, walk UIA at idle so it doesn't hitch the open animation
-                Dispatcher.BeginInvoke(new Action(StartSmartRegionDetectionIfEnabled),
-                    System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             }
         }
         
@@ -628,21 +627,48 @@ namespace SharpShot.UI
             if (target == IntPtr.Zero) return;
 
             var hwnd = target;
-            // UIA must run on the STA/UI thread. Caller schedules this at ApplicationIdle
-            // so the freeze overlay + magnifier can appear first.
+            // UIA must run on the STA/UI thread. Caller schedules this after the freeze overlay paints.
             if (_activeInstance != this)
                 return;
             try
             {
-                var rects = SmartRegionDetection.GetDetectedRegions(hwnd) ?? new List<Rectangle>();
-                _smartRegionRects = rects;
+                // Fast UIA pass first so highlights appear immediately…
+                var quick = SmartRegionDetection.GetDetectedRegions(hwnd) ?? new List<Rectangle>();
+                _smartRegionRects = quick;
                 DrawSmartRegionHighlights(_smartRegionRects);
                 if (GetCursorPos(out POINT cursor))
                     UpdateSmartHover(cursor.X, cursor.Y);
+
+                // …then OCR enrichment for browsers/consoles where UIA is sparse.
+                _ = EnrichSmartRegionsWithOcrAsync(hwnd);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Smart region detection: {ex.Message}");
+            }
+        }
+
+        private async Task EnrichSmartRegionsWithOcrAsync(IntPtr hwnd)
+        {
+            try
+            {
+                var enriched = await SmartRegionDetection.GetDetectedRegionsAsync(
+                    hwnd, _freezeFrame, _virtualDesktopBounds,
+                    denseOcr: _settingsService?.CurrentSettings?.UseDenseOcrForSmartRegions ?? true);
+                if (_activeInstance != this || enriched == null || enriched.Count == 0)
+                    return;
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (_activeInstance != this) return;
+                    _smartRegionRects = enriched;
+                    DrawSmartRegionHighlights(_smartRegionRects);
+                    if (GetCursorPos(out POINT cursor))
+                        UpdateSmartHover(cursor.X, cursor.Y);
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Smart region OCR enrich: {ex.Message}");
             }
         }
 

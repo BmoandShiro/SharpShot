@@ -59,6 +59,8 @@ namespace SharpShot.Models
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
         private bool _showOcrButtonOnDashboard;
+        private bool _showSmartRegionButtonOnDashboard;
+        private bool _useDenseOcrForSmartRegions;
         private bool _skipPostCaptureMenu;
         private bool _hideSharpShotWindowsDuringCapture;
         private bool _enableAutoUpdateCheck = true;
@@ -108,6 +110,8 @@ namespace SharpShot.Models
             DisableAllPopups = true;
             SkipEditorAndAutoCopy = false; // Default to false - show editor
             ShowOcrButtonOnDashboard = true;
+            ShowSmartRegionButtonOnDashboard = true;
+            UseDenseOcrForSmartRegions = true; // Tiled dual-PSM OCR — slower, much better coverage
             SkipPostCaptureMenu = true;
             HideSharpShotWindowsDuringCapture = false; // Default: same as today; enable to omit dashboard/editor from captures
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
@@ -447,6 +451,22 @@ namespace SharpShot.Models
         {
             get => _showOcrButtonOnDashboard;
             set => SetProperty(ref _showOcrButtonOnDashboard, value);
+        }
+
+        public bool ShowSmartRegionButtonOnDashboard
+        {
+            get => _showSmartRegionButtonOnDashboard;
+            set => SetProperty(ref _showSmartRegionButtonOnDashboard, value);
+        }
+
+        /// <summary>
+        /// When true, Smart Regions use tiled dual-pass OCR for denser text coverage (slower).
+        /// When false, a single SparseText pass is used.
+        /// </summary>
+        public bool UseDenseOcrForSmartRegions
+        {
+            get => _useDenseOcrForSmartRegions;
+            set => SetProperty(ref _useDenseOcrForSmartRegions, value);
         }
 
         public bool SkipPostCaptureMenu

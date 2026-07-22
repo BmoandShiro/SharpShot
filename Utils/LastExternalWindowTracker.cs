@@ -13,15 +13,20 @@ namespace SharpShot.Utils
         private const int WH_MOUSE_LL = 14;
         private const int WM_LBUTTONDOWN = 0x0201;
         private const int WM_RBUTTONDOWN = 0x0204;
+        private const int WM_MOUSEWHEEL = 0x020A;
+        private const int WM_MOUSEHWHEEL = 0x020E;
         private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+        private const uint EVENT_OBJECT_CONTENTSCROLLED = 0x8015;
         private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
         private const uint GA_ROOT = 2;
 
         private static IntPtr _lastHwnd = IntPtr.Zero;
         private static IntPtr _mouseHook = IntPtr.Zero;
         private static IntPtr _winEventHook = IntPtr.Zero;
+        private static IntPtr _scrollEventHook = IntPtr.Zero;
         private static LowLevelMouseProc? _mouseProc;
         private static WinEventDelegate? _winEventProc;
+        private static WinEventDelegate? _scrollEventProc;
         private static uint _ourPid;
         private static bool _started;
 
@@ -44,6 +49,11 @@ namespace SharpShot.Utils
                 EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND,
                 IntPtr.Zero, _winEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
 
+            _scrollEventProc = ScrollWinEventProc;
+            _scrollEventHook = SetWinEventHook(
+                EVENT_OBJECT_CONTENTSCROLLED, EVENT_OBJECT_CONTENTSCROLLED,
+                IntPtr.Zero, _scrollEventProc, 0, 0, WINEVENT_OUTOFCONTEXT);
+
             Debug.WriteLine($"LastExternalWindowTracker started (last={_lastHwnd})");
         }
 
@@ -59,8 +69,14 @@ namespace SharpShot.Utils
                 UnhookWinEvent(_winEventHook);
                 _winEventHook = IntPtr.Zero;
             }
+            if (_scrollEventHook != IntPtr.Zero)
+            {
+                UnhookWinEvent(_scrollEventHook);
+                _scrollEventHook = IntPtr.Zero;
+            }
             _mouseProc = null;
             _winEventProc = null;
+            _scrollEventProc = null;
             _started = false;
         }
 
@@ -99,7 +115,24 @@ namespace SharpShot.Utils
             {
                 _lastHwnd = root;
                 Debug.WriteLine($"LastExternalWindowTracker: {_lastHwnd}");
+                try { LastWindowChanged?.Invoke(root); }
+                catch (Exception ex) { Debug.WriteLine($"LastWindowChanged handler: {ex.Message}"); }
             }
+        }
+
+        /// <summary>Fired on the hook thread when the tracked external window changes.</summary>
+        public static event Action<IntPtr>? LastWindowChanged;
+
+        /// <summary>
+        /// Fired when content in the tracked window may have moved (mouse wheel / scroll events).
+        /// Handlers should debounce — this can fire frequently.
+        /// </summary>
+        public static event Action? ContentMayHaveChanged;
+
+        private static void RaiseContentMayHaveChanged()
+        {
+            try { ContentMayHaveChanged?.Invoke(); }
+            catch (Exception ex) { Debug.WriteLine($"ContentMayHaveChanged handler: {ex.Message}"); }
         }
 
         private static bool IsExternalVisibleWindow(IntPtr hwnd)
@@ -128,6 +161,11 @@ namespace SharpShot.Utils
                         Debug.WriteLine($"LastExternalWindowTracker mouse: {ex.Message}");
                     }
                 }
+                else if (msg == WM_MOUSEWHEEL || msg == WM_MOUSEHWHEEL)
+                {
+                    // Wheel over the tracked app (or its children) → smart regions need a redraw.
+                    RaiseContentMayHaveChanged();
+                }
             }
             return CallNextHookEx(_mouseHook, nCode, wParam, lParam);
         }
@@ -137,6 +175,18 @@ namespace SharpShot.Utils
         {
             if (eventType == EVENT_SYSTEM_FOREGROUND && hwnd != IntPtr.Zero)
                 Remember(hwnd);
+        }
+
+        private static void ScrollWinEventProc(IntPtr hWinEventHook, uint eventType, IntPtr hwnd,
+            int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+        {
+            if (eventType != EVENT_OBJECT_CONTENTSCROLLED || hwnd == IntPtr.Zero)
+                return;
+
+            var root = GetAncestor(hwnd, GA_ROOT);
+            if (root == IntPtr.Zero) root = hwnd;
+            if (_lastHwnd != IntPtr.Zero && root == _lastHwnd)
+                RaiseContentMayHaveChanged();
         }
 
         private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);

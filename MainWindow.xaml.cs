@@ -35,6 +35,7 @@ namespace SharpShot
         private Point _dragStart;
         private string _lastCapturedFilePath = string.Empty;
         private Bitmap? _lastCapturedBitmap = null;
+        private UI.SmartRegionLiveOverlay? _smartRegionOverlay;
 
         // Windows message constants
         private const int WM_HOTKEY = 0x0312;
@@ -73,6 +74,9 @@ namespace SharpShot
         
         [DllImport("user32.dll")]
         private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
         public MainWindow()
         {
@@ -116,6 +120,8 @@ namespace SharpShot
             // Apply theme settings
             ApplyThemeSettings();
             ApplyDashboardFeatureVisibility();
+            UpdateSmartRegionToggleVisual();
+            SyncSmartRegionLiveMode();
             
             // Debug: Verify settings are loaded
             System.Diagnostics.Debug.WriteLine($"Settings loaded - IconColor: {_settingsService.CurrentSettings.IconColor}, SavePath: {_settingsService.CurrentSettings.SavePath}");
@@ -264,20 +270,135 @@ namespace SharpShot
         {
             ApplyDashboardDimensionsFromSettings();
             ApplyDashboardFeatureVisibility();
+            UpdateSmartRegionToggleVisual();
+            SyncSmartRegionLiveMode();
             PositionWindow();
         }
 
         private void ApplyDashboardFeatureVisibility()
         {
             bool showOcrQuickButton = _settingsService.CurrentSettings.ShowOcrButtonOnDashboard;
+            bool showSmartButton = _settingsService.CurrentSettings.ShowSmartRegionButtonOnDashboard;
             OcrRegionButton.Visibility = showOcrQuickButton ? Visibility.Visible : Visibility.Collapsed;
-            OcrSectionSeparator.Visibility = showOcrQuickButton ? Visibility.Visible : Visibility.Collapsed;
+            OcrSectionSeparator.Visibility = (showOcrQuickButton || showSmartButton) ? Visibility.Visible : Visibility.Collapsed;
+            if (SmartRegionToggleButton != null)
+                SmartRegionToggleButton.Visibility = showSmartButton ? Visibility.Visible : Visibility.Collapsed;
 
             // Auto-expand dashboard width only when using default width.
-            // If user set a custom DashboardWidth, respect that value exactly.
             if (_settingsService.CurrentSettings.DashboardWidth <= 0)
             {
-                Width = showOcrQuickButton ? 600 : _effectiveBaseDashboardWidth;
+                double w = _effectiveBaseDashboardWidth;
+                if (showOcrQuickButton) w += 70;
+                if (showSmartButton) w += 90;
+                Width = w;
+            }
+
+            UpdateSmartRegionToggleVisual();
+        }
+
+        private void SmartRegionToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            var s = _settingsService.CurrentSettings;
+            s.EnableSmartRegionDetection = !s.EnableSmartRegionDetection;
+            _settingsService.SaveSettings();
+            UpdateSmartRegionToggleVisual();
+            SyncSmartRegionLiveMode();
+        }
+
+        private void UpdateSmartRegionToggleVisual()
+        {
+            if (SmartRegionToggleButton == null) return;
+
+            bool on = _settingsService.CurrentSettings.EnableSmartRegionDetection;
+            try
+            {
+                var iconColor = _settingsService.CurrentSettings.IconColor;
+                if (string.IsNullOrWhiteSpace(iconColor))
+                    iconColor = "#FFFF8C00";
+                var themeColor = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
+
+                if (on)
+                {
+                    SmartRegionToggleButton.Background = new SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(0x55, themeColor.R, themeColor.G, themeColor.B));
+                    SmartRegionToggleButton.BorderBrush = new SolidColorBrush(themeColor);
+                    SmartRegionToggleButton.BorderThickness = new Thickness(1.5);
+                    if (SmartRegionToggleLabel != null)
+                        SmartRegionToggleLabel.FontWeight = FontWeights.SemiBold;
+                    SmartRegionToggleButton.ToolTip = "Smart Regions ON — click a highlight to copy text. Click again to turn off.";
+                }
+                else
+                {
+                    SmartRegionToggleButton.Background = System.Windows.Media.Brushes.Transparent;
+                    SmartRegionToggleButton.BorderBrush = System.Windows.Media.Brushes.Transparent;
+                    SmartRegionToggleButton.BorderThickness = new Thickness(0);
+                    if (SmartRegionToggleLabel != null)
+                        SmartRegionToggleLabel.FontWeight = FontWeights.Normal;
+                    SmartRegionToggleButton.ToolTip = "Smart Regions OFF — click to highlight content on the active window for quick text copy.";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateSmartRegionToggleVisual: {ex.Message}");
+            }
+        }
+
+        private void SyncSmartRegionLiveMode()
+        {
+            bool on = _settingsService.CurrentSettings.EnableSmartRegionDetection;
+            try
+            {
+                if (on)
+                {
+                    if (_smartRegionOverlay == null)
+                    {
+                        _smartRegionOverlay = new UI.SmartRegionLiveOverlay(_settingsService);
+                        _smartRegionOverlay.RequestRaiseDashboard += RaiseDashboardAboveSmartOverlay;
+                        _smartRegionOverlay.Closed += (_, _) =>
+                        {
+                            if (_smartRegionOverlay != null)
+                            {
+                                _smartRegionOverlay.RequestRaiseDashboard -= RaiseDashboardAboveSmartOverlay;
+                            }
+                            _smartRegionOverlay = null;
+                        };
+                    }
+                    _smartRegionOverlay.Start();
+                    RaiseDashboardAboveSmartOverlay();
+                }
+                else if (_smartRegionOverlay != null)
+                {
+                    var overlay = _smartRegionOverlay;
+                    _smartRegionOverlay = null;
+                    overlay.RequestRaiseDashboard -= RaiseDashboardAboveSmartOverlay;
+                    overlay.Stop();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SyncSmartRegionLiveMode: {ex.Message}");
+            }
+        }
+
+        private void RaiseDashboardAboveSmartOverlay()
+        {
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                if (hwnd != IntPtr.Zero)
+                {
+                    const int HWND_TOPMOST = -1;
+                    const uint SWP_NOMOVE = 0x0002;
+                    const uint SWP_NOSIZE = 0x0001;
+                    const uint SWP_NOACTIVATE = 0x0010;
+                    const uint SWP_SHOWWINDOW = 0x0040;
+                    SetWindowPos(hwnd, new IntPtr(HWND_TOPMOST), 0, 0, 0, 0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RaiseDashboardAboveSmartOverlay: {ex.Message}");
             }
         }
 
@@ -641,6 +762,8 @@ namespace SharpShot
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 OcrRegionButton.Visibility = Visibility.Collapsed;
+                if (SmartRegionToggleButton != null)
+                    SmartRegionToggleButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
@@ -674,6 +797,8 @@ namespace SharpShot
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 OcrRegionButton.Visibility = Visibility.Collapsed;
+                if (SmartRegionToggleButton != null)
+                    SmartRegionToggleButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
@@ -735,6 +860,8 @@ namespace SharpShot
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 OcrRegionButton.Visibility = Visibility.Collapsed;
+                if (SmartRegionToggleButton != null)
+                    SmartRegionToggleButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
@@ -1357,6 +1484,8 @@ namespace SharpShot
                 RegionButton.Visibility = Visibility.Collapsed;
                 ScreenshotButton.Visibility = Visibility.Collapsed;
                 OcrRegionButton.Visibility = Visibility.Collapsed;
+                if (SmartRegionToggleButton != null)
+                    SmartRegionToggleButton.Visibility = Visibility.Collapsed;
                 RecordingButton.Visibility = Visibility.Collapsed;
                 SettingsButton.Visibility = Visibility.Collapsed;
                 MinimizeButton.Visibility = Visibility.Collapsed;
@@ -2188,6 +2317,7 @@ namespace SharpShot
             if (RegionButton != null) RegionButton.Style = null;
             if (ScreenshotButton != null) ScreenshotButton.Style = null;
             if (OcrRegionButton != null) OcrRegionButton.Style = null;
+            if (SmartRegionToggleButton != null) SmartRegionToggleButton.Style = null;
             if (RecordingButton != null) RecordingButton.Style = null;
             if (SettingsButton != null) SettingsButton.Style = null;
             if (MinimizeButton != null) MinimizeButton.Style = null;
@@ -2217,6 +2347,12 @@ namespace SharpShot
                 {
                     OcrRegionButton.Style = buttonStyle;
                     OcrRegionButton.Width = 84;
+                }
+                if (SmartRegionToggleButton != null)
+                {
+                    SmartRegionToggleButton.Style = buttonStyle;
+                    SmartRegionToggleButton.Width = 92;
+                    UpdateSmartRegionToggleVisual();
                 }
                 if (RecordingButton != null) 
                 {

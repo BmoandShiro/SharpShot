@@ -131,6 +131,23 @@
                                HorizontalAlignment="Center"/>
                 </Button>
 
+                <!-- Smart Regions live mode toggle -->
+                <Button x:Name="SmartRegionToggleButton"
+                        Style="{StaticResource OcrTextButtonStyle}"
+                        Click="SmartRegionToggleButton_Click"
+                        ToolTip="Toggle Smart Regions — highlights text/content on the active window; click a highlight to copy text"
+                        Visibility="Collapsed"
+                        Width="92"
+                        VerticalAlignment="Center">
+                    <TextBlock x:Name="SmartRegionToggleLabel"
+                               Text="Smart"
+                               Foreground="{DynamicResource AccentBrush}"
+                               FontSize="18"
+                               FontWeight="Normal"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"/>
+                </Button>
+
                 <!-- Separator -->
                 <Rectangle x:Name="MainToolbarSeparator1"
                            Width="1" 
