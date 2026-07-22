@@ -135,11 +135,14 @@ namespace SharpShot.UI
         /// </summary>
         private Bitmap? _freezeSource;
         private Rectangle _freezeBounds;
+        private Rectangle? _cachedVirtualDesktopBounds;
 
         public void SetFreezeFrameSource(Bitmap? freezeFrame, Rectangle virtualDesktopBounds)
         {
             _freezeSource = freezeFrame;
             _freezeBounds = virtualDesktopBounds;
+            if (virtualDesktopBounds.Width > 0 && virtualDesktopBounds.Height > 0)
+                _cachedVirtualDesktopBounds = virtualDesktopBounds;
         }
         
         public MagnifierWindow(double zoomLevel = 2.0, string mode = "Follow", string stationaryMonitor = "Primary Monitor", double stationaryX = 100, double stationaryY = 100, List<string> autoStationaryMonitors = null, Services.SettingsService settingsService = null)
@@ -517,8 +520,9 @@ namespace SharpShot.UI
                 int captureX = cursorPos.X - _captureSize / 2;
                 int captureY = cursorPos.Y - _captureSize / 2;
 
-                // Get virtual desktop bounds for proper boundary checking
-                var virtualDesktopBounds = GetVirtualDesktopBounds();
+                // Get virtual desktop bounds for proper boundary checking (cached — hot path)
+                var virtualDesktopBounds = _cachedVirtualDesktopBounds ?? GetVirtualDesktopBounds();
+                _cachedVirtualDesktopBounds = virtualDesktopBounds;
                 
                 // Ensure capture area is within virtual desktop bounds
                 captureX = Math.Max(virtualDesktopBounds.X, captureX);
@@ -541,19 +545,12 @@ namespace SharpShot.UI
                 
                 if (capturedBitmap != null)
                 {
-                    // Convert to WPF ImageSource
                     var imageSource = ConvertBitmapToImageSource(capturedBitmap);
-                    
-                    // Update the magnified image. The Image uses Stretch="Fill" inside a
-                    // Border with a 2px margin, so it fills the available space automatically
-                    // at whatever DPI the current monitor uses - no manual sizing needed.
-                    Dispatcher.Invoke(() =>
-                    {
-                        MagnifiedImage.Source = imageSource;
-                    });
-                    
-                    // Clean up
                     capturedBitmap.Dispose();
+
+                    // Timer already runs on the UI thread — avoid nested Dispatcher.Invoke
+                    if (MagnifiedImage != null)
+                        MagnifiedImage.Source = imageSource;
                 }
             }
             catch (Exception ex)
@@ -880,39 +877,31 @@ namespace SharpShot.UI
             }
 
             var virtualBounds = new System.Drawing.Rectangle(minX, minY, maxX - minX, maxY - minY);
-            
-            // Debug information to help troubleshoot positioning issues
-            System.Diagnostics.Debug.WriteLine($"Virtual Desktop Bounds: X={virtualBounds.X}, Y={virtualBounds.Y}, W={virtualBounds.Width}, H={virtualBounds.Height}");
-            System.Diagnostics.Debug.WriteLine($"Monitor count: {allScreens.Length}");
-            foreach (var screen in allScreens)
-            {
-                if (screen != null)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Monitor: X={screen.Bounds.X}, Y={screen.Bounds.Y}, W={screen.Bounds.Width}, H={screen.Bounds.Height}, Primary={screen.Primary}");
-                }
-            }
-            
             return virtualBounds;
         }
         
         public void ShowMagnifier()
         {
-            Dispatcher.Invoke(() =>
+            if (!Dispatcher.CheckAccess())
             {
-                Show();
-                // Update crosshair after window is shown to ensure elements are loaded
-                UpdateCrosshair();
-                // Don't call Activate() - this would steal focus and close browser dropdowns
-                // The window is already topmost and will be visible without activation
-            });
+                Dispatcher.BeginInvoke(ShowMagnifier);
+                return;
+            }
+
+            Show();
+            UpdateCrosshair();
+            // Don't call Activate() - this would steal focus and close browser dropdowns
         }
         
         public void HideMagnifier()
         {
-            Dispatcher.Invoke(() =>
+            if (!Dispatcher.CheckAccess())
             {
-                Hide();
-            });
+                Dispatcher.BeginInvoke(HideMagnifier);
+                return;
+            }
+
+            Hide();
         }
 
         private System.Windows.Forms.Screen? GetScreenAtPosition(int x, int y)

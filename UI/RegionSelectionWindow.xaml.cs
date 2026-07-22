@@ -139,9 +139,6 @@ namespace SharpShot.UI
             // open menus, dropdowns, or context menus. Selection crops from this bitmap later.
             CaptureFreezeFrame();
 
-            // Kick off smart-region UIA walk in the background — do NOT block opening the overlay.
-            StartSmartRegionDetectionIfEnabled();
-
             // Setup event handlers - use Preview events to capture before browser
             PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
             PreviewMouseLeftButtonUp += OnPreviewMouseLeftButtonUp;
@@ -191,18 +188,20 @@ namespace SharpShot.UI
                 InstructionsText.Text = "Click a highlighted region to copy its text (OCR), or drag to capture an image. Press ESC to cancel.";
             }
 
-            // Magnifier after freeze so Show() can't dismiss menus before we snapshot them
-            InitializeMagnifier();
+            // Magnifier is deferred until after the overlay paints — constructing/showing it in
+            // the ctor/Loaded path is what causes the region-select / OCR click stutter.
 
             Loaded += (sender, e) =>
             {
                 LayoutFreezeFrameLayers();
                 DrawSmartRegionHighlights(_smartRegionRects);
                 CaptureMouseInput();
-                StartMagnifier();
-                EnsureMagnifierOnTop();
                 if (GetCursorPos(out POINT cursor))
                     UpdateSmartHover(cursor.X, cursor.Y);
+
+                // Let the freeze overlay render a frame first, then bring up the magnifier.
+                Dispatcher.BeginInvoke(new Action(StartMagnifierDeferred),
+                    System.Windows.Threading.DispatcherPriority.ContextIdle);
             };
 
             IsVisibleChanged += (sender, e) =>
@@ -518,6 +517,9 @@ namespace SharpShot.UI
             {
                 return;
             }
+
+            if (_magnifier != null)
+                return;
             
             try
             {
@@ -536,21 +538,44 @@ namespace SharpShot.UI
                 {
                     Interval = TimeSpan.FromMilliseconds(50) // Update 20 times per second
                 };
+                int tick = 0;
                 _magnifierTimer.Tick += (sender, e) =>
                 {
-                    if (_magnifier != null)
-                    {
-                        _magnifier.UpdateMagnifier();
+                    if (_magnifier == null) return;
+                    _magnifier.UpdateMagnifier();
+                    // Re-assert z-order occasionally — every tick causes visible hitching
+                    if ((++tick & 7) == 0)
                         EnsureMagnifierOnTop();
-                    }
                 };
-
-                // Don't start until Loaded — ShowDialog hasn't run yet, and starting early
-                // leaves the magnifier under the later topmost freeze overlay.
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to initialize magnifier: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Create + show magnifier after the region overlay has painted.
+        /// </summary>
+        private void StartMagnifierDeferred()
+        {
+            if (_activeInstance != this)
+                return;
+            try
+            {
+                InitializeMagnifier();
+                StartMagnifier();
+                EnsureMagnifierOnTop();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Deferred magnifier start failed: {ex.Message}");
+            }
+            finally
+            {
+                // After magnifier is up, walk UIA at idle so it doesn't hitch the open animation
+                Dispatcher.BeginInvoke(new Action(StartSmartRegionDetectionIfEnabled),
+                    System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             }
         }
         
@@ -561,6 +586,8 @@ namespace SharpShot.UI
                 if (_magnifier != null && _magnifierTimer != null)
                 {
                     _magnifier.ShowMagnifier();
+                    // First content update immediately, then timer for follow
+                    _magnifier.UpdateMagnifier();
                     _magnifierTimer.Start();
                 }
             }
@@ -601,25 +628,22 @@ namespace SharpShot.UI
             if (target == IntPtr.Zero) return;
 
             var hwnd = target;
-            // UIA must run on the STA/UI thread (Task.Run returns nothing useful).
-            // Background priority lets the freeze overlay paint first so open still feels snappy.
-            Dispatcher.BeginInvoke(new Action(() =>
+            // UIA must run on the STA/UI thread. Caller schedules this at ApplicationIdle
+            // so the freeze overlay + magnifier can appear first.
+            if (_activeInstance != this)
+                return;
+            try
             {
-                if (_activeInstance != this)
-                    return;
-                try
-                {
-                    var rects = SmartRegionDetection.GetDetectedRegions(hwnd) ?? new List<Rectangle>();
-                    _smartRegionRects = rects;
-                    DrawSmartRegionHighlights(_smartRegionRects);
-                    if (GetCursorPos(out POINT cursor))
-                        UpdateSmartHover(cursor.X, cursor.Y);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Smart region detection: {ex.Message}");
-                }
-            }), System.Windows.Threading.DispatcherPriority.Background);
+                var rects = SmartRegionDetection.GetDetectedRegions(hwnd) ?? new List<Rectangle>();
+                _smartRegionRects = rects;
+                DrawSmartRegionHighlights(_smartRegionRects);
+                if (GetCursorPos(out POINT cursor))
+                    UpdateSmartHover(cursor.X, cursor.Y);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Smart region detection: {ex.Message}");
+            }
         }
 
         private void DrawSmartRegionHighlights(List<Rectangle> screenRects)
