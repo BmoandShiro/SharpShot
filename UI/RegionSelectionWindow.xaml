@@ -10,8 +10,21 @@
         ResizeMode="NoResize">
     
     <Canvas x:Name="SelectionCanvas" Background="#01000000">
+        <!-- Frozen desktop snapshot so open menus/dropdowns stay capturable even if focus changes -->
+        <Image x:Name="FreezeFrameImage"
+               Stretch="Fill"
+               IsHitTestVisible="False"/>
+        <Rectangle x:Name="FreezeDimOverlay"
+                   Fill="#40000000"
+                   IsHitTestVisible="False"/>
         <!-- Smart region highlights (images, text blocks) - drawn when option is enabled -->
-        <Canvas x:Name="SmartHighlightsCanvas"/>
+        <Canvas x:Name="SmartHighlightsCanvas" IsHitTestVisible="False"/>
+        <Rectangle x:Name="SmartHoverRect"
+                   Stroke="{DynamicResource AccentBrush}"
+                   StrokeThickness="2"
+                   Fill="Transparent"
+                   Visibility="Collapsed"
+                   IsHitTestVisible="False"/>
         <Rectangle x:Name="SelectionRect" 
                    Stroke="{StaticResource AccentBrush}" 
                    StrokeThickness="2" 

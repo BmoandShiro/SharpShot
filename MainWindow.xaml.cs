@@ -1150,9 +1150,8 @@ namespace SharpShot
         {
             try
             {
-                // Don't manipulate the main window - just show region selection
-                // Get foreground window before showing our overlay (for smart region detection)
-                IntPtr targetWindow = GetForegroundWindow();
+                // Resolve target under cursor / non-SharpShot foreground before overlay
+                IntPtr targetWindow = SmartRegionDetection.ResolveTargetWindow(GetForegroundWindow());
                 var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow);
                 
                 // Set the hotkey toggle state to indicate region selection is active
@@ -1303,7 +1302,7 @@ namespace SharpShot
                     return;
                 }
 
-                IntPtr targetWindow = GetForegroundWindow();
+                IntPtr targetWindow = SmartRegionDetection.ResolveTargetWindow(GetForegroundWindow());
                 var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow, directCaptureOnly: true);
                 regionWindow.ShowDialog();
 
@@ -1631,7 +1630,7 @@ namespace SharpShot
 
                 private Task StartRegionRecording()
         {
-            IntPtr targetWindow = GetForegroundWindow();
+            IntPtr targetWindow = SmartRegionDetection.ResolveTargetWindow(GetForegroundWindow());
             var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true, targetWindowForSmartDetection: targetWindow);
             regionWindow.ShowDialog();
             
@@ -2045,9 +2044,8 @@ namespace SharpShot
                     
                     // Convert opacity to hex color with alpha channel using the icon color
                     var alpha = (byte)(opacity * 255);
-                    // Extract the RGB part of the hex color (remove the # and alpha)
-                    var iconColorWithoutAlpha = iconColor.Length == 9 ? iconColor.Substring(3) : iconColor.Substring(1);
-                    var hoverColor = $"#{alpha:X2}{iconColorWithoutAlpha}";
+                    var rgb = GetRgbHex(iconColor);
+                    var hoverColor = $"#{alpha:X2}{rgb}";
                     
                     System.Diagnostics.Debug.WriteLine($"Icon color: {iconColor}, Alpha: {alpha:X2}, Hover color: {hoverColor}");
                     
@@ -2083,9 +2081,8 @@ namespace SharpShot
                     // Get current hover opacity
                     var hoverOpacity = _settingsService.CurrentSettings.HoverOpacity;
                     var alpha = (byte)(hoverOpacity * 255);
-                    // Extract the RGB part of the hex color (remove the # and alpha)
-                    var iconColorWithoutAlpha = iconColor.Length == 9 ? iconColor.Substring(3) : iconColor.Substring(1);
-                    var hoverColor = $"#{alpha:X2}{iconColorWithoutAlpha}";
+                    var rgb = GetRgbHex(iconColor);
+                    var hoverColor = $"#{alpha:X2}{rgb}";
                     
                     System.Diagnostics.Debug.WriteLine($"Icon color: {iconColor}, Alpha: {alpha:X2}, Hover color: {hoverColor}");
                     
@@ -2105,6 +2102,25 @@ namespace SharpShot
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to update drop shadow opacity: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Extracts RRGGBB from #RRGGBB or #AARRGGBB. Using Substring(1) on #AARRGGBB
+        /// produced invalid colors like #30FFFF8C00 and left hover stuck on default orange.
+        /// </summary>
+        private static string GetRgbHex(string color)
+        {
+            if (string.IsNullOrWhiteSpace(color))
+                return "FF8C00";
+            color = color.Trim();
+            if (color.StartsWith("#", StringComparison.Ordinal))
+            {
+                if (color.Length == 9) // #AARRGGBB
+                    return color.Substring(3);
+                if (color.Length == 7) // #RRGGBB
+                    return color.Substring(1);
+            }
+            return "FF8C00";
         }
 
         private Style CreateUpdatedButtonStyle(string hoverColor, double dropShadowOpacity)
@@ -2146,7 +2162,8 @@ namespace SharpShot
             var iconColor = _settingsService.CurrentSettings.IconColor;
             if (string.IsNullOrEmpty(iconColor))
                 iconColor = "#FFFF8C00"; // Default orange
-            dropShadow.Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
+            var rgb = GetRgbHex(iconColor);
+            dropShadow.Color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString($"#FF{rgb}");
             dropShadow.BlurRadius = 10;
             dropShadow.ShadowDepth = 0;
             dropShadow.Opacity = dropShadowOpacity;
@@ -2154,7 +2171,7 @@ namespace SharpShot
             
             var pressedTrigger = new Trigger { Property = Button.IsPressedProperty, Value = true };
             // Use the same opacity-based approach as the settings buttons
-            var pressedColor = $"#30{iconColor.Substring(1)}"; // 30% opacity
+            var pressedColor = $"#30{rgb}"; // 30% opacity + RRGGBB only
             pressedTrigger.Setters.Add(new Setter(Button.BackgroundProperty, new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(pressedColor))));
             
             template.Triggers.Add(trigger);

@@ -71,42 +71,57 @@ namespace SharpShot.Services
             if (bitmap == null)
                 return Array.Empty<OcrWordResult>();
 
+            // Clone on the calling thread — GDI+ bitmaps are not safe to use from Task.Run,
+            // and cross-thread use corrupts the original (breaks the editor fallback).
+            Bitmap workCopy;
+            try
+            {
+                workCopy = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format24bppRgb);
+                using (var g = Graphics.FromImage(workCopy))
+                {
+                    g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OcrService clone failed: {ex.Message}");
+                return Array.Empty<OcrWordResult>();
+            }
+
             return await Task.Run(() =>
             {
                 var list = new List<OcrWordResult>();
                 try
                 {
                     const int maxSide = 1600; // OCR on a smaller image is much faster
-                    var w = bitmap.Width;
-                    var h = bitmap.Height;
-                    Bitmap? toProcess = null;
+                    var w = workCopy.Width;
+                    var h = workCopy.Height;
+                    Bitmap? toProcess = workCopy;
                     double scaleX = 1.0;
                     double scaleY = 1.0;
+                    bool scaled = false;
                     if (w > maxSide || h > maxSide)
                     {
                         if (w >= h)
                         {
                             scaleX = scaleY = (double)maxSide / w;
                             w = maxSide;
-                            h = (int)(bitmap.Height * scaleY);
+                            h = (int)(workCopy.Height * scaleY);
                         }
                         else
                         {
                             scaleX = scaleY = (double)maxSide / h;
                             h = maxSide;
-                            w = (int)(bitmap.Width * scaleX);
+                            w = (int)(workCopy.Width * scaleX);
                         }
                         toProcess = new Bitmap(w, h, PixelFormat.Format24bppRgb);
                         using (var g = Graphics.FromImage(toProcess))
                         {
-                            g.DrawImage(bitmap, 0, 0, w, h);
+                            g.DrawImage(workCopy, 0, 0, w, h);
                         }
-                        scaleX = (double)bitmap.Width / w;
-                        scaleY = (double)bitmap.Height / h;
-                    }
-                    else
-                    {
-                        toProcess = bitmap;
+                        scaleX = (double)workCopy.Width / w;
+                        scaleY = (double)workCopy.Height / h;
+                        scaled = true;
                     }
 
                     var tessDataPath = GetTessDataPath();
@@ -135,15 +150,19 @@ namespace SharpShot.Services
                         }
                     } while (iter.Next(PageIteratorLevel.Word));
 
-                    if (toProcess != null && toProcess != bitmap)
+                    if (scaled && toProcess != null)
                         toProcess.Dispose();
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"OcrService error: {ex.Message}");
                 }
+                finally
+                {
+                    workCopy.Dispose();
+                }
                 return list;
-            }).ConfigureAwait(false);
+            });
         }
     }
 }

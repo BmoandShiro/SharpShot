@@ -43,6 +43,9 @@ namespace SharpShot
             // Initialize hotkeys
             _hotkeyManager.Initialize();
 
+            // Track last clicked/activated non-SharpShot window for region select targeting
+            LastExternalWindowTracker.Start();
+
             // Check for updates in background (if enabled)
             if (_settingsService.CurrentSettings.EnableAutoUpdateCheck)
             {
@@ -127,6 +130,7 @@ namespace SharpShot
             _settingsService?.SaveSettings();
             _hotkeyManager?.Dispose();
             _updateService?.Dispose();
+            LastExternalWindowTracker.Stop();
             
             base.OnExit(e);
         }

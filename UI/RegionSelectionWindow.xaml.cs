@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using SharpShot.Services;
 using SharpShot.Utils;
 using Point = System.Windows.Point;
@@ -111,6 +111,8 @@ namespace SharpShot.UI
         private readonly IntPtr _targetWindowForSmartDetection;
         private List<Rectangle> _smartRegionRects = new List<Rectangle>();
         private bool _isPotentialClick; // true until user moves enough to count as drag
+        private Bitmap? _freezeFrame; // desktop snapshot taken before overlay (preserves menus)
+        private Rectangle? _hoveredSmartRegion;
 
         public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null, bool directCaptureOnly = false)
         {
@@ -119,50 +121,60 @@ namespace SharpShot.UI
             _settingsService = settingsService;
             _isRecordingMode = isRecordingMode;
             _directCaptureOnly = directCaptureOnly;
-            _targetWindowForSmartDetection = targetWindowForSmartDetection ?? IntPtr.Zero;
-            
+
+            // Resolve target before we show anything; skip SharpShot windows (toolbar clicks).
+            _targetWindowForSmartDetection = SmartRegionDetection.ResolveTargetWindow(
+                targetWindowForSmartDetection ?? IntPtr.Zero);
+
             // Set this as the active instance
             _activeInstance = this;
-            
+
             // Calculate virtual desktop bounds (all monitors combined)
             _virtualDesktopBounds = GetVirtualDesktopBounds();
-            
+
             // Position and size the window to cover all monitors
             PositionWindowForAllMonitors();
-            
+
+            // CRITICAL: freeze the desktop BEFORE magnifier/overlay can steal focus and dismiss
+            // open menus, dropdowns, or context menus. Selection crops from this bitmap later.
+            CaptureFreezeFrame();
+
+            // Kick off smart-region UIA walk in the background — do NOT block opening the overlay.
+            StartSmartRegionDetectionIfEnabled();
+
             // Setup event handlers - use Preview events to capture before browser
             PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
             PreviewMouseLeftButtonUp += OnPreviewMouseLeftButtonUp;
             PreviewMouseMove += OnPreviewMouseMove;
-            
+
             // Also keep the canvas handlers as backup
             SelectionCanvas.MouseLeftButtonDown += OnMouseLeftButtonDown;
             SelectionCanvas.MouseLeftButtonUp += OnMouseLeftButtonUp;
             SelectionCanvas.MouseMove += OnMouseMove;
-            
+
             // Ensure the window can capture keyboard input and connect the KeyDown event
             Focusable = true;
-            
+
             // Set window to capture all keyboard input
             WindowStyle = WindowStyle.None;
             AllowsTransparency = true;
             Background = System.Windows.Media.Brushes.Transparent;
-            
+
             // Connect keyboard events
             KeyDown += OnKeyDown;
             PreviewKeyDown += OnKeyDown;
-            
+
             // Also try to capture keyboard input at the window level
             PreviewKeyUp += (s, e) => { }; // Empty handler to ensure keyboard capture
-            
+
             // Window has ShowActivated="False" in XAML to prevent stealing focus
-            // This prevents browser dropdowns from closing when region selection starts
-            // We don't force focus here to maintain browser focus
-            
-            // Test keyboard input by showing a message
-            System.Diagnostics.Debug.WriteLine("RegionSelectionWindow constructor completed - testing keyboard input");
-            
-            // Hide cursor instructions after a moment
+            SizeChanged += (_, _) =>
+            {
+                LayoutFreezeFrameLayers();
+                if (IsLoaded)
+                    DrawSmartRegionHighlights(_smartRegionRects);
+            };
+
             var timer = new System.Windows.Threading.DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(2)
@@ -173,20 +185,26 @@ namespace SharpShot.UI
                 timer.Stop();
             };
             timer.Start();
-            
-            // Initialize magnifier
+
+            if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection == true)
+            {
+                InstructionsText.Text = "Click a highlighted region to copy its text (OCR), or drag to capture an image. Press ESC to cancel.";
+            }
+
+            // Magnifier after freeze so Show() can't dismiss menus before we snapshot them
             InitializeMagnifier();
-            
-            // Capture mouse input immediately when window is loaded
+
             Loaded += (sender, e) =>
             {
+                LayoutFreezeFrameLayers();
+                DrawSmartRegionHighlights(_smartRegionRects);
                 CaptureMouseInput();
-                StartSmartRegionDetectionIfEnabled();
-                if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection == true && _targetWindowForSmartDetection != IntPtr.Zero)
-                    InstructionsText.Text = "Click and drag to select, or click a highlighted region to capture it. Press ESC to cancel.";
+                StartMagnifier();
+                EnsureMagnifierOnTop();
+                if (GetCursorPos(out POINT cursor))
+                    UpdateSmartHover(cursor.X, cursor.Y);
             };
-            
-            // Also capture when window becomes visible
+
             IsVisibleChanged += (sender, e) =>
             {
                 if (IsVisible)
@@ -194,15 +212,103 @@ namespace SharpShot.UI
                     CaptureMouseInput();
                 }
             };
-            
-            // Handle window closed event
+
             Closed += (sender, e) =>
             {
                 if (_activeInstance == this)
                 {
                     _activeInstance = null;
                 }
+                DisposeFreezeFrame();
             };
+        }
+
+        private void CaptureFreezeFrame()
+        {
+            try
+            {
+                DisposeFreezeFrame();
+                var bounds = _virtualDesktopBounds;
+                if (bounds.Width <= 0 || bounds.Height <= 0)
+                    return;
+
+                // Do NOT hide SharpShot windows first — Visibility changes can dismiss menus.
+                var bmp = new Bitmap(bounds.Width, bounds.Height);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
+                }
+                _freezeFrame = bmp;
+                ApplyFreezeFrameToImage();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Freeze frame capture failed: {ex.Message}");
+                _freezeFrame = null;
+            }
+        }
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
+
+        private void ApplyFreezeFrameToImage()
+        {
+            if (_freezeFrame == null || FreezeFrameImage == null)
+                return;
+
+            try
+            {
+                IntPtr hBitmap = _freezeFrame.GetHbitmap();
+                try
+                {
+                    var source = Imaging.CreateBitmapSourceFromHBitmap(
+                        hBitmap,
+                        IntPtr.Zero,
+                        Int32Rect.Empty,
+                        System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                    source.Freeze();
+                    FreezeFrameImage.Source = source;
+                }
+                finally
+                {
+                    DeleteObject(hBitmap);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Freeze frame image apply failed: {ex.Message}");
+            }
+        }
+
+        private void LayoutFreezeFrameLayers()
+        {
+            if (SelectionCanvas == null) return;
+            double w = SelectionCanvas.ActualWidth > 0 ? SelectionCanvas.ActualWidth : Width;
+            double h = SelectionCanvas.ActualHeight > 0 ? SelectionCanvas.ActualHeight : Height;
+            if (w <= 0 || h <= 0) return;
+
+            if (FreezeFrameImage != null)
+            {
+                FreezeFrameImage.Width = w;
+                FreezeFrameImage.Height = h;
+                System.Windows.Controls.Canvas.SetLeft(FreezeFrameImage, 0);
+                System.Windows.Controls.Canvas.SetTop(FreezeFrameImage, 0);
+            }
+            if (FreezeDimOverlay != null)
+            {
+                FreezeDimOverlay.Width = w;
+                FreezeDimOverlay.Height = h;
+                System.Windows.Controls.Canvas.SetLeft(FreezeDimOverlay, 0);
+                System.Windows.Controls.Canvas.SetTop(FreezeDimOverlay, 0);
+            }
+        }
+
+        private void DisposeFreezeFrame()
+        {
+            if (FreezeFrameImage != null)
+                FreezeFrameImage.Source = null;
+            _freezeFrame?.Dispose();
+            _freezeFrame = null;
         }
         
         private void CaptureMouseInput()
@@ -210,13 +316,34 @@ namespace SharpShot.UI
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd != IntPtr.Zero)
             {
-                // Make window topmost so it receives mouse messages even when browser has focus
-                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-                
+                // Topmost without activating — activation dismisses menus/dropdowns
+                SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
                 // Capture all mouse input to this window
-                // This ensures clicks go to our overlay even when browser has focus
                 SetCapture(hwnd);
-                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow: Mouse capture set and window made topmost");
+                System.Diagnostics.Debug.WriteLine("RegionSelectionWindow: Mouse capture set and window made topmost (no-activate)");
+            }
+
+            // Region overlay re-asserts topmost; keep magnifier above it
+            EnsureMagnifierOnTop();
+        }
+
+        private void EnsureMagnifierOnTop()
+        {
+            try
+            {
+                if (_magnifier == null || !_magnifier.IsVisible)
+                    return;
+                var hwnd = new WindowInteropHelper(_magnifier).Handle;
+                if (hwnd != IntPtr.Zero)
+                {
+                    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EnsureMagnifierOnTop: {ex.Message}");
             }
         }
         
@@ -401,7 +528,9 @@ namespace SharpShot.UI
                 var stationaryY = _settingsService?.CurrentSettings?.MagnifierStationaryY ?? 100;
                 var autoStationaryMonitors = _settingsService?.CurrentSettings?.MagnifierAutoStationaryMonitors ?? new List<string>();
                 _magnifier = new MagnifierWindow(zoomLevel, mode, stationaryMonitor, stationaryX, stationaryY, autoStationaryMonitors, _settingsService);
-                
+                if (_freezeFrame != null)
+                    _magnifier.SetFreezeFrameSource(_freezeFrame, _virtualDesktopBounds);
+
                 // Create timer for updating magnifier
                 _magnifierTimer = new System.Windows.Threading.DispatcherTimer
                 {
@@ -412,11 +541,12 @@ namespace SharpShot.UI
                     if (_magnifier != null)
                     {
                         _magnifier.UpdateMagnifier();
+                        EnsureMagnifierOnTop();
                     }
                 };
-                
-                // Start magnifier immediately when window opens
-                StartMagnifier();
+
+                // Don't start until Loaded — ShowDialog hasn't run yet, and starting early
+                // leaves the magnifier under the later topmost freeze overlay.
             }
             catch (Exception ex)
             {
@@ -464,49 +594,57 @@ namespace SharpShot.UI
         {
             if (_isRecordingMode) return;
             if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection != true) return;
-            if (_targetWindowForSmartDetection == IntPtr.Zero) return;
 
-            Task.Run(() =>
+            var target = _targetWindowForSmartDetection;
+            if (target == IntPtr.Zero)
+                target = SmartRegionDetection.ResolveTargetWindow();
+            if (target == IntPtr.Zero) return;
+
+            var hwnd = target;
+            // UIA must run on the STA/UI thread (Task.Run returns nothing useful).
+            // Background priority lets the freeze overlay paint first so open still feels snappy.
+            Dispatcher.BeginInvoke(new Action(() =>
             {
+                if (_activeInstance != this)
+                    return;
                 try
                 {
-                    var rects = SmartRegionDetection.GetDetectedRegions(_targetWindowForSmartDetection);
-                    if (rects.Count == 0) return;
-                    Dispatcher.Invoke(() => DrawSmartRegionHighlights(rects));
+                    var rects = SmartRegionDetection.GetDetectedRegions(hwnd) ?? new List<Rectangle>();
+                    _smartRegionRects = rects;
+                    DrawSmartRegionHighlights(_smartRegionRects);
+                    if (GetCursorPos(out POINT cursor))
+                        UpdateSmartHover(cursor.X, cursor.Y);
                 }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"Smart region detection: {ex.Message}");
                 }
-            });
+            }), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         private void DrawSmartRegionHighlights(List<Rectangle> screenRects)
         {
+            if (SmartHighlightsCanvas == null) return;
             SmartHighlightsCanvas.Children.Clear();
-            _smartRegionRects.Clear();
+            if (screenRects.Count == 0) return;
+
             var accent = (SolidColorBrush)TryFindResource("AccentBrush") ?? new SolidColorBrush(Colors.Orange);
+            // Subtle static outlines; hover uses SmartHoverRect for the active target
             foreach (var r in screenRects)
             {
-                // Detection rects are in physical screen pixels; map them into the overlay's
-                // logical (DIP) space via PointFromScreen so highlights land in the right place
-                // and size on monitors of any DPI scale.
-                var topLeft = SelectionCanvas.PointFromScreen(new Point(r.X, r.Y));
-                var bottomRight = SelectionCanvas.PointFromScreen(new Point(r.X + r.Width, r.Y + r.Height));
-                double x = topLeft.X;
-                double y = topLeft.Y;
-                double w = bottomRight.X - topLeft.X;
-                double h = bottomRight.Y - topLeft.Y;
-                if (x + w < 0 || y + h < 0 || x > SelectionCanvas.ActualWidth || y > SelectionCanvas.ActualHeight)
+                // Map physical screen pixels the same way the freeze-frame image is stretched
+                // onto the canvas. PointFromScreen is wrong on mixed-DPI multi-monitor setups
+                // because this overlay is a single HWND spanning all displays.
+                if (!TryMapPhysicalRectToCanvas(r, out double x, out double y, out double w, out double h))
                     continue;
-                _smartRegionRects.Add(r);
+
                 var rect = new System.Windows.Shapes.Rectangle
                 {
                     Width = w,
                     Height = h,
-                    Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x18, accent.Color.R, accent.Color.G, accent.Color.B)),
-                    Stroke = accent,
-                    StrokeThickness = 1.5
+                    Fill = System.Windows.Media.Brushes.Transparent,
+                    Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x55, accent.Color.R, accent.Color.G, accent.Color.B)),
+                    StrokeThickness = 1
                 };
                 System.Windows.Controls.Canvas.SetLeft(rect, x);
                 System.Windows.Controls.Canvas.SetTop(rect, y);
@@ -514,14 +652,80 @@ namespace SharpShot.UI
             }
         }
 
+        private void UpdateSmartHover(int screenX, int screenY)
+        {
+            if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection != true
+                || _smartRegionRects.Count == 0
+                || SmartHoverRect == null)
+            {
+                if (SmartHoverRect != null)
+                    SmartHoverRect.Visibility = Visibility.Collapsed;
+                _hoveredSmartRegion = null;
+                return;
+            }
+
+            var best = SmartRegionDetection.GetSmallestRegionAtPoint(_smartRegionRects, screenX, screenY);
+            _hoveredSmartRegion = best;
+            if (!best.HasValue)
+            {
+                SmartHoverRect.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            // Always apply current theme accent (StaticResource fill was hard-coded orange)
+            var accent = TryFindResource("AccentBrush") as SolidColorBrush
+                         ?? new SolidColorBrush(Colors.Orange);
+            SmartHoverRect.Stroke = accent;
+            SmartHoverRect.Fill = new SolidColorBrush(
+                System.Windows.Media.Color.FromArgb(0x28, accent.Color.R, accent.Color.G, accent.Color.B));
+
+            if (!TryMapPhysicalRectToCanvas(best.Value, out double x, out double y, out double w, out double h))
+            {
+                SmartHoverRect.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            SmartHoverRect.Width = w;
+            SmartHoverRect.Height = h;
+            System.Windows.Controls.Canvas.SetLeft(SmartHoverRect, x);
+            System.Windows.Controls.Canvas.SetTop(SmartHoverRect, y);
+            SmartHoverRect.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Maps a physical-screen rectangle into SelectionCanvas DIPs using the same uniform
+        /// scale as the freeze-frame image (Stretch=Fill over the virtual desktop).
+        /// </summary>
+        private bool TryMapPhysicalRectToCanvas(Rectangle physical, out double x, out double y, out double w, out double h)
+        {
+            x = y = w = h = 0;
+            if (SelectionCanvas == null || _virtualDesktopBounds.Width <= 0 || _virtualDesktopBounds.Height <= 0)
+                return false;
+
+            double canvasW = SelectionCanvas.ActualWidth > 0 ? SelectionCanvas.ActualWidth : Width;
+            double canvasH = SelectionCanvas.ActualHeight > 0 ? SelectionCanvas.ActualHeight : Height;
+            if (canvasW <= 0 || canvasH <= 0)
+                return false;
+
+            double scaleX = canvasW / _virtualDesktopBounds.Width;
+            double scaleY = canvasH / _virtualDesktopBounds.Height;
+
+            x = (physical.X - _virtualDesktopBounds.X) * scaleX;
+            y = (physical.Y - _virtualDesktopBounds.Y) * scaleY;
+            w = physical.Width * scaleX;
+            h = physical.Height * scaleY;
+
+            if (w <= 1 || h <= 1)
+                return false;
+            if (x + w < 0 || y + h < 0 || x > canvasW || y > canvasH)
+                return false;
+
+            return true;
+        }
+
         private Rectangle? GetSmartRegionAtScreenPoint(int screenX, int screenY)
         {
-            foreach (var r in _smartRegionRects)
-            {
-                if (r.X <= screenX && screenX < r.X + r.Width && r.Y <= screenY && screenY < r.Y + r.Height)
-                    return r;
-            }
-            return null;
+            return SmartRegionDetection.GetSmallestRegionAtPoint(_smartRegionRects, screenX, screenY);
         }
 
         private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -560,8 +764,10 @@ namespace SharpShot.UI
                 SelectionRect.Visibility = Visibility.Collapsed;
                 if (_isRecordingMode)
                     Close();
-                else
+                else if (_directCaptureOnly)
                     CaptureRegion();
+                else
+                    _ = CaptureSmartRegionAsOcrAsync();
                 return;
             }
 
@@ -585,8 +791,13 @@ namespace SharpShot.UI
         
         private void OnPreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (!_isSelecting) return;
             e.Handled = true;
+            GetCursorPos(out POINT cursor);
+            if (!_isSelecting)
+            {
+                UpdateSmartHover(cursor.X, cursor.Y);
+                return;
+            }
             var currentPoint = e.GetPosition(SelectionCanvas);
             double dx = currentPoint.X - _startPoint.X;
             double dy = currentPoint.Y - _startPoint.Y;
@@ -633,7 +844,8 @@ namespace SharpShot.UI
                 SelectedRegion = smartRect;
                 SelectionRect.Visibility = Visibility.Collapsed;
                 if (_isRecordingMode) Close();
-                else CaptureRegion();
+                else if (_directCaptureOnly) CaptureRegion();
+                else _ = CaptureSmartRegionAsOcrAsync();
                 return;
             }
             var screenRectX = Math.Min(startX, endCursor.X);
@@ -654,7 +866,12 @@ namespace SharpShot.UI
 
         private void OnMouseMove(object sender, MouseEventArgs e)
         {
-            if (!_isSelecting) return;
+            GetCursorPos(out POINT cursor);
+            if (!_isSelecting)
+            {
+                UpdateSmartHover(cursor.X, cursor.Y);
+                return;
+            }
             var currentPoint = e.GetPosition(SelectionCanvas);
             double dx = currentPoint.X - _startPoint.X;
             double dy = currentPoint.Y - _startPoint.Y;
@@ -701,6 +918,131 @@ namespace SharpShot.UI
             }
         }
 
+        private Bitmap? CropSelectedRegionFromFreezeOrScreen()
+        {
+            if (!SelectedRegion.HasValue)
+                return null;
+
+            var actualX = SelectedRegion.Value.X;
+            var actualY = SelectedRegion.Value.Y;
+            var actualWidth = SelectedRegion.Value.Width;
+            var actualHeight = SelectedRegion.Value.Height;
+
+            if (_freezeFrame != null)
+            {
+                var srcX = actualX - _virtualDesktopBounds.X;
+                var srcY = actualY - _virtualDesktopBounds.Y;
+                var cropRect = Rectangle.Intersect(
+                    new Rectangle(0, 0, _freezeFrame.Width, _freezeFrame.Height),
+                    new Rectangle(srcX, srcY, actualWidth, actualHeight));
+                if (cropRect.Width > 0 && cropRect.Height > 0)
+                    return _freezeFrame.Clone(cropRect, _freezeFrame.PixelFormat);
+            }
+
+            Visibility = Visibility.Hidden;
+            Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            System.Threading.Thread.Sleep(20);
+
+            using (CaptureUiSuppression.BeginIfEnabled(_settingsService))
+            {
+                using var bitmap = new Bitmap(actualWidth, actualHeight);
+                using var graphics = Graphics.FromImage(bitmap);
+                graphics.CopyFromScreen(actualX, actualY, 0, 0, new System.Drawing.Size(actualWidth, actualHeight));
+                return new Bitmap(bitmap);
+            }
+        }
+
+        /// <summary>
+        /// Smart-region click: OCR the highlighted area and show copyable text instead of the image editor.
+        /// </summary>
+        private async Task CaptureSmartRegionAsOcrAsync()
+        {
+            try
+            {
+                StopMagnifier();
+                SelectionRect.Visibility = Visibility.Collapsed;
+                InstructionsText.Visibility = Visibility.Collapsed;
+                if (SmartHoverRect != null)
+                    SmartHoverRect.Visibility = Visibility.Collapsed;
+                if (SmartHighlightsCanvas != null)
+                    SmartHighlightsCanvas.Visibility = Visibility.Collapsed;
+
+                var bitmap = CropSelectedRegionFromFreezeOrScreen();
+                if (bitmap == null)
+                {
+                    Close();
+                    return;
+                }
+
+                CapturedBitmap = bitmap;
+                Visibility = Visibility.Hidden;
+
+                if (!OcrService.IsAvailable())
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        ThemedMessageBox.Show(
+                            "OCR is not available. Make sure tessdata (e.g. eng.traineddata) is installed next to SharpShot.",
+                            "Smart Region OCR",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        LaunchEditor(CapturedBitmap);
+                    });
+                    return;
+                }
+
+                var words = await OcrService.RecognizeWordsAsync(bitmap);
+                // Always resume on the UI thread for windows / message boxes
+                await Dispatcher.InvokeAsync(() => { });
+
+                string text = string.Join(" ", words.Select(w => w.Text).Where(t => !string.IsNullOrWhiteSpace(t))).Trim();
+
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    ThemedMessageBox.Show(
+                        "No text was recognized in that region. Opening the image editor instead.",
+                        "Smart Region OCR",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    LaunchEditor(CapturedBitmap);
+                    return;
+                }
+
+                var ocrWindow = new OcrResultWindow(text)
+                {
+                    Topmost = true,
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen
+                };
+                ocrWindow.ShowDialog();
+
+                EditorActionCompleted = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Smart region OCR failed: {ex.Message}");
+                try
+                {
+                    await Dispatcher.InvokeAsync(() =>
+                    {
+                        ThemedMessageBox.Show(
+                            $"OCR failed: {ex.Message}",
+                            "Smart Region OCR",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                        if (CapturedBitmap != null)
+                            LaunchEditor(CapturedBitmap);
+                        else
+                            Close();
+                    });
+                }
+                catch
+                {
+                    Close();
+                }
+            }
+        }
+
         private void CaptureRegion()
         {
             try
@@ -709,38 +1051,24 @@ namespace SharpShot.UI
                 {
                     // Stop magnifier before capturing
                     StopMagnifier();
-                    
+
                     // Hide the selection UI before capturing
                     SelectionRect.Visibility = Visibility.Collapsed;
                     InstructionsText.Visibility = Visibility.Collapsed;
-                    
-                    // Hide the entire window to prevent it from appearing in the screenshot
-                    Visibility = Visibility.Hidden;
-                    
-                    // Force UI update and wait a moment
-                    Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
-                    System.Threading.Thread.Sleep(20); // Reduced delay for faster UI response
-                    
-                    // Use the selected region coordinates directly (they're already in screen coordinates)
-                    var actualX = SelectedRegion.Value.X;
-                    var actualY = SelectedRegion.Value.Y;
-                    var actualWidth = SelectedRegion.Value.Width;
-                    var actualHeight = SelectedRegion.Value.Height;
-                    
-                    // Capture the region but don't save yet
-                    using (CaptureUiSuppression.BeginIfEnabled(_settingsService))
+                    if (SmartHoverRect != null)
+                        SmartHoverRect.Visibility = Visibility.Collapsed;
+                    if (SmartHighlightsCanvas != null)
+                        SmartHighlightsCanvas.Visibility = Visibility.Collapsed;
+
+                    CapturedBitmap = CropSelectedRegionFromFreezeOrScreen();
+                    if (CapturedBitmap == null)
                     {
-                        using var bitmap = new Bitmap(actualWidth, actualHeight);
-                        using var graphics = Graphics.FromImage(bitmap);
-
-                        graphics.CopyFromScreen(actualX, actualY, 0, 0, new System.Drawing.Size(actualWidth, actualHeight));
-
-                        // Store the bitmap for later use - create a deep copy to avoid disposal issues
-                        CapturedBitmap = new Bitmap(bitmap);
+                        Close();
+                        return;
                     }
-                    
-                    System.Diagnostics.Debug.WriteLine($"Captured region: {actualWidth}x{actualHeight} at ({actualX},{actualY})");
-                    
+
+                    System.Diagnostics.Debug.WriteLine($"Captured region: {CapturedBitmap.Width}x{CapturedBitmap.Height}");
+
                     // For OCR quick-capture we only need a raw captured bitmap and should not show editor overlay.
                     if (_directCaptureOnly)
                     {
@@ -754,7 +1082,7 @@ namespace SharpShot.UI
                         {
                             _screenshotService.CopyToClipboard(CapturedBitmap);
                             System.Diagnostics.Debug.WriteLine("Region screenshot copied to clipboard (editor skipped)");
-                            
+
                             // Mark that copy was requested
                             EditorCopyRequested = true;
                             EditorActionCompleted = true;
@@ -764,7 +1092,7 @@ namespace SharpShot.UI
                             System.Diagnostics.Debug.WriteLine($"Failed to copy to clipboard: {ex.Message}");
                             // Still close the window even if copy fails
                         }
-                        
+
                         Close();
                     }
                     else
@@ -777,7 +1105,7 @@ namespace SharpShot.UI
             catch (Exception ex)
             {
                 // Commented out false alarm - this can trigger when editor copy/save is successful
-                // ThemedMessageBox.Show($"Failed to capture region: {ex.Message}", "Error", 
+                // ThemedMessageBox.Show($"Failed to capture region: {ex.Message}", "Error",
                 //               MessageBoxButton.OK, MessageBoxImage.Error);
                 System.Diagnostics.Debug.WriteLine($"Region capture exception (likely harmless): {ex.Message}");
                 Close();

@@ -1475,21 +1475,11 @@ namespace SharpShot.UI
 
         private void OcrCopyTextButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                var text = OcrExtractedTextBox.Text ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(text))
-                {
-                    return;
-                }
+            var text = OcrExtractedTextBox.Text ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(text))
+                return;
 
-                Clipboard.SetText(text);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"OCR copy text failed: {ex.Message}");
-                ThemedMessageBox.Show(this, $"Failed to copy text: {ex.Message}", "Extract Text", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+            OcrResultWindow.TryCopyTextToClipboard(text, out _);
         }
 
         private void OcrTextPopupHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

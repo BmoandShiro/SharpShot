@@ -500,10 +500,10 @@
 
                             <TextBlock Text="Region selection" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
-                          Content="Highlight detected regions (images, text blocks) during region selection"
+                          Content="Highlight detected regions during selection (click to OCR text)"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
-                          ToolTip="When enabled, detects elements like images and text on the screen (e.g. in browsers) and lets you click a highlight to capture that region. Similar to Snipping Tool behavior."/>
+                          ToolTip="When enabled, detects content like images and text blocks and highlights the region under your cursor. Click a highlight to extract text with OCR (copyable). Drag-select still captures an image. Detection runs before the overlay appears so open menus are included when possible."/>
                         </StackPanel>
 
                         <StackPanel x:Name="RecordingSection" Visibility="Collapsed">

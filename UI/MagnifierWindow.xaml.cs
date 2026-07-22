@@ -128,6 +128,19 @@ namespace SharpShot.UI
         }
         
         private const uint SRCCOPY = 0x00CC0020;
+
+        /// <summary>
+        /// Optional frozen desktop bitmap. When set, the magnifier samples this instead of
+        /// live BitBlt so it stays correct while a full-screen freeze overlay is on top.
+        /// </summary>
+        private Bitmap? _freezeSource;
+        private Rectangle _freezeBounds;
+
+        public void SetFreezeFrameSource(Bitmap? freezeFrame, Rectangle virtualDesktopBounds)
+        {
+            _freezeSource = freezeFrame;
+            _freezeBounds = virtualDesktopBounds;
+        }
         
         public MagnifierWindow(double zoomLevel = 2.0, string mode = "Follow", string stationaryMonitor = "Primary Monitor", double stationaryX = 100, double stationaryY = 100, List<string> autoStationaryMonitors = null, Services.SettingsService settingsService = null)
         {
@@ -521,8 +534,10 @@ namespace SharpShot.UI
                     captureY = virtualDesktopBounds.Y + virtualDesktopBounds.Height - _captureSize;
                 }
 
-                // Capture screen area, excluding the magnifier's own area
-                var capturedBitmap = CaptureScreenAreaExcludingMagnifier(captureX, captureY, _captureSize, _captureSize);
+                // Prefer freeze-frame sampling when region select has locked the desktop
+                // (live BitBlt would only see the overlay / miss open menus).
+                Bitmap? capturedBitmap = CaptureFromFreezeFrame(captureX, captureY, _captureSize, _captureSize)
+                    ?? CaptureScreenAreaExcludingMagnifier(captureX, captureY, _captureSize, _captureSize);
                 
                 if (capturedBitmap != null)
                 {
@@ -547,6 +562,44 @@ namespace SharpShot.UI
             }
         }
         
+        private Bitmap? CaptureFromFreezeFrame(int screenX, int screenY, int width, int height)
+        {
+            if (_freezeSource == null || width <= 0 || height <= 0)
+                return null;
+            if (_freezeBounds.Width <= 0 || _freezeBounds.Height <= 0)
+                return null;
+
+            try
+            {
+                int srcX = screenX - _freezeBounds.X;
+                int srcY = screenY - _freezeBounds.Y;
+                var result = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(result))
+                {
+                    g.Clear(System.Drawing.Color.FromArgb(255, 26, 26, 26));
+                    var srcRect = Rectangle.Intersect(
+                        new Rectangle(0, 0, _freezeSource.Width, _freezeSource.Height),
+                        new Rectangle(srcX, srcY, width, height));
+                    if (srcRect.Width > 0 && srcRect.Height > 0)
+                    {
+                        int dstX = srcRect.X - srcX;
+                        int dstY = srcRect.Y - srcY;
+                        g.DrawImage(
+                            _freezeSource,
+                            new Rectangle(dstX, dstY, srcRect.Width, srcRect.Height),
+                            srcRect,
+                            GraphicsUnit.Pixel);
+                    }
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Freeze magnifier sample failed: {ex.Message}");
+                return null;
+            }
+        }
+
         private Bitmap CaptureScreenAreaExcludingMagnifier(int x, int y, int width, int height)
         {
             IntPtr hdcScreen = GetDC(IntPtr.Zero);

@@ -1,5 +1,8 @@
+using System;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 using SharpShot.Services;
@@ -8,6 +11,9 @@ namespace SharpShot.UI
 {
     public partial class OcrResultWindow : Window
     {
+        private const uint CF_UNICODETEXT = 13;
+        private const uint GMEM_MOVEABLE = 0x0002;
+
         public OcrResultWindow(string extractedText)
         {
             InitializeComponent();
@@ -90,24 +96,128 @@ namespace SharpShot.UI
 
         private void CopyTextButton_Click(object sender, RoutedEventArgs e)
         {
+            // Win32 clipboard — avoids WPF CLIPBRD_E_CANT_OPEN noise and Focus/SelectAll stutter.
+            TryCopyTextToClipboard(ResultTextBox.Text ?? string.Empty, out _);
+        }
+
+        /// <summary>
+        /// Fast clipboard write via Win32. No Focus/SelectAll, no UI-thread Sleep.
+        /// </summary>
+        internal static bool TryCopyTextToClipboard(string text, out string error)
+        {
+            error = string.Empty;
+            text ??= string.Empty;
+
+            // A couple of immediate retries — other apps often release the clipboard within microseconds.
+            // Avoid Sleep/busy-wait on the UI thread (that was the Copy button stutter).
+            for (int attempt = 0; attempt < 3; attempt++)
+            {
+                if (TrySetClipboardTextWin32(text))
+                    return true;
+            }
+
+            error = "OpenClipboard Failed";
+            return false;
+        }
+
+        private static bool TrySetClipboardTextWin32(string text)
+        {
+            IntPtr hGlobal = IntPtr.Zero;
             try
             {
-                Clipboard.SetText(ResultTextBox.Text ?? string.Empty);
+                if (!OpenClipboard(IntPtr.Zero))
+                    return false;
+
+                try
+                {
+                    EmptyClipboard();
+
+                    var bytes = (text.Length + 1) * 2;
+                    hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)(uint)bytes);
+                    if (hGlobal == IntPtr.Zero)
+                        return false;
+
+                    IntPtr locked = GlobalLock(hGlobal);
+                    if (locked == IntPtr.Zero)
+                    {
+                        GlobalFree(hGlobal);
+                        hGlobal = IntPtr.Zero;
+                        return false;
+                    }
+
+                    try
+                    {
+                        Marshal.Copy(text.ToCharArray(), 0, locked, text.Length);
+                        Marshal.WriteInt16(locked, text.Length * 2, 0);
+                    }
+                    finally
+                    {
+                        GlobalUnlock(hGlobal);
+                    }
+
+                    if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+                    {
+                        GlobalFree(hGlobal);
+                        hGlobal = IntPtr.Zero;
+                        return false;
+                    }
+
+                    // Ownership transferred to the clipboard
+                    hGlobal = IntPtr.Zero;
+                    return true;
+                }
+                finally
+                {
+                    CloseClipboard();
+                }
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                ThemedMessageBox.Show($"Failed to copy text: {ex.Message}", "OCR Result", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"Win32 clipboard failed: {ex.Message}");
+                if (hGlobal != IntPtr.Zero)
+                {
+                    try { GlobalFree(hGlobal); } catch { /* ignore */ }
+                }
+                return false;
             }
         }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CloseClipboard();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool EmptyClipboard();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GlobalUnlock(IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GlobalFree(IntPtr hMem);
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
         }
 
-        private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
+            if (e.LeftButton == MouseButtonState.Pressed)
             {
                 DragMove();
             }
