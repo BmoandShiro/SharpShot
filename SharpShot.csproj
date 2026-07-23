@@ -8,8 +8,8 @@
     <Nullable>enable</Nullable>
     <AssemblyTitle>SharpShot</AssemblyTitle>
     <AssemblyDescription>Dark-themed screenshot and screen recording tool</AssemblyDescription>
-    <AssemblyVersion>1.2.9.8</AssemblyVersion>
-    <FileVersion>1.2.9.8</FileVersion>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -17,7 +17,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <Platform>x64</Platform>
     <Platforms>x64</Platforms>
-    <ApplicationIcon>output_color.ico</ApplicationIcon>
+    <ApplicationIcon>output_new.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!--
       WFAC010: the WinForms analyzer prefers ApplicationHighDpiMode, but this is a WPF-driven

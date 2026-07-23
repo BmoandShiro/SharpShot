@@ -4,7 +4,7 @@
     Id="*"
     Name="SharpShot"
     Language="1033"
-    Version="1.2.9.8"
+    Version="1.3.0.0"
     Manufacturer="BmoandShiro"
     UpgradeCode="F3D9B9B4-7F4D-4C5B-9D32-8F6E4C8D9A11">
 
@@ -19,6 +19,8 @@
 
     <MediaTemplate />
 
+    <Icon Id="SharpShotIcon.ico" SourceFile="..\output_new.ico" />
+    <Property Id="ARPPRODUCTICON" Value="SharpShotIcon.ico" />
     <Property Id="ARPNOMODIFY" Value="1" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
