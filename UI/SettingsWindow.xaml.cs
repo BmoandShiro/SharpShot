@@ -447,6 +447,8 @@ namespace SharpShot.UI
             if (!string.Equals(_originalSettings.RecordingEngine, "FFmpeg", StringComparison.OrdinalIgnoreCase))
                 _originalSettings.RecordingEngine = "FFmpeg";
 
+            UpdateLinkedAppStatusUI();
+
             // Audio recording mode combo box commented out
             // foreach (var item in AudioRecordingModeComboBox.Items)
             // {
@@ -1169,6 +1171,9 @@ namespace SharpShot.UI
             target.ScreenshotFormat = source.ScreenshotFormat;
             target.VideoQuality = source.VideoQuality;
             target.RecordingEngine = source.RecordingEngine;
+            target.LinkedObsPath = source.LinkedObsPath;
+            target.LinkedCustomAppPath = source.LinkedCustomAppPath;
+            target.LinkedCustomAppDisplayName = source.LinkedCustomAppDisplayName;
             target.AudioRecordingMode = source.AudioRecordingMode;
             target.SelectedOutputAudioDevice = source.SelectedOutputAudioDevice;
             target.SelectedInputAudioDevice = source.SelectedInputAudioDevice;
@@ -3879,6 +3884,111 @@ namespace SharpShot.UI
             {
                 // Ignore logging errors
             }
+        }
+
+        private void UpdateLinkedAppStatusUI()
+        {
+            if (LinkedObsStatusText != null)
+            {
+                var obsPath = _originalSettings.LinkedObsPath;
+                if (OBSDetection.IsValidLinkedObsPath(obsPath))
+                    LinkedObsStatusText.Text = obsPath;
+                else if (!string.IsNullOrWhiteSpace(obsPath))
+                    LinkedObsStatusText.Text = $"Missing or invalid: {obsPath}";
+                else
+                    LinkedObsStatusText.Text = "Not linked — OBS button stays hidden until linked";
+            }
+
+            if (LinkedCustomAppStatusText != null)
+            {
+                var customPath = _originalSettings.LinkedCustomAppPath;
+                var name = _originalSettings.LinkedCustomAppDisplayName;
+                if (ExternalAppLauncher.IsValidExecutable(customPath))
+                {
+                    LinkedCustomAppStatusText.Text = string.IsNullOrWhiteSpace(name)
+                        ? customPath
+                        : $"{name}\n{customPath}";
+                }
+                else if (!string.IsNullOrWhiteSpace(customPath))
+                {
+                    LinkedCustomAppStatusText.Text = $"Missing or invalid: {customPath}";
+                }
+                else
+                {
+                    LinkedCustomAppStatusText.Text = "Not linked — click the custom app toolbar button or Link… here";
+                }
+            }
+        }
+
+        private void PersistLinkedAppSettingsToService()
+        {
+            _settingsService.CurrentSettings.LinkedObsPath = _originalSettings.LinkedObsPath;
+            _settingsService.CurrentSettings.LinkedCustomAppPath = _originalSettings.LinkedCustomAppPath;
+            _settingsService.CurrentSettings.LinkedCustomAppDisplayName = _originalSettings.LinkedCustomAppDisplayName;
+            _settingsService.SaveSettings();
+        }
+
+        private void DetectObsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var detected = OBSDetection.FindOBSPath();
+            if (OBSDetection.IsValidLinkedObsPath(detected))
+            {
+                _originalSettings.LinkedObsPath = detected;
+                PersistLinkedAppSettingsToService();
+                UpdateLinkedAppStatusUI();
+                ThemedMessageBox.Show(this, $"Linked OBS at:\n{detected}", "Link OBS",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (AppLinkDialog.TryBrowseForObs(this, out var browsed))
+            {
+                _originalSettings.LinkedObsPath = browsed;
+                PersistLinkedAppSettingsToService();
+                UpdateLinkedAppStatusUI();
+            }
+            else
+            {
+                ThemedMessageBox.Show(this,
+                    "OBS Studio was not found in common locations.\n\nInstall OBS from https://obsproject.com/ or use Browse…",
+                    "Link OBS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void BrowseObsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!AppLinkDialog.TryBrowseForObs(this, out var path))
+                return;
+
+            _originalSettings.LinkedObsPath = path;
+            PersistLinkedAppSettingsToService();
+            UpdateLinkedAppStatusUI();
+        }
+
+        private void UnlinkObsButton_Click(object sender, RoutedEventArgs e)
+        {
+            _originalSettings.LinkedObsPath = string.Empty;
+            PersistLinkedAppSettingsToService();
+            UpdateLinkedAppStatusUI();
+        }
+
+        private void LinkCustomAppButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!AppLinkDialog.TryLinkCustomApp(this, out var path, out var displayName))
+                return;
+
+            _originalSettings.LinkedCustomAppPath = path;
+            _originalSettings.LinkedCustomAppDisplayName = displayName;
+            PersistLinkedAppSettingsToService();
+            UpdateLinkedAppStatusUI();
+        }
+
+        private void UnlinkCustomAppButton_Click(object sender, RoutedEventArgs e)
+        {
+            _originalSettings.LinkedCustomAppPath = string.Empty;
+            _originalSettings.LinkedCustomAppDisplayName = string.Empty;
+            PersistLinkedAppSettingsToService();
+            UpdateLinkedAppStatusUI();
         }
 
         private async void ShowOBSSettings()

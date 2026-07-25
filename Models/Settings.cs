@@ -13,6 +13,9 @@ namespace SharpShot.Models
         private string _videoQuality = string.Empty;
         private string _audioRecordingMode = string.Empty;
         private string _recordingEngine = string.Empty;
+        private string _linkedObsPath = string.Empty;
+        private string _linkedCustomAppPath = string.Empty;
+        private string _linkedCustomAppDisplayName = string.Empty;
         private string _selectedOutputAudioDevice = string.Empty;
         private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
@@ -75,6 +78,9 @@ namespace SharpShot.Models
             VideoQuality = "High";
             AudioRecordingMode = "No Audio";
             RecordingEngine = "FFmpeg";
+            LinkedObsPath = string.Empty;
+            LinkedCustomAppPath = string.Empty;
+            LinkedCustomAppDisplayName = string.Empty;
             SelectedOutputAudioDevice = string.Empty;
             SelectedInputAudioDevice = string.Empty;
             EnableGlobalHotkeys = true;
@@ -174,6 +180,27 @@ namespace SharpShot.Models
         {
             get => _recordingEngine;
             set => SetProperty(ref _recordingEngine, value);
+        }
+
+        /// <summary>User-linked path to obs64.exe / obs32.exe. Empty means OBS launcher is hidden.</summary>
+        public string LinkedObsPath
+        {
+            get => _linkedObsPath;
+            set => SetProperty(ref _linkedObsPath, value ?? string.Empty);
+        }
+
+        /// <summary>User-linked path to any .exe shown as the custom toolbar launcher.</summary>
+        public string LinkedCustomAppPath
+        {
+            get => _linkedCustomAppPath;
+            set => SetProperty(ref _linkedCustomAppPath, value ?? string.Empty);
+        }
+
+        /// <summary>Display name for the custom toolbar launcher tooltip.</summary>
+        public string LinkedCustomAppDisplayName
+        {
+            get => _linkedCustomAppDisplayName;
+            set => SetProperty(ref _linkedCustomAppDisplayName, value ?? string.Empty);
         }
 
         public string SelectedOutputAudioDevice

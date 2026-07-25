@@ -20,23 +20,24 @@ namespace SharpShot.Utils
             }
         }
 
-        public static string FindOBSPath()
+        /// <summary>
+        /// Resolves OBS executable path. Prefer a valid user-linked path, then auto-detect.
+        /// </summary>
+        public static string FindOBSPath(string? linkedObsPath = null)
         {
-            // Check multiple possible locations for OBS (same as OBSRecordingService)
+            if (!string.IsNullOrWhiteSpace(linkedObsPath) && File.Exists(linkedObsPath))
+            {
+                return linkedObsPath;
+            }
+
             var possiblePaths = new[]
             {
-                // Current directory (for Docker mounted OBS)
                 Path.Combine(Directory.GetCurrentDirectory(), "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // App base directory
                 Path.Combine(AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // Parent of app base directory
                 Path.Combine(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // User app data (extracted bundle)
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // System installations
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio", "bin", "64bit", "obs64.exe"),
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio", "bin", "64bit", "obs64.exe"),
-                // Direct executable names
                 "obs64.exe",
                 "obs32.exe"
             };
@@ -49,14 +50,17 @@ namespace SharpShot.Utils
                 }
             }
 
-            // Check if OBS is already running and get its path
             var obsProcesses = Process.GetProcessesByName("obs64");
+            if (obsProcesses.Length == 0)
+            {
+                obsProcesses = Process.GetProcessesByName("obs32");
+            }
+
             if (obsProcesses.Length > 0)
             {
                 try
                 {
-                    var obsProcess = obsProcesses[0];
-                    var obsPath = obsProcess.MainModule?.FileName;
+                    var obsPath = obsProcesses[0].MainModule?.FileName;
                     if (!string.IsNullOrEmpty(obsPath) && File.Exists(obsPath))
                     {
                         return obsPath;
@@ -69,6 +73,16 @@ namespace SharpShot.Utils
             }
 
             return string.Empty;
+        }
+
+        public static bool IsValidLinkedObsPath(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+                return false;
+
+            var name = Path.GetFileName(path);
+            return name.Equals("obs64.exe", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("obs32.exe", StringComparison.OrdinalIgnoreCase);
         }
 
         public static Task<bool> IsOBSRunningAsync()
@@ -88,11 +102,11 @@ namespace SharpShot.Utils
             }
         }
 
-        public static async Task<string> GetOBSVersionAsync()
+        public static async Task<string> GetOBSVersionAsync(string? linkedObsPath = null)
         {
             try
             {
-                var obsPath = FindOBSPath();
+                var obsPath = FindOBSPath(linkedObsPath);
                 if (string.IsNullOrEmpty(obsPath))
                 {
                     return "OBS not found";
@@ -122,24 +136,19 @@ namespace SharpShot.Utils
             }
         }
 
-
-
         public static string GetOBSInstallationInstructions()
         {
             return @"OBS Studio Installation Instructions:
 
 1. Download OBS Studio from: https://obsproject.com/
 2. Install OBS Studio with default settings
-3. OBS will be automatically started when needed for recording
+3. Link OBS in SharpShot Settings (Recording → Linked OBS)
 
 OBS Integration Benefits:
-- Superior audio recording quality
-- Advanced audio mixing capabilities
-- Professional-grade audio filters
-- Better device management
-- Real-time audio monitoring
+- Launch OBS from the SharpShot recording toolbar
+- Use OBS's own UI for professional recording and streaming
 
-Note: OBS will be started automatically when recording begins.";
+Note: SharpShot no longer requires a bundled OBS copy; link your installed OBS instead.";
         }
     }
-} 
+}

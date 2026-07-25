@@ -679,6 +679,11 @@ namespace SharpShot
             await OpenOBSStudio();
         }
 
+        private void CustomAppButton_Click(object sender, RoutedEventArgs e)
+        {
+            OpenOrLinkCustomApp();
+        }
+
         private void CancelRecordButton_Click(object sender, RoutedEventArgs e)
         {
             ShowNormalButtons();
@@ -778,15 +783,50 @@ namespace SharpShot
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
-                OBSRecordButton.Visibility = Visibility.Visible;
-                
-                // Show separators between recording selection buttons for proper spacing
-                RecordingSelectionSeparator2.Visibility = Visibility.Visible;
-                RecordingSelectionSeparator3.Visibility = Visibility.Visible;
+                UpdateExternalLauncherButtonsVisibility();
                 
                 // Show cancel button on the far right
                 CancelRecordButton.Visibility = Visibility.Visible;
             });
+        }
+
+        private bool HasValidLinkedObs() =>
+            OBSDetection.IsValidLinkedObsPath(_settingsService.CurrentSettings.LinkedObsPath);
+
+        private bool HasValidLinkedCustomApp() =>
+            ExternalAppLauncher.IsValidExecutable(_settingsService.CurrentSettings.LinkedCustomAppPath);
+
+        private void UpdateExternalLauncherButtonsVisibility()
+        {
+            bool showObs = HasValidLinkedObs();
+            OBSRecordButton.Visibility = showObs ? Visibility.Visible : Visibility.Collapsed;
+            RecordingSelectionSeparator2.Visibility = showObs ? Visibility.Visible : Visibility.Collapsed;
+
+            // Custom app button always shown in recording submenu (click-to-link when unlinked)
+            CustomAppButton.Visibility = Visibility.Visible;
+            RecordingSelectionSeparatorCustomApp.Visibility = Visibility.Visible;
+            RecordingSelectionSeparator3.Visibility = Visibility.Visible;
+
+            var customName = _settingsService.CurrentSettings.LinkedCustomAppDisplayName;
+            if (HasValidLinkedCustomApp())
+            {
+                CustomAppButton.ToolTip = string.IsNullOrWhiteSpace(customName)
+                    ? $"Launch {_settingsService.CurrentSettings.LinkedCustomAppPath}"
+                    : $"Launch {customName}";
+            }
+            else
+            {
+                CustomAppButton.ToolTip = "Link a custom application";
+            }
+        }
+
+        private void HideExternalLauncherButtons()
+        {
+            OBSRecordButton.Visibility = Visibility.Collapsed;
+            CustomAppButton.Visibility = Visibility.Collapsed;
+            RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
+            RecordingSelectionSeparatorCustomApp.Visibility = Visibility.Collapsed;
+            RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
         }
 
         private void ShowRecordingControls()
@@ -813,12 +853,8 @@ namespace SharpShot
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
-                OBSRecordButton.Visibility = Visibility.Collapsed;
+                HideExternalLauncherButtons();
                 CancelRecordButton.Visibility = Visibility.Collapsed;
-                
-                // Hide recording selection separators
-                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
-                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
                 
                 // Hide capture option buttons
                 CancelButton.Visibility = Visibility.Collapsed;
@@ -850,11 +886,8 @@ namespace SharpShot
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
+                HideExternalLauncherButtons();
                 CancelRecordButton.Visibility = Visibility.Collapsed;
-
-                // Hide separators
-                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
-                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
 
                 // Hide normal buttons
                 RegionButton.Visibility = Visibility.Collapsed;
@@ -1558,12 +1591,8 @@ namespace SharpShot
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
                 FullScreenRecordButton.Visibility = Visibility.Collapsed;
-                OBSRecordButton.Visibility = Visibility.Collapsed;
+                HideExternalLauncherButtons();
                 CancelRecordButton.Visibility = Visibility.Collapsed;
-
-                // Hide recording selection separators
-                RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
-                RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
             });
         }
 
@@ -1835,19 +1864,34 @@ namespace SharpShot
 
         private string? _originalRecordingEngine = null; // Track original engine
         
-        private async Task OpenOBSStudio()
+        private Task OpenOBSStudio()
         {
             try
             {
-                // Just launch OBS - no recording engine switching or recording needed
-                var success = await _recordingService.SetupOBSForRecordingAsync();
-                if (success)
+                var settings = _settingsService.CurrentSettings;
+                if (!OBSDetection.IsValidLinkedObsPath(settings.LinkedObsPath))
                 {
-                    // OBS launched successfully - user controls everything through OBS GUI
+                    if (AppLinkDialog.TryLinkObs(this, out var linkedPath))
+                    {
+                        settings.LinkedObsPath = linkedPath;
+                        _settingsService.SaveSettings();
+                    }
+                    else
+                    {
+                        ShowNormalButtons();
+                        return Task.CompletedTask;
+                    }
+                }
+
+                if (ExternalAppLauncher.TryLaunch(settings.LinkedObsPath, out var error))
+                {
                     ShowNormalButtons();
                 }
                 else
                 {
+                    ThemedMessageBox.Show(this,
+                        $"Could not launch OBS Studio.\n\n{error}\n\nRe-link OBS in Settings → Recording.",
+                        "Launch OBS", MessageBoxButton.OK, MessageBoxImage.Warning);
                     ShowNormalButtons();
                 }
             }
@@ -1856,8 +1900,50 @@ namespace SharpShot
                 System.Diagnostics.Debug.WriteLine($"OBS launch failed: {ex.Message}");
                 ShowNormalButtons();
             }
+
+            return Task.CompletedTask;
         }
-        
+
+        private void OpenOrLinkCustomApp()
+        {
+            try
+            {
+                var settings = _settingsService.CurrentSettings;
+                if (!ExternalAppLauncher.IsValidExecutable(settings.LinkedCustomAppPath))
+                {
+                    if (AppLinkDialog.TryLinkCustomApp(this, out var path, out var displayName))
+                    {
+                        settings.LinkedCustomAppPath = path;
+                        settings.LinkedCustomAppDisplayName = displayName;
+                        _settingsService.SaveSettings();
+                        UpdateExternalLauncherButtonsVisibility();
+                    }
+                    else
+                    {
+                        ShowNormalButtons();
+                        return;
+                    }
+                }
+
+                if (ExternalAppLauncher.TryLaunch(settings.LinkedCustomAppPath, out var error))
+                {
+                    ShowNormalButtons();
+                }
+                else
+                {
+                    ThemedMessageBox.Show(this,
+                        $"Could not launch the linked application.\n\n{error}",
+                        "Launch App", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ShowNormalButtons();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Custom app launch failed: {ex.Message}");
+                ShowNormalButtons();
+            }
+        }
+
         private void RestoreOriginalRecordingEngine()
         {
             if (_originalRecordingEngine != null)
@@ -2071,6 +2157,9 @@ namespace SharpShot
                 
                 if (OBSRecordButton.Content is System.Windows.Shapes.Path obsRecordPath)
                     obsRecordPath.Stroke = brush;
+
+                if (CustomAppButton.Content is System.Windows.Shapes.Path customAppPath)
+                    customAppPath.Stroke = brush;
                 
                 if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
                     cancelRecordPath.Stroke = brush;
@@ -2132,7 +2221,10 @@ namespace SharpShot
                 
                 if (RecordingSelectionSeparator2 != null)
                     RecordingSelectionSeparator2.Fill = brush;
-                
+
+                if (RecordingSelectionSeparatorCustomApp != null)
+                    RecordingSelectionSeparatorCustomApp.Fill = brush;
+
                 if (RecordingSelectionSeparator3 != null)
                     RecordingSelectionSeparator3.Fill = brush;
                 
@@ -2327,6 +2419,7 @@ namespace SharpShot
             if (RegionRecordButton != null) RegionRecordButton.Style = null;
             if (FullScreenRecordButton != null) FullScreenRecordButton.Style = null;
             if (OBSRecordButton != null) OBSRecordButton.Style = null;
+            if (CustomAppButton != null) CustomAppButton.Style = null;
             if (CancelRecordButton != null) CancelRecordButton.Style = null;
             
             // Re-apply the style
@@ -2390,6 +2483,11 @@ namespace SharpShot
                 {
                     OBSRecordButton.Style = buttonStyle;
                     OBSRecordButton.Width = 60;
+                }
+                if (CustomAppButton != null)
+                {
+                    CustomAppButton.Style = buttonStyle;
+                    CustomAppButton.Width = 60;
                 }
                 if (CancelRecordButton != null) 
                 {

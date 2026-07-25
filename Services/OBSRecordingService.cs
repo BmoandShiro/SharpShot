@@ -163,60 +163,15 @@ namespace SharpShot.Services
 
         private string FindOBSPath()
         {
-            // Check multiple possible locations for OBS
-            var possiblePaths = new[]
-            {
-                // Current directory (for Docker mounted OBS)
-                Path.Combine(Directory.GetCurrentDirectory(), "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // App base directory
-                Path.Combine(AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // Parent of app base directory
-                Path.Combine(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // User app data (extracted bundle)
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                // System installations
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio", "bin", "64bit", "obs64.exe"),
-                // Direct executable names
-                "obs64.exe",
-                "obs32.exe"
-            };
-
+            var linked = _settingsService.CurrentSettings.LinkedObsPath;
+            var path = SharpShot.Utils.OBSDetection.FindOBSPath(linked);
             LogToFile($"Current directory: {Directory.GetCurrentDirectory()}");
             LogToFile($"App base directory: {AppContext.BaseDirectory}");
-
-            foreach (var path in possiblePaths)
-            {
-                LogToFile($"Checking OBS path: {path}");
-                if (File.Exists(path))
-                {
-                    LogToFile($"Found OBS at: {path}");
-                    return path;
-                }
-            }
-
-            // Check if OBS is already running and get its path
-            var obsProcesses = Process.GetProcessesByName("obs64");
-            if (obsProcesses.Length > 0)
-            {
-                try
-                {
-                    var obsProcess = obsProcesses[0];
-                    var obsPath = obsProcess.MainModule?.FileName;
-                    if (!string.IsNullOrEmpty(obsPath) && File.Exists(obsPath))
-                    {
-                        LogToFile($"Found OBS running at: {obsPath}");
-                        return obsPath;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogToFile($"Error getting OBS process path: {ex.Message}");
-                }
-            }
-
-            LogToFile("OBS not found in any location");
-            return string.Empty;
+            if (!string.IsNullOrEmpty(path))
+                LogToFile($"Found OBS at: {path}");
+            else
+                LogToFile("OBS not found in linked path or common locations");
+            return path;
         }
 
         // New method to handle "Save with OBS" scenario - just launch OBS

@@ -537,6 +537,72 @@
                            TextWrapping="Wrap"
                            Margin="0,0,0,12"/>
 
+                <TextBlock Text="External apps" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <TextBlock Text="Link OBS Studio to show the OBS button on the recording toolbar. Link any other app for a custom launcher beside it."
+                           Foreground="#FF888888"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,10"/>
+
+                <TextBlock Text="Linked OBS:"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+                <TextBlock x:Name="LinkedObsStatusText"
+                           Foreground="#FFAAAAAA"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"
+                           Text="Not linked"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <Button x:Name="DetectObsButton"
+                            Content="Detect"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="DetectObsButton_Click"
+                            ToolTip="Auto-detect OBS Studio from common install locations"/>
+                    <Button x:Name="BrowseObsButton"
+                            Content="Browse…"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="BrowseObsButton_Click"
+                            ToolTip="Browse for obs64.exe"/>
+                    <Button x:Name="UnlinkObsButton"
+                            Content="Unlink"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="12,6"
+                            Click="UnlinkObsButton_Click"
+                            ToolTip="Remove the linked OBS path"/>
+                </StackPanel>
+
+                <TextBlock Text="Linked custom app:"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+                <TextBlock x:Name="LinkedCustomAppStatusText"
+                           Foreground="#FFAAAAAA"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,8"
+                           Text="Not linked"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                    <Button x:Name="LinkCustomAppButton"
+                            Content="Link…"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="12,6"
+                            Margin="0,0,8,0"
+                            Click="LinkCustomAppButton_Click"
+                            ToolTip="Choose an installed application or browse for an .exe"/>
+                    <Button x:Name="UnlinkCustomAppButton"
+                            Content="Unlink"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="12,6"
+                            Click="UnlinkCustomAppButton_Click"
+                            ToolTip="Remove the linked custom application"/>
+                </StackPanel>
+
                 <!-- Audio Recording Mode -->
                 <!-- Commented out - Audio recording disabled for now
                 <TextBlock Text="Audio Recording Mode:" 

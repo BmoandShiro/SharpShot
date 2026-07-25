@@ -320,7 +320,7 @@
                            VerticalAlignment="Center"
                            Visibility="Collapsed"/>
 
-                <!-- OBS Record Button (Hidden by default) -->
+                <!-- OBS Record Button (Hidden unless OBS is linked in settings) -->
                 <Button x:Name="OBSRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
@@ -336,6 +336,34 @@
                           Fill="Transparent"
                           Stretch="Uniform"
                           Width="45" Height="45"/>
+                </Button>
+
+                <!-- Separator between OBS and Custom App -->
+                <Rectangle x:Name="RecordingSelectionSeparatorCustomApp"
+                           Width="1" 
+                           Height="25" 
+                           Fill="#FFFF8C00" 
+                           Margin="8,0"
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
+
+                <!-- Custom App Launcher (always available in recording submenu for link-or-launch) -->
+                <Button x:Name="CustomAppButton" 
+                        Style="{StaticResource ToolbarButtonStyle}"
+                        Click="CustomAppButton_Click"
+                        ToolTip="Link or launch custom app"
+                        Width="60"
+                        Visibility="Collapsed">
+                    <!-- Simple "app window" glyph -->
+                    <Path Data="M2,4 L22,4 L22,20 L2,20 Z M2,8 L22,8 M6,6 L6,6.1 M9,6 L9,6.1" 
+                          Stroke="#FFFF8C00" 
+                          StrokeThickness="1.5" 
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Stretch="Uniform"
+                          Width="28" Height="28"/>
                 </Button>
 
                 <!-- Separator for Cancel Button -->
