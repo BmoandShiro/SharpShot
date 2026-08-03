@@ -1527,10 +1527,26 @@ namespace SharpShot.UI
                 // The main window already has the edited bitmap and its copy method works
                 
                 System.Diagnostics.Debug.WriteLine("Editor copy button clicked - closing editor to let main window handle copy");
+
+                // #region agent log
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                // #endregion
                 
                 // Set the final bitmap so the main window can access it
                 var finalBitmap = RenderToBitmap();
                 FinalBitmap = finalBitmap;
+
+                // #region agent log
+                var renderMs = sw.Elapsed.TotalMilliseconds;
+                SharpShot.Utils.AgentDebugLog.Write("C", "ScreenshotEditorWindow.CopyFinalButton_Click", "RenderToBitmap before close",
+                    new
+                    {
+                        width = finalBitmap?.Width,
+                        height = finalBitmap?.Height,
+                        renderMs,
+                        hideUi = _settingsService?.CurrentSettings?.HideSharpShotWindowsDuringCapture
+                    });
+                // #endregion
                 
                 // Mark that we want to copy
                 ImageCopied = true;

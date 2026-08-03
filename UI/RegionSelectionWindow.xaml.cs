@@ -304,10 +304,21 @@ namespace SharpShot.UI
 
         private void DisposeFreezeFrame()
         {
+            // #region agent log
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var hadFreeze = _freezeFrame != null;
+            var freezeW = _freezeFrame?.Width ?? 0;
+            var freezeH = _freezeFrame?.Height ?? 0;
+            // #endregion
             if (FreezeFrameImage != null)
                 FreezeFrameImage.Source = null;
             _freezeFrame?.Dispose();
             _freezeFrame = null;
+            // #region agent log
+            sw.Stop();
+            SharpShot.Utils.AgentDebugLog.Write("E", "RegionSelectionWindow.DisposeFreezeFrame", "freeze disposed",
+                new { hadFreeze, freezeW, freezeH, disposeMs = sw.Elapsed.TotalMilliseconds });
+            // #endregion
         }
         
         private void CaptureMouseInput()
@@ -386,12 +397,24 @@ namespace SharpShot.UI
         
         protected override void OnClosed(EventArgs e)
         {
+            // #region agent log
+            var swClose = System.Diagnostics.Stopwatch.StartNew();
+            // #endregion
             // Ensure mouse capture is released when window closes
             ReleaseCapture();
             
             // Ensure magnifier is cleaned up when window closes
             StopMagnifier();
+            // #region agent log
+            var cleanupMs = swClose.Elapsed.TotalMilliseconds;
+            swClose.Restart();
+            // #endregion
             base.OnClosed(e);
+            // #region agent log
+            swClose.Stop();
+            SharpShot.Utils.AgentDebugLog.Write("E,F", "RegionSelectionWindow.OnClosed", "region window closed",
+                new { cleanupMs, baseOnClosedMs = swClose.Elapsed.TotalMilliseconds });
+            // #endregion
         }
 
         private Rectangle GetVirtualDesktopBounds()
@@ -1127,22 +1150,10 @@ namespace SharpShot.UI
                     // Check if we should skip the editor and auto-copy
                     else if (_settingsService?.CurrentSettings?.SkipEditorAndAutoCopy == true)
                     {
-                        // Skip editor, auto-copy to clipboard, and close
-                        try
-                        {
-                            _screenshotService.CopyToClipboard(CapturedBitmap);
-                            System.Diagnostics.Debug.WriteLine("Region screenshot copied to clipboard (editor skipped)");
-
-                            // Mark that copy was requested
-                            EditorCopyRequested = true;
-                            EditorActionCompleted = true;
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Failed to copy to clipboard: {ex.Message}");
-                            // Still close the window even if copy fails
-                        }
-
+                        // Skip editor — MainWindow performs the single clipboard copy
+                        // (avoids double PNG/clipboard work that caused mouse hitch)
+                        EditorCopyRequested = true;
+                        EditorActionCompleted = true;
                         Close();
                     }
                     else

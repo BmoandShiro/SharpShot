@@ -1350,16 +1350,51 @@ namespace SharpShot
                             // Check what action was completed
                             if (regionWindow.EditorCopyRequested)
                             {
-                                // User clicked copy in editor - automatically trigger copy using our working method
-                                System.Diagnostics.Debug.WriteLine("Editor copy requested - automatically triggering copy operation");
-                                
-                                // Use the working MSIX-compatible copy method
-                                _screenshotService.CopyToClipboard(_lastCapturedBitmap);
-                                
-                                // Show success notification
-                                ShowNotification("Screenshot copied to clipboard!", isError: false);
-                                
-                                // Don't show capture options since copy is already done
+                                // User clicked copy in editor - copy after teardown settles so we
+                                // don't race other apps for the clipboard (CLIPBRD_E_CANT_OPEN).
+                                System.Diagnostics.Debug.WriteLine("Editor copy requested - deferring clipboard copy to ApplicationIdle");
+
+                                var bitmapToCopy = _lastCapturedBitmap;
+                                _ = Dispatcher.BeginInvoke(new Action(() =>
+                                {
+                                    try
+                                    {
+                                        // #region agent log
+                                        var swEditorCopy = System.Diagnostics.Stopwatch.StartNew();
+                                        // #endregion
+
+                                        _screenshotService.CopyToClipboard(bitmapToCopy);
+
+                                        // #region agent log
+                                        var copyMs = swEditorCopy.Elapsed.TotalMilliseconds;
+                                        swEditorCopy.Restart();
+                                        // #endregion
+
+                                        ShowNotification("Screenshot copied to clipboard!", isError: false);
+
+                                        // #region agent log
+                                        swEditorCopy.Stop();
+                                        SharpShot.Utils.AgentDebugLog.Write("B,E", "MainWindow.CaptureRegion.EditorCopy", "deferred editor-handoff copy+notify",
+                                            new
+                                            {
+                                                width = bitmapToCopy?.Width,
+                                                height = bitmapToCopy?.Height,
+                                                copyMs,
+                                                notifyMs = swEditorCopy.Elapsed.TotalMilliseconds
+                                            }, runId: "post-fix");
+                                        // #endregion
+                                    }
+                                    catch (Exception copyEx)
+                                    {
+                                        // #region agent log
+                                        SharpShot.Utils.AgentDebugLog.Write("B", "MainWindow.CaptureRegion.EditorCopy", "deferred copy failed",
+                                            new { error = copyEx.GetType().Name, message = copyEx.Message }, runId: "post-fix");
+                                        // #endregion
+                                        ShowNotification("Copy failed!", isError: true);
+                                    }
+                                }), DispatcherPriority.ApplicationIdle);
+
+                                // Don't show capture options since copy is already in progress
                                 return;
                             }
                             else if (regionWindow.EditorSaveRequested)
@@ -1643,25 +1678,27 @@ namespace SharpShot
                 {
                     System.Diagnostics.Debug.WriteLine($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
                     LogToFile($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
+
+                    // #region agent log
+                    var swClick = System.Diagnostics.Stopwatch.StartNew();
+                    // #endregion
                     
                     // Run the copy operation on the UI thread since clipboard requires STA mode
                     _screenshotService.CopyToClipboard(_lastCapturedBitmap);
+
+                    // #region agent log
+                    swClick.Stop();
+                    SharpShot.Utils.AgentDebugLog.Write("B,E", "MainWindow.CopyButton_Click", "dashboard copy click complete",
+                        new
+                        {
+                            width = _lastCapturedBitmap.Width,
+                            height = _lastCapturedBitmap.Height,
+                            totalMs = swClick.Elapsed.TotalMilliseconds
+                        });
+                    // #endregion
                     
                     System.Diagnostics.Debug.WriteLine("Copy operation completed successfully");
                     LogToFile("Copy operation completed successfully");
-                    
-                    // Verify clipboard has data
-                    if (System.Windows.Clipboard.ContainsImage())
-                    {
-                        System.Diagnostics.Debug.WriteLine("Clipboard verification successful - image data is present");
-                        LogToFile("Clipboard verification successful - image data is present");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("Warning: Clipboard verification failed - no image data found");
-                        LogToFile("Warning: Clipboard verification failed - no image data found");
-                        ShowNotification("Copy completed but verification failed", isError: true);
-                    }
                 }
                 else if (!string.IsNullOrEmpty(_lastCapturedFilePath))
                 {
@@ -2022,18 +2059,6 @@ namespace SharpShot
                     
                     System.Diagnostics.Debug.WriteLine("Auto-copy operation completed successfully");
                     LogToFile("Auto-copy operation completed successfully");
-                    
-                    // Verify clipboard has data
-                    if (System.Windows.Clipboard.ContainsImage())
-                    {
-                        System.Diagnostics.Debug.WriteLine("Auto-copy clipboard verification successful - image data is present");
-                        LogToFile("Auto-copy clipboard verification successful - image data is present");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("Warning: Auto-copy clipboard verification failed - no image data found");
-                        LogToFile("Warning: Auto-copy clipboard verification failed - no image data found");
-                    }
                 }
             }
             catch (Exception ex)
