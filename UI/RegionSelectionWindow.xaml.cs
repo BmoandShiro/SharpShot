@@ -114,7 +114,7 @@ namespace SharpShot.UI
         private Bitmap? _freezeFrame; // desktop snapshot taken before overlay (preserves menus)
         private Rectangle? _hoveredSmartRegion;
 
-        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null, bool directCaptureOnly = false)
+        public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null, bool directCaptureOnly = false, Bitmap? preCapturedFreezeFrame = null)
         {
             InitializeComponent();
             _screenshotService = screenshotService;
@@ -135,9 +135,14 @@ namespace SharpShot.UI
             // Position and size the window to cover all monitors
             PositionWindowForAllMonitors();
 
-            // CRITICAL: freeze the desktop BEFORE magnifier/overlay can steal focus and dismiss
-            // open menus, dropdowns, or context menus. Selection crops from this bitmap later.
-            CaptureFreezeFrame();
+            // Prefer a freeze frame captured off the UI thread by the caller. Fall back to
+            // sync capture only if none was provided (keeps menus frozen before overlay show).
+            if (preCapturedFreezeFrame != null)
+                _freezeFrame = preCapturedFreezeFrame;
+            else
+                CaptureFreezeFrameGdiOnly();
+            // Do NOT convert to BitmapSource here — that full-desktop HBITMAP→WPF path was the
+            // open stutter. Apply after the window is loaded/shown.
 
             // Setup event handlers - use Preview events to capture before browser
             PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
@@ -194,6 +199,8 @@ namespace SharpShot.UI
             Loaded += (sender, e) =>
             {
                 LayoutFreezeFrameLayers();
+                // Convert GDI freeze → WPF image now that the window can paint (not in ctor).
+                ApplyFreezeFrameToImage();
                 DrawSmartRegionHighlights(_smartRegionRects);
                 CaptureMouseInput();
                 if (GetCursorPos(out POINT cursor))
@@ -222,14 +229,17 @@ namespace SharpShot.UI
             };
         }
 
-        private void CaptureFreezeFrame()
+        /// <summary>
+        /// Captures the virtual desktop into a GDI bitmap on the calling thread.
+        /// Call from a background thread before constructing the overlay to avoid UI stutter.
+        /// </summary>
+        public static Bitmap? CreateFreezeFrameBitmap()
         {
             try
             {
-                DisposeFreezeFrame();
-                var bounds = _virtualDesktopBounds;
+                var bounds = GetVirtualDesktopBoundsStatic();
                 if (bounds.Width <= 0 || bounds.Height <= 0)
-                    return;
+                    return null;
 
                 // Do NOT hide SharpShot windows first — Visibility changes can dismiss menus.
                 var bmp = new Bitmap(bounds.Width, bounds.Height);
@@ -237,8 +247,21 @@ namespace SharpShot.UI
                 {
                     g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
                 }
-                _freezeFrame = bmp;
-                ApplyFreezeFrameToImage();
+                return bmp;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Freeze frame capture failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        private void CaptureFreezeFrameGdiOnly()
+        {
+            try
+            {
+                DisposeFreezeFrame();
+                _freezeFrame = CreateFreezeFrameBitmap();
             }
             catch (Exception ex)
             {
@@ -247,9 +270,6 @@ namespace SharpShot.UI
             }
         }
 
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
-
         private void ApplyFreezeFrameToImage()
         {
             if (_freezeFrame == null || FreezeFrameImage == null)
@@ -257,20 +277,32 @@ namespace SharpShot.UI
 
             try
             {
-                IntPtr hBitmap = _freezeFrame.GetHbitmap();
+                // LockBits → WriteableBitmap avoids GetHbitmap + CreateBitmapSourceFromHBitmap
+                // (a second full-desktop pixel copy that stuttered on multi-monitor setups).
+                var bmp = _freezeFrame;
+                var rect = new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height);
+                var data = bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly,
+                    System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 try
                 {
-                    var source = Imaging.CreateBitmapSourceFromHBitmap(
-                        hBitmap,
-                        IntPtr.Zero,
-                        Int32Rect.Empty,
-                        System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
-                    source.Freeze();
-                    FreezeFrameImage.Source = source;
+                    var wb = new System.Windows.Media.Imaging.WriteableBitmap(
+                        bmp.Width,
+                        bmp.Height,
+                        96,
+                        96,
+                        System.Windows.Media.PixelFormats.Bgra32,
+                        null);
+                    wb.WritePixels(
+                        new Int32Rect(0, 0, bmp.Width, bmp.Height),
+                        data.Scan0,
+                        data.Stride * bmp.Height,
+                        data.Stride);
+                    wb.Freeze();
+                    FreezeFrameImage.Source = wb;
                 }
                 finally
                 {
-                    DeleteObject(hBitmap);
+                    bmp.UnlockBits(data);
                 }
             }
             catch (Exception ex)
@@ -304,21 +336,10 @@ namespace SharpShot.UI
 
         private void DisposeFreezeFrame()
         {
-            // #region agent log
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            var hadFreeze = _freezeFrame != null;
-            var freezeW = _freezeFrame?.Width ?? 0;
-            var freezeH = _freezeFrame?.Height ?? 0;
-            // #endregion
             if (FreezeFrameImage != null)
                 FreezeFrameImage.Source = null;
             _freezeFrame?.Dispose();
             _freezeFrame = null;
-            // #region agent log
-            sw.Stop();
-            SharpShot.Utils.AgentDebugLog.Write("E", "RegionSelectionWindow.DisposeFreezeFrame", "freeze disposed",
-                new { hadFreeze, freezeW, freezeH, disposeMs = sw.Elapsed.TotalMilliseconds });
-            // #endregion
         }
         
         private void CaptureMouseInput()
@@ -397,27 +418,17 @@ namespace SharpShot.UI
         
         protected override void OnClosed(EventArgs e)
         {
-            // #region agent log
-            var swClose = System.Diagnostics.Stopwatch.StartNew();
-            // #endregion
             // Ensure mouse capture is released when window closes
             ReleaseCapture();
             
             // Ensure magnifier is cleaned up when window closes
             StopMagnifier();
-            // #region agent log
-            var cleanupMs = swClose.Elapsed.TotalMilliseconds;
-            swClose.Restart();
-            // #endregion
             base.OnClosed(e);
-            // #region agent log
-            swClose.Stop();
-            SharpShot.Utils.AgentDebugLog.Write("E,F", "RegionSelectionWindow.OnClosed", "region window closed",
-                new { cleanupMs, baseOnClosedMs = swClose.Elapsed.TotalMilliseconds });
-            // #endregion
         }
 
-        private Rectangle GetVirtualDesktopBounds()
+        private Rectangle GetVirtualDesktopBounds() => GetVirtualDesktopBoundsStatic();
+
+        private static Rectangle GetVirtualDesktopBoundsStatic()
         {
             var allScreens = System.Windows.Forms.Screen.AllScreens;
             if (allScreens.Length == 0)

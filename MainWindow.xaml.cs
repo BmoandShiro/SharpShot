@@ -1312,7 +1312,10 @@ namespace SharpShot
             {
                 // Resolve target under cursor / non-SharpShot foreground before overlay
                 IntPtr targetWindow = SmartRegionDetection.ResolveTargetWindow(GetForegroundWindow());
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow);
+
+                // Capture freeze frame off the UI thread so opening region select doesn't stutter.
+                var freezeFrame = await Task.Run(() => UI.RegionSelectionWindow.CreateFreezeFrameBitmap());
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow, preCapturedFreezeFrame: freezeFrame);
                 
                 // Set the hotkey toggle state to indicate region selection is active
                 _hotkeyManager.SetRegionSelectionActive();
@@ -1498,7 +1501,8 @@ namespace SharpShot
                 }
 
                 IntPtr targetWindow = SmartRegionDetection.ResolveTargetWindow(GetForegroundWindow());
-                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow, directCaptureOnly: true);
+                var freezeFrame = await Task.Run(() => UI.RegionSelectionWindow.CreateFreezeFrameBitmap());
+                var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: false, targetWindowForSmartDetection: targetWindow, directCaptureOnly: true, preCapturedFreezeFrame: freezeFrame);
                 regionWindow.ShowDialog();
 
                 var capturedBitmap = regionWindow.CapturedBitmap;
@@ -1823,10 +1827,11 @@ namespace SharpShot
             }
         }
 
-                private Task StartRegionRecording()
+        private async Task StartRegionRecording()
         {
             IntPtr targetWindow = SmartRegionDetection.ResolveTargetWindow(GetForegroundWindow());
-            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true, targetWindowForSmartDetection: targetWindow);
+            var freezeFrame = await Task.Run(() => UI.RegionSelectionWindow.CreateFreezeFrameBitmap());
+            var regionWindow = new UI.RegionSelectionWindow(_screenshotService, _settingsService, isRecordingMode: true, targetWindowForSmartDetection: targetWindow, preCapturedFreezeFrame: freezeFrame);
             regionWindow.ShowDialog();
             
             // Check if a region was selected
@@ -1863,8 +1868,6 @@ namespace SharpShot
                 // If no region selected, go back to normal buttons
                 ShowNormalButtons();
             }
-            
-            return Task.CompletedTask;
         }
 
         private Task StartFullScreenRecording()
