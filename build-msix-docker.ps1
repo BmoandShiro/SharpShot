@@ -22,8 +22,8 @@ Start-Sleep -Seconds 5
 
 # Build in Docker (same as your working Build Release.bat)
 Write-Host "Building SharpShot in Docker..." -ForegroundColor Yellow
-docker exec sharpshot-development dotnet restore
-docker exec sharpshot-development dotnet build --configuration Release -p:Platform=x64
+docker exec sharpshot-development dotnet restore SharpShot.csproj
+docker exec sharpshot-development dotnet build SharpShot.csproj --configuration Release -p:Platform=x64
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Docker build failed!" -ForegroundColor Red

@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Forms;
 using SharpShot.Models;
+using SharpShot.Utils;
 
 namespace SharpShot.Services
 {
@@ -24,12 +25,8 @@ namespace SharpShot.Services
             {
                 // Get bounds based on selected screen
                 var bounds = GetBoundsForSelectedScreen();
-                
-                using var bitmap = new Bitmap(bounds.Width, bounds.Height);
-                using var graphics = Graphics.FromImage(bitmap);
-                
-                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
-                
+
+                using var bitmap = CaptureStillBitmap(bounds);
                 return SaveScreenshot(bitmap);
             }
             catch (Exception ex)
@@ -121,11 +118,7 @@ namespace SharpShot.Services
         {
             try
             {
-                using var bitmap = new Bitmap(region.Width, region.Height);
-                using var graphics = Graphics.FromImage(bitmap);
-                
-                graphics.CopyFromScreen(region.X, region.Y, 0, 0, region.Size);
-                
+                using var bitmap = CaptureStillBitmap(region);
                 return SaveScreenshot(bitmap);
             }
             catch (Exception ex)
@@ -133,6 +126,30 @@ namespace SharpShot.Services
                 System.Diagnostics.Debug.WriteLine($"Region capture failed: {ex.Message}");
                 return string.Empty;
             }
+        }
+
+        /// <summary>
+        /// Captures screen pixels for the given physical-pixel rectangle.
+        /// Uses DXGI when enabled, otherwise GDI; always returns an opaque 32bpp ARGB bitmap.
+        /// </summary>
+        private Bitmap CaptureStillBitmap(Rectangle bounds)
+        {
+            if (_settingsService.CurrentSettings.UseDxgiCapture)
+            {
+                var dxgi = DxgiDesktopCapture.TryCaptureRegion(bounds, out string mode);
+                System.Diagnostics.Debug.WriteLine($"ScreenshotService DXGI mode={mode}");
+                if (dxgi != null)
+                    return dxgi;
+            }
+
+            var bmp = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppArgb);
+            using (var graphics = Graphics.FromImage(bmp))
+            {
+                graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+            }
+            DxgiDesktopCapture.EnsureOpaqueAlpha(bmp);
+            return bmp;
         }
 
         public string SaveScreenshot(Bitmap bitmap)
@@ -203,10 +220,6 @@ namespace SharpShot.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
 
-                // #region agent log
-                var swTotal = System.Diagnostics.Stopwatch.StartNew();
-                // #endregion
-
                 LogToFile($"Starting clipboard copy for bitmap: {bitmap.Width}x{bitmap.Height}");
 
                 // Win32 clipboard with CF_DIB + PNG (apps like Discord need these; CF_BITMAP alone is not enough).
@@ -214,50 +227,20 @@ namespace SharpShot.Services
                 string lastError = "OpenClipboard Failed";
                 int attempts = 0;
                 bool ok = false;
-                double setMs = 0;
-                double prepMs = 0;
 
-                // #region agent log
-                var swPrep = System.Diagnostics.Stopwatch.StartNew();
-                // #endregion
                 // Build payloads before opening the clipboard so we hold the lock briefly.
                 IntPtr hDib = CreateDibHGlobal(bitmap);
                 IntPtr hPng = CreatePngHGlobal(bitmap);
-                // #region agent log
-                swPrep.Stop();
-                prepMs = swPrep.Elapsed.TotalMilliseconds;
-                // #endregion
 
                 try
                 {
                     for (attempts = 1; attempts <= 10; attempts++)
                     {
-                        // #region agent log
-                        var swAttempt = System.Diagnostics.Stopwatch.StartNew();
-                        // #endregion
-
                         if (TrySetClipboardImageWin32(ref hDib, ref hPng, out lastError))
                         {
-                            // #region agent log
-                            swAttempt.Stop();
-                            setMs = swAttempt.Elapsed.TotalMilliseconds;
                             ok = true;
-                            // #endregion
                             break;
                         }
-
-                        // #region agent log
-                        swAttempt.Stop();
-                        SharpShot.Utils.AgentDebugLog.Write("B", "ScreenshotService.CopyToClipboard", "win32 clipboard attempt failed",
-                            new
-                            {
-                                attempt = attempts,
-                                attemptMs = swAttempt.Elapsed.TotalMilliseconds,
-                                error = lastError,
-                                width = bitmap.Width,
-                                height = bitmap.Height
-                            }, runId: "post-fix");
-                        // #endregion
 
                         try
                         {
@@ -286,23 +269,6 @@ namespace SharpShot.Services
                     }
                 }
 
-                // #region agent log
-                swTotal.Stop();
-                SharpShot.Utils.AgentDebugLog.Write("B", "ScreenshotService.CopyToClipboard", ok ? "win32 clipboard success" : "win32 clipboard failed",
-                    new
-                    {
-                        width = bitmap.Width,
-                        height = bitmap.Height,
-                        attempts,
-                        prepMs,
-                        setMs,
-                        totalMs = swTotal.Elapsed.TotalMilliseconds,
-                        formats = "CF_DIB+PNG",
-                        error = ok ? null : lastError,
-                        threadId = Environment.CurrentManagedThreadId
-                    }, runId: "post-fix");
-                // #endregion
-
                 if (!ok)
                     throw new InvalidOperationException($"Copy to clipboard failed: {lastError}");
 
@@ -311,10 +277,6 @@ namespace SharpShot.Services
             }
             catch (Exception ex)
             {
-                // #region agent log
-                SharpShot.Utils.AgentDebugLog.Write("B", "ScreenshotService.CopyToClipboard", "CopyToClipboard catch",
-                    new { error = ex.GetType().Name, message = ex.Message }, runId: "post-fix");
-                // #endregion
                 System.Diagnostics.Debug.WriteLine($"Copy to clipboard failed: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"Exception type: {ex.GetType().Name}");
                 LogToFile($"Copy to clipboard failed: {ex.Message}");

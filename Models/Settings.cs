@@ -66,6 +66,7 @@ namespace SharpShot.Models
         private bool _useDenseOcrForSmartRegions;
         private bool _skipPostCaptureMenu;
         private bool _hideSharpShotWindowsDuringCapture;
+        private bool _useDxgiCapture;
         private bool _enableAutoUpdateCheck = true;
         private string? _updateRepoOwner;
         private string? _updateRepoName;
@@ -120,6 +121,7 @@ namespace SharpShot.Models
             UseDenseOcrForSmartRegions = true; // Tiled dual-PSM OCR — slower, much better coverage
             SkipPostCaptureMenu = true;
             HideSharpShotWindowsDuringCapture = false; // Default: same as today; enable to omit dashboard/editor from captures
+            UseDxgiCapture = false; // Default off until verified; enable GPU Desktop Duplication for faster freezes
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
             UpdateRepoOwner = null; // Will use default from UpdateService
             UpdateRepoName = null; // Will use default from UpdateService
@@ -510,6 +512,15 @@ namespace SharpShot.Models
         {
             get => _hideSharpShotWindowsDuringCapture;
             set => SetProperty(ref _hideSharpShotWindowsDuringCapture, value);
+        }
+
+        /// <summary>
+        /// When true, still captures prefer DXGI Desktop Duplication (cached GPU path) with GDI fallback.
+        /// </summary>
+        public bool UseDxgiCapture
+        {
+            get => _useDxgiCapture;
+            set => SetProperty(ref _useDxgiCapture, value);
         }
 
         public bool EnableAutoUpdateCheck

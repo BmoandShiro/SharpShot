@@ -29,8 +29,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Docker compose up failed" }
         Start-Sleep -Seconds 5
         Write-Host "Step 2: Building SharpShot in Docker..." -ForegroundColor Yellow
-        docker exec sharpshot-development dotnet restore
-        docker exec sharpshot-development dotnet build --configuration Release -p:Platform=x64
+        docker exec sharpshot-development dotnet restore SharpShot.csproj
+        docker exec sharpshot-development dotnet build SharpShot.csproj --configuration Release -p:Platform=x64
         if ($LASTEXITCODE -eq 0 -and (Test-Path "$sourceDir\SharpShot.exe")) { $dockerSucceeded = $true }
     }
 } catch {
@@ -39,8 +39,8 @@ try {
 
 if (-not $dockerSucceeded) {
     Write-Host "Docker not used or failed. Building locally..." -ForegroundColor Yellow
-    dotnet restore
-    dotnet build --configuration Release -p:Platform=x64
+    dotnet restore SharpShot.csproj
+    dotnet build SharpShot.csproj --configuration Release -p:Platform=x64
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Build failed!" -ForegroundColor Red
         exit 1

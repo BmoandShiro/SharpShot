@@ -225,6 +225,11 @@
                     <ComboBoxItem Content="Monitor 3"/>
                     <ComboBoxItem Content="Monitor 4"/>
                 </ComboBox>
+                <CheckBox x:Name="UseDxgiCaptureCheckBox"
+                          Content="Use GPU capture (DXGI) for faster screenshots"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="Uses DXGI Desktop Duplication for region freeze-frames and fullscreen stills. Falls back to GDI if GPU capture fails. Leave off if you see blank images."/>
                             <TextBlock Text="After capture" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <CheckBox x:Name="AutoCopyScreenshotsCheckBox" 
                           Content="Auto-copy fullscreen and region screenshots to clipboard (failsafe after editor closes)" 

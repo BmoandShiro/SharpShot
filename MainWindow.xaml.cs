@@ -1360,37 +1360,12 @@ namespace SharpShot
                                 {
                                     try
                                     {
-                                        // #region agent log
-                                        var swEditorCopy = System.Diagnostics.Stopwatch.StartNew();
-                                        // #endregion
-
                                         _screenshotService.CopyToClipboard(bitmapToCopy);
-
-                                        // #region agent log
-                                        var copyMs = swEditorCopy.Elapsed.TotalMilliseconds;
-                                        swEditorCopy.Restart();
-                                        // #endregion
-
                                         ShowNotification("Screenshot copied to clipboard!", isError: false);
-
-                                        // #region agent log
-                                        swEditorCopy.Stop();
-                                        SharpShot.Utils.AgentDebugLog.Write("B,E", "MainWindow.CaptureRegion.EditorCopy", "deferred editor-handoff copy+notify",
-                                            new
-                                            {
-                                                width = bitmapToCopy?.Width,
-                                                height = bitmapToCopy?.Height,
-                                                copyMs,
-                                                notifyMs = swEditorCopy.Elapsed.TotalMilliseconds
-                                            }, runId: "post-fix");
-                                        // #endregion
                                     }
                                     catch (Exception copyEx)
                                     {
-                                        // #region agent log
-                                        SharpShot.Utils.AgentDebugLog.Write("B", "MainWindow.CaptureRegion.EditorCopy", "deferred copy failed",
-                                            new { error = copyEx.GetType().Name, message = copyEx.Message }, runId: "post-fix");
-                                        // #endregion
+                                        System.Diagnostics.Debug.WriteLine($"Deferred editor copy failed: {copyEx.Message}");
                                         ShowNotification("Copy failed!", isError: true);
                                     }
                                 }), DispatcherPriority.ApplicationIdle);
@@ -1680,24 +1655,9 @@ namespace SharpShot
                 {
                     System.Diagnostics.Debug.WriteLine($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
                     LogToFile($"Copying bitmap: {_lastCapturedBitmap.Width}x{_lastCapturedBitmap.Height}");
-
-                    // #region agent log
-                    var swClick = System.Diagnostics.Stopwatch.StartNew();
-                    // #endregion
                     
                     // Run the copy operation on the UI thread since clipboard requires STA mode
                     _screenshotService.CopyToClipboard(_lastCapturedBitmap);
-
-                    // #region agent log
-                    swClick.Stop();
-                    SharpShot.Utils.AgentDebugLog.Write("B,E", "MainWindow.CopyButton_Click", "dashboard copy click complete",
-                        new
-                        {
-                            width = _lastCapturedBitmap.Width,
-                            height = _lastCapturedBitmap.Height,
-                            totalMs = swClick.Elapsed.TotalMilliseconds
-                        });
-                    // #endregion
                     
                     System.Diagnostics.Debug.WriteLine("Copy operation completed successfully");
                     LogToFile("Copy operation completed successfully");

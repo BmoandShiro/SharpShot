@@ -56,12 +56,24 @@ namespace SharpShot.UI
         
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
         
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT
         {
             public int X;
             public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
         }
         
         private const int MDT_EFFECTIVE_DPI = 0;
@@ -113,6 +125,7 @@ namespace SharpShot.UI
         private bool _isPotentialClick; // true until user moves enough to count as drag
         private Bitmap? _freezeFrame; // desktop snapshot taken before overlay (preserves menus)
         private Rectangle? _hoveredSmartRegion;
+        private bool _applyingPhysicalBounds;
 
         public RegionSelectionWindow(ScreenshotService screenshotService, SettingsService? settingsService = null, bool isRecordingMode = false, IntPtr? targetWindowForSmartDetection = null, bool directCaptureOnly = false, Bitmap? preCapturedFreezeFrame = null)
         {
@@ -157,10 +170,10 @@ namespace SharpShot.UI
             // Ensure the window can capture keyboard input and connect the KeyDown event
             Focusable = true;
 
-            // Set window to capture all keyboard input
+            // Opaque window: freeze frame covers the full virtual desktop, so layered
+            // transparency is unnecessary and made SetWindowPos(~5760x4452) take ~1.8s.
             WindowStyle = WindowStyle.None;
-            AllowsTransparency = true;
-            Background = System.Windows.Media.Brushes.Transparent;
+            Background = System.Windows.Media.Brushes.Black;
 
             // Connect keyboard events
             KeyDown += OnKeyDown;
@@ -231,6 +244,7 @@ namespace SharpShot.UI
 
         /// <summary>
         /// Captures the virtual desktop into a GDI bitmap on the calling thread.
+        /// Prefer DXGI Desktop Duplication when enabled; fall back to GDI CopyFromScreen.
         /// Call from a background thread before constructing the overlay to avoid UI stutter.
         /// </summary>
         public static Bitmap? CreateFreezeFrameBitmap()
@@ -242,11 +256,23 @@ namespace SharpShot.UI
                     return null;
 
                 // Do NOT hide SharpShot windows first — Visibility changes can dismiss menus.
-                var bmp = new Bitmap(bounds.Width, bounds.Height);
-                using (var g = Graphics.FromImage(bmp))
+                bool useDxgi = App.SettingsService?.CurrentSettings?.UseDxgiCapture == true;
+                if (useDxgi)
                 {
-                    g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size);
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var dxgiBmp = SharpShot.Utils.DxgiDesktopCapture.TryCaptureVirtualDesktop(out bounds, out string mode);
+                    sw.Stop();
+                    System.Diagnostics.Debug.WriteLine(
+                        $"Freeze frame DXGI mode={mode}, size={dxgiBmp?.Width}x{dxgiBmp?.Height}, ms={sw.Elapsed.TotalMilliseconds:F1}");
+                    if (dxgiBmp != null)
+                        return dxgiBmp;
                 }
+
+                var gdiSw = System.Diagnostics.Stopwatch.StartNew();
+                var bmp = SharpShot.Utils.DxgiDesktopCapture.CaptureVirtualDesktopGdi(bounds);
+                gdiSw.Stop();
+                System.Diagnostics.Debug.WriteLine(
+                    $"Freeze frame GDI size={bmp.Width}x{bmp.Height}, ms={gdiSw.Elapsed.TotalMilliseconds:F1}");
                 return bmp;
             }
             catch (Exception ex)
@@ -483,31 +509,58 @@ namespace SharpShot.UI
         /// </summary>
         private void ApplyPhysicalDesktopBounds()
         {
+            // SetWindowPos on a virtual-desktop-sized window dispatches nested WM_DPICHANGED /
+            // layout messages. Without this guard, OnDpiChanged re-enters here and the open
+            // path stalls for ~1–2s.
+            if (_applyingPhysicalBounds)
+                return;
+
             var b = _virtualDesktopBounds; // physical pixels (process is Per-Monitor-V2 aware)
             var hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero)
                 return;
 
-            SetWindowPos(hwnd, HWND_TOPMOST, b.X, b.Y, b.Width, b.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+            _applyingPhysicalBounds = true;
+            try
+            {
+                SetWindowPos(hwnd, HWND_TOPMOST, b.X, b.Y, b.Width, b.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
-            double dpi = GetWindowDpiScale(hwnd);
-            if (dpi <= 0) dpi = 1.0;
+                double dpi = GetWindowDpiScale(hwnd);
+                if (dpi <= 0) dpi = 1.0;
 
-            Left = b.X / dpi;
-            Top = b.Y / dpi;
-            Width = b.Width / dpi;
-            Height = b.Height / dpi;
+                Left = b.X / dpi;
+                Top = b.Y / dpi;
+                Width = b.Width / dpi;
+                Height = b.Height / dpi;
 
-            // Re-pin the physical rectangle in case assigning the WPF size/pos nudged the HWND.
-            SetWindowPos(hwnd, HWND_TOPMOST, b.X, b.Y, b.Width, b.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+                // Re-pin only if WPF size assignment moved the HWND off the physical rect.
+                GetWindowRect(hwnd, out RECT wr);
+                int w = wr.Right - wr.Left;
+                int h = wr.Bottom - wr.Top;
+                if (wr.Left != b.X || wr.Top != b.Y || w != b.Width || h != b.Height)
+                {
+                    SetWindowPos(hwnd, HWND_TOPMOST, b.X, b.Y, b.Width, b.Height, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+                }
+            }
+            finally
+            {
+                _applyingPhysicalBounds = false;
+            }
         }
 
         protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
         {
             base.OnDpiChanged(oldDpi, newDpi);
-            // Windows reassigned the window's DPI (e.g., its majority moved to another monitor);
-            // re-apply so the overlay keeps covering the whole desktop at the new scale.
-            ApplyPhysicalDesktopBounds();
+            // Ignore nested DPI changes caused by ApplyPhysicalDesktopBounds itself.
+            if (_applyingPhysicalBounds)
+                return;
+            // Coalesce: one re-apply after the current DPI change settles.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_applyingPhysicalBounds || _activeInstance != this)
+                    return;
+                ApplyPhysicalDesktopBounds();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private double GetWindowDpiScale(IntPtr hwnd)
@@ -1020,7 +1073,7 @@ namespace SharpShot.UI
                     new Rectangle(0, 0, _freezeFrame.Width, _freezeFrame.Height),
                     new Rectangle(srcX, srcY, actualWidth, actualHeight));
                 if (cropRect.Width > 0 && cropRect.Height > 0)
-                    return _freezeFrame.Clone(cropRect, _freezeFrame.PixelFormat);
+                    return SharpShot.Utils.DxgiDesktopCapture.CloneOpaque(_freezeFrame, cropRect);
             }
 
             Visibility = Visibility.Hidden;
@@ -1029,10 +1082,12 @@ namespace SharpShot.UI
 
             using (CaptureUiSuppression.BeginIfEnabled(_settingsService))
             {
-                using var bitmap = new Bitmap(actualWidth, actualHeight);
+                using var bitmap = new Bitmap(actualWidth, actualHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
                 using var graphics = Graphics.FromImage(bitmap);
                 graphics.CopyFromScreen(actualX, actualY, 0, 0, new System.Drawing.Size(actualWidth, actualHeight));
-                return new Bitmap(bitmap);
+                var result = new Bitmap(bitmap);
+                SharpShot.Utils.DxgiDesktopCapture.EnsureOpaqueAlpha(result);
+                return result;
             }
         }
 

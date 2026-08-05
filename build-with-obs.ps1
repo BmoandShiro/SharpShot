@@ -14,15 +14,15 @@ $ErrorActionPreference = "Stop"
 try {
     # Step 1: Clean previous builds
     Write-Host "Cleaning previous builds..." -ForegroundColor Yellow
-    dotnet clean --configuration $Configuration
+    dotnet clean SharpShot.csproj --configuration $Configuration
     
     # Step 2: Restore dependencies
     Write-Host "Restoring dependencies..." -ForegroundColor Yellow
-    dotnet restore
+    dotnet restore SharpShot.csproj
     
     # Step 3: Build the application
     Write-Host "Building SharpShot..." -ForegroundColor Yellow
-    dotnet build --configuration $Configuration -p:Platform=$Platform --no-restore
+    dotnet build SharpShot.csproj --configuration $Configuration -p:Platform=$Platform --no-restore
     
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed!"

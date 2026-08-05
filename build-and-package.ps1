@@ -26,7 +26,7 @@ if (!(Test-Path $ffmpegPath)) {
 
 # Build the application
 Write-Host "Building application..." -ForegroundColor Yellow
-dotnet build --configuration Release -p:Platform=x64
+dotnet build SharpShot.csproj --configuration Release -p:Platform=x64
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Build failed!" -ForegroundColor Red

@@ -3,13 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Region Selection"
         WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Transparent"
+        AllowsTransparency="False"
+        Background="Black"
         ShowActivated="False"
         ShowInTaskbar="False"
         ResizeMode="NoResize">
     
-    <Canvas x:Name="SelectionCanvas" Background="#01000000">
+    <Canvas x:Name="SelectionCanvas" Background="Black">
         <!-- Frozen desktop snapshot so open menus/dropdowns stay capturable even if focus changes -->
         <Image x:Name="FreezeFrameImage"
                Stretch="Fill"

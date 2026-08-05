@@ -511,6 +511,7 @@ namespace SharpShot.UI
             UseDenseOcrForSmartRegionsCheckBox.IsChecked = _originalSettings.UseDenseOcrForSmartRegions;
             SkipPostCaptureMenuCheckBox.IsChecked = _originalSettings.SkipPostCaptureMenu;
             HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
+            UseDxgiCaptureCheckBox.IsChecked = _originalSettings.UseDxgiCapture;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
             EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
@@ -956,6 +957,7 @@ namespace SharpShot.UI
                 _originalSettings.UseDenseOcrForSmartRegions = UseDenseOcrForSmartRegionsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
+                _originalSettings.UseDxgiCapture = UseDxgiCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 _originalSettings.EnableSmartRegionDetection = EnableSmartRegionDetectionCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
@@ -1076,6 +1078,11 @@ namespace SharpShot.UI
                 
                 // Save settings
                 _settingsService.SaveSettings();
+
+                if (_settingsService.CurrentSettings.UseDxgiCapture)
+                {
+                    _ = System.Threading.Tasks.Task.Run(() => SharpShot.Utils.DxgiDesktopCapture.Warmup());
+                }
                 
                 // Apply theme changes immediately
                 ApplyThemeChanges();
@@ -1195,6 +1202,7 @@ namespace SharpShot.UI
             target.UseDenseOcrForSmartRegions = source.UseDenseOcrForSmartRegions;
             target.SkipPostCaptureMenu = source.SkipPostCaptureMenu;
             target.HideSharpShotWindowsDuringCapture = source.HideSharpShotWindowsDuringCapture;
+            target.UseDxgiCapture = source.UseDxgiCapture;
             target.EnableMagnifier = source.EnableMagnifier;
             target.EnableSmartRegionDetection = source.EnableSmartRegionDetection;
             target.DisableAllPopups = source.DisableAllPopups;
@@ -1583,6 +1591,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(SkipPostCaptureMenuCheckBox, themeColor);
                 if (HideSharpShotWindowsDuringCaptureCheckBox != null && HideSharpShotWindowsDuringCaptureCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(HideSharpShotWindowsDuringCaptureCheckBox, themeColor);
+                if (UseDxgiCaptureCheckBox != null && UseDxgiCaptureCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(UseDxgiCaptureCheckBox, themeColor);
                 if (EnableMagnifierCheckBox != null && EnableMagnifierCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
                 if (EnableSmartRegionDetectionCheckBox != null && EnableSmartRegionDetectionCheckBox.IsLoaded)

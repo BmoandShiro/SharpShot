@@ -46,6 +46,13 @@ namespace SharpShot
             // Track last clicked/activated non-SharpShot window for region select targeting
             LastExternalWindowTracker.Start();
 
+            // Prefetch DXGI sessions when GPU capture is already enabled so the first
+            // region hotkey is not a cold DuplicateOutput hit.
+            if (_settingsService.CurrentSettings.UseDxgiCapture)
+            {
+                _ = Task.Run(() => DxgiDesktopCapture.Warmup());
+            }
+
             // Check for updates in background (if enabled)
             if (_settingsService.CurrentSettings.EnableAutoUpdateCheck)
             {
