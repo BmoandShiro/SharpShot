@@ -203,8 +203,8 @@ namespace SharpShot.UI
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
             InitializeComponent();
-            var av = Assembly.GetExecutingAssembly().GetName().Version;
-            VersionTextBlock.Text = av != null ? $"v{av}" : "v?";
+            VersionTextBlock.Text = App.UpdateService?.GetCurrentVersionDisplay()
+                ?? (Assembly.GetExecutingAssembly().GetName().Version is { } av ? $"v{av}" : "v?");
             _settingsService = settingsService;
             _hotkeyManager = hotkeyManager;
             _originalSettings = new Settings();
@@ -2116,13 +2116,25 @@ namespace SharpShot.UI
         private Style CreateModernButtonStyle(System.Windows.Media.Color themeColor, double width = 100.0, double height = 36.0, bool allowDynamicWidth = false) =>
             ThemeButtonStyleHelper.CreateModernButtonStyle(themeColor, _originalSettings.HoverOpacity, _originalSettings.DropShadowOpacity, width, height, allowDynamicWidth);
 
+        private void ApplyThemedButton(Button? button, System.Windows.Media.Color color, System.Windows.Media.SolidColorBrush brush,
+            double width, double height, bool allowDynamicWidth = false)
+        {
+            if (button == null) return;
+            button.Style = CreateModernButtonStyle(color, width, height, allowDynamicWidth);
+            button.Foreground = brush;
+            if (button.Content is TextBlock text)
+                text.Foreground = brush;
+        }
 
-
-
-
-
-
-
+        private void ApplyRecordingSectionTheme(System.Windows.Media.Color color, System.Windows.Media.SolidColorBrush brush)
+        {
+            // Compact outlined actions — Content is plain text, so set Foreground on the button.
+            ApplyThemedButton(DetectObsButton, color, brush, 90, 32, allowDynamicWidth: true);
+            ApplyThemedButton(BrowseObsButton, color, brush, 100, 32, allowDynamicWidth: true);
+            ApplyThemedButton(UnlinkObsButton, color, brush, 90, 32, allowDynamicWidth: true);
+            ApplyThemedButton(LinkCustomAppButton, color, brush, 90, 32, allowDynamicWidth: true);
+            ApplyThemedButton(UnlinkCustomAppButton, color, brush, 90, 32, allowDynamicWidth: true);
+        }
 
         private void UpdateThemeColors()
         {
@@ -2171,6 +2183,8 @@ namespace SharpShot.UI
                     if (ResetRecommendedDefaultsButton.Content is TextBlock resetDefaultsText)
                         resetDefaultsText.Foreground = brush;
                 }
+
+                ApplyRecordingSectionTheme(color, brush);
                 
                 // Update Check for Updates button with dynamic hover effects
                 if (CheckForUpdatesButton != null)
@@ -2360,6 +2374,8 @@ namespace SharpShot.UI
                     if (ResetRecommendedDefaultsButton.Content is TextBlock resetDefaultsText)
                         resetDefaultsText.Foreground = brush;
                 }
+
+                ApplyRecordingSectionTheme(color, brush);
                 
                 // Update Check for Updates button
                 if (CheckForUpdatesButton != null)
@@ -4140,8 +4156,8 @@ namespace SharpShot.UI
                     UpdateStatusText.Text = $"Update available: Version {updateInfo.Version}";
                     UpdateStatusText.Foreground = new SolidColorBrush(Colors.LightGreen);
                     
-                    // Show update window in front of Settings (Owner + Activate)
-                    var updateWindow = new UpdateWindow(App.UpdateService, updateInfo);
+                    // Start download/install from Settings (Update Now was removed from the popup).
+                    var updateWindow = new UpdateWindow(App.UpdateService, updateInfo, autoStartUpdate: true);
                     updateWindow.Owner = this;
                     updateWindow.Show();
                     updateWindow.Activate();

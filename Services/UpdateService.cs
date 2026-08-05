@@ -29,17 +29,56 @@ namespace SharpShot.Services
             _settingsService = settingsService;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "SharpShot-Updater/1.0");
+            // API checks are quick; downloads use a separate long-timeout client.
             _httpClient.Timeout = TimeSpan.FromSeconds(30);
         }
 
         /// <summary>
-        /// Gets the current application version
+        /// Gets the current application version (Version sidecar → FileVersion → assembly).
         /// </summary>
         public Version GetCurrentVersion()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var version = assembly.GetName().Version;
-            return version ?? new Version(1, 0, 0, 0);
+            // 1) Sidecar Version file next to the exe (written on each release / update apply)
+            try
+            {
+                var versionPath = Path.Combine(AppContext.BaseDirectory, "Version");
+                if (File.Exists(versionPath))
+                {
+                    var text = File.ReadAllText(versionPath).Trim().TrimStart('v', 'V');
+                    if (Version.TryParse(text, out var fromFile))
+                        return fromFile;
+                }
+            }
+            catch
+            {
+                // ignore and fall through
+            }
+
+            // 2) FileVersion from the running executable (works for single-file publishes)
+            try
+            {
+                var exePath = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
+                {
+                    var fvi = FileVersionInfo.GetVersionInfo(exePath);
+                    if (!string.IsNullOrWhiteSpace(fvi.FileVersion) &&
+                        Version.TryParse(fvi.FileVersion, out var fromFvi))
+                        return fromFvi;
+                }
+            }
+            catch
+            {
+                // ignore and fall through
+            }
+
+            var assembly = Assembly.GetExecutingAssembly().GetName().Version;
+            return assembly ?? new Version(1, 0, 0, 0);
+        }
+
+        /// <summary>Display string for UI (e.g. settings footer).</summary>
+        public string GetCurrentVersionDisplay()
+        {
+            return $"v{GetCurrentVersion()}";
         }
 
         /// <summary>
@@ -173,17 +212,17 @@ namespace SharpShot.Services
                     Percentage = 0
                 });
 
-                // Download the update zip
+                // Download the update zip (to temp — app install folder is untouched until exit)
                 var zipPath = Path.Combine(tempDirectory, "update.zip");
                 await DownloadFileAsync(downloadUrl, zipPath, progress);
 
-                progress?.Report(new UpdateProgress { Status = "Extracting update...", Percentage = 50 });
+                progress?.Report(new UpdateProgress { Status = "Extracting update...", Percentage = 100 });
 
                 // Extract to temp directory
                 var extractPath = Path.Combine(tempDirectory, "extracted");
                 ZipFile.ExtractToDirectory(zipPath, extractPath);
 
-                progress?.Report(new UpdateProgress { Status = "Preparing update...", Percentage = 75 });
+                progress?.Report(new UpdateProgress { Status = "Preparing update...", Percentage = 100 });
 
                 // Resolve the extracted payload root (must contain SharpShot.exe)
                 var payloadDirectory = FindPortablePayloadDirectory(extractPath);
@@ -195,6 +234,16 @@ namespace SharpShot.Services
                         Percentage = 0
                     });
                     return false;
+                }
+
+                // Ensure the installed Version sidecar matches the release tag after apply
+                try
+                {
+                    File.WriteAllText(Path.Combine(payloadDirectory, "Version"), updateInfo.Version.TrimStart('v', 'V'));
+                }
+                catch
+                {
+                    // non-fatal
                 }
 
                 // Create update script
@@ -310,17 +359,22 @@ namespace SharpShot.Services
 
         private async Task DownloadFileAsync(string url, string destinationPath, IProgress<UpdateProgress>? progress)
         {
-            using var response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            // Long timeout — release zips can be large; the default API client is only 30s.
+            using var downloadClient = new HttpClient();
+            downloadClient.DefaultRequestHeaders.Add("User-Agent", "SharpShot-Updater/1.0");
+            downloadClient.Timeout = TimeSpan.FromHours(2);
+
+            using var response = await downloadClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1L;
             var canReportProgress = totalBytes > 0 && progress != null;
 
-            using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.Read);
             using var contentStream = await response.Content.ReadAsStreamAsync();
             
             var totalBytesRead = 0L;
-            var buffer = new byte[8192];
+            var buffer = new byte[81920];
             var isMoreToRead = true;
 
             do
@@ -337,11 +391,19 @@ namespace SharpShot.Services
 
                     if (canReportProgress)
                     {
-                        var percentage = (int)((totalBytesRead * 100) / totalBytes);
+                        var percentage = (int)((totalBytesRead * 100L) / totalBytes);
                         progress?.Report(new UpdateProgress 
                         { 
                             Status = $"Downloading... {FormatBytes(totalBytesRead)} / {FormatBytes(totalBytes)}",
-                            Percentage = Math.Min(percentage, 50) // Cap at 50% since extraction is the other 50%
+                            Percentage = Math.Clamp(percentage, 0, 100)
+                        });
+                    }
+                    else if (progress != null)
+                    {
+                        progress.Report(new UpdateProgress
+                        {
+                            Status = $"Downloading... {FormatBytes(totalBytesRead)}",
+                            Percentage = 0
                         });
                     }
                 }

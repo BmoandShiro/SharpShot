@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
-using System.Windows.Threading;
 using SharpShot.Services;
 using SharpShot.Utils;
 
@@ -12,23 +11,38 @@ namespace SharpShot.UI
     {
         private readonly UpdateService _updateService;
         private readonly UpdateInfo _updateInfo;
+        private readonly bool _autoStartUpdate;
         private bool _isUpdating = false;
 
-        public UpdateWindow(UpdateService updateService, UpdateInfo updateInfo)
+        /// <param name="autoStartUpdate">
+        /// When true (Settings → Check Now), download/install starts immediately.
+        /// When false (startup notification), the window is informational only.
+        /// </param>
+        public UpdateWindow(UpdateService updateService, UpdateInfo updateInfo, bool autoStartUpdate = false)
         {
             InitializeComponent();
             _updateService = updateService;
             _updateInfo = updateInfo;
+            _autoStartUpdate = autoStartUpdate;
 
             var current = _updateService.GetCurrentVersion();
-            // Was: Version + ReleaseName (often both "1.2.9.3" / "v1.2.9.3" from GitHub — looked like wrong "current" version)
             VersionText.Text = $"You have v{current} · New release: v{updateInfo.Version}";
             ReleaseNotesText.Text = updateInfo.ReleaseNotes;
 
+            if (_autoStartUpdate)
+            {
+                HintText.Text = "Downloading in the background — you can keep using your PC. SharpShot will restart when the update is ready to apply.";
+            }
+
             ApplyThemedButtons();
 
-            // Make window draggable
             MouseDown += (s, e) => { if (e.ChangedButton == System.Windows.Input.MouseButton.Left) DragMove(); };
+
+            Loaded += async (_, _) =>
+            {
+                if (_autoStartUpdate)
+                    await StartUpdateAsync();
+            };
         }
 
         private void ApplyThemedButtons()
@@ -36,44 +50,24 @@ namespace SharpShot.UI
             var s = SharpShot.App.SettingsService.CurrentSettings;
             var iconColor = string.IsNullOrEmpty(s.IconColor) ? "#FFFF8C00" : s.IconColor;
             var color = (Color)ColorConverter.ConvertFromString(iconColor);
-            var brush = new SolidColorBrush(color);
-
-            LaterButton.Style = ThemeButtonStyleHelper.CreateModernButtonStyle(color, s.HoverOpacity, s.DropShadowOpacity, 100, 35);
-            if (LaterButton.Content is System.Windows.Controls.TextBlock laterTb)
-                laterTb.Foreground = brush;
-
-            UpdateButton.Style = ThemeButtonStyleHelper.CreateModernButtonStyle(color, s.HoverOpacity, s.DropShadowOpacity, 120, 35);
-            if (UpdateButton.Content is System.Windows.Controls.TextBlock updateTb)
-                updateTb.Foreground = brush;
 
             UpdateCloseButton.Style = ThemeButtonStyleHelper.CreateCloseButtonStyle(color, s.HoverOpacity, s.DropShadowOpacity);
             if (UpdateCloseButton.Content is System.Windows.Controls.TextBlock closeTb)
-                closeTb.Foreground = brush;
+                closeTb.Foreground = new SolidColorBrush(color);
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             if (!_isUpdating)
-            {
                 Close();
-            }
         }
 
-        private void LaterButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (!_isUpdating)
-            {
-                Close();
-            }
-        }
-
-        private async void UpdateButton_Click(object sender, RoutedEventArgs e)
+        private async Task StartUpdateAsync()
         {
             if (_isUpdating) return;
 
             _isUpdating = true;
-            UpdateButton.IsEnabled = false;
-            LaterButton.IsEnabled = false;
+            UpdateCloseButton.IsEnabled = false;
             ProgressPanel.Visibility = Visibility.Visible;
 
             var progress = new Progress<UpdateProgress>(p =>
@@ -96,8 +90,7 @@ namespace SharpShot.UI
                     {
                         StatusText.Text = "Update failed. Please try downloading manually from GitHub.";
                         StatusText.Visibility = Visibility.Visible;
-                        UpdateButton.IsEnabled = true;
-                        LaterButton.IsEnabled = true;
+                        UpdateCloseButton.IsEnabled = true;
                         _isUpdating = false;
                     });
                 }
@@ -109,12 +102,10 @@ namespace SharpShot.UI
                 {
                     StatusText.Text = $"Error: {ex.Message}";
                     StatusText.Visibility = Visibility.Visible;
-                    UpdateButton.IsEnabled = true;
-                    LaterButton.IsEnabled = true;
+                    UpdateCloseButton.IsEnabled = true;
                     _isUpdating = false;
                 });
             }
         }
     }
 }
-

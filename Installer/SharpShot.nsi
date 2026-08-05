@@ -5,8 +5,8 @@
 
 !define APP_NAME "SharpShot"
 !define APP_PUBLISHER "BmoandShiro"
-!define APP_VERSION "1.3.0.3"
-!define APP_PORTABLE_DIR "SharpShot-Release-v1.3.0.3"
+!define APP_VERSION "1.3.0.5"
+!define APP_PORTABLE_DIR "SharpShot-Release-v1.3.0.5"
 !define APP_ICON "..\output_color.ico"
 
 ; Output installer

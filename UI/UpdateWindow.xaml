@@ -15,7 +15,6 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- Header (accent from theme) -->
@@ -46,6 +45,9 @@
                     </TextBlock>
                     
                     <TextBlock Name="VersionText" TextWrapping="Wrap" Foreground="#FFCCCCCC" Margin="0,0,0,15"/>
+
+                    <TextBlock Name="HintText" TextWrapping="Wrap" Foreground="#FFAAAAAA" FontSize="12" Margin="0,0,0,15"
+                               Text="Open Settings → Updates and click Check Now to download and install. You can keep using your PC while it downloads."/>
                     
                     <TextBlock Text="Release Notes:" FontWeight="Bold" Foreground="White" Margin="0,10,0,5"/>
                     <Border Background="#FF2D2D2D" CornerRadius="5" Padding="10" MaxHeight="200">
@@ -60,31 +62,16 @@
                     <!-- Progress Section (shown during download) -->
                     <StackPanel Name="ProgressPanel" Visibility="Collapsed" Margin="0,15,0,0">
                         <TextBlock Name="ProgressStatusText" TextWrapping="Wrap" Foreground="White" Margin="0,0,0,10"/>
-                        <ProgressBar Name="ProgressBar" Height="20" Margin="0,0,0,5" Foreground="{DynamicResource AccentBrush}"/>
+                        <ProgressBar Name="ProgressBar" Height="20" Minimum="0" Maximum="100" Margin="0,0,0,5" Foreground="{DynamicResource AccentBrush}"/>
                         <TextBlock Name="ProgressPercentageText" TextAlignment="Center" Foreground="#FFCCCCCC" FontSize="12"/>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Buttons -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="15,10,15,10">
-                <Button x:Name="LaterButton"
-                        Click="LaterButton_Click" Margin="0,0,10,0">
-                    <TextBlock Text="Later" FontSize="14" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
-                <Button x:Name="UpdateButton"
-                        Click="UpdateButton_Click">
-                    <TextBlock Text="Update Now" FontSize="14" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                </Button>
-            </StackPanel>
-
             <!-- Status Text (for errors) -->
-            <TextBlock Grid.Row="3" Name="StatusText" TextWrapping="Wrap" 
-                      Foreground="#FFFF6B6B" Margin="15,0,15,10" 
+            <TextBlock Grid.Row="2" Name="StatusText" TextWrapping="Wrap" 
+                      Foreground="#FFFF6B6B" Margin="15,10,15,15" 
                       Visibility="Collapsed" TextAlignment="Center"/>
         </Grid>
     </Border>
 </Window>
-

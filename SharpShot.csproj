@@ -8,8 +8,8 @@
     <Nullable>enable</Nullable>
     <AssemblyTitle>SharpShot</AssemblyTitle>
     <AssemblyDescription>Dark-themed screenshot and screen recording tool</AssemblyDescription>
-    <AssemblyVersion>1.3.0.3</AssemblyVersion>
-    <FileVersion>1.3.0.3</FileVersion>
+    <AssemblyVersion>1.3.0.5</AssemblyVersion>
+    <FileVersion>1.3.0.5</FileVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -70,6 +70,11 @@
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)tessdata\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="$(MSBuildThisFileDirectory)*.traineddata" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Sidecar version for settings display / update checks (kept in sync by Apply-Version.ps1) -->
+  <ItemGroup>
+    <None Include="Version" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- OBS Studio Bundling removed to prevent infinite loop -->
