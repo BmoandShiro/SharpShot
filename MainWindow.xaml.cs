@@ -28,6 +28,8 @@ namespace SharpShot
         private readonly HotkeyManager _hotkeyManager;
         private System.Windows.Forms.NotifyIcon? _trayIcon;
         private Icon? _ownedTrayIcon;
+        private Icon? _ownedTaskbarIconSmall;
+        private Icon? _ownedTaskbarIconBig;
         private Point? _dashboardPreCapturePosition;
         private bool _dashboardTemporarilyMovedFromCapture;
         private double _effectiveBaseDashboardWidth;
@@ -43,6 +45,9 @@ namespace SharpShot
         private const int WM_ACTIVATE = 0x0006;
         private const int WA_INACTIVE = 0;
         private const int WM_NCLBUTTONDOWN = 0x00A1;
+        private const int WM_SETICON = 0x0080;
+        private const int ICON_SMALL = 0;
+        private const int ICON_BIG = 1;
         private const int HTLEFT = 10;
         private const int HTRIGHT = 11;
         private const int HTTOP = 12;
@@ -1067,6 +1072,10 @@ namespace SharpShot
 
                 _ownedTrayIcon?.Dispose();
                 _ownedTrayIcon = null;
+                _ownedTaskbarIconSmall?.Dispose();
+                _ownedTaskbarIconSmall = null;
+                _ownedTaskbarIconBig?.Dispose();
+                _ownedTaskbarIconBig = null;
             }
             catch (Exception ex)
             {
@@ -2198,11 +2207,49 @@ namespace SharpShot
                     themedIcon.Dispose();
                 }
 
+                // WPF property (used when the shell honors it)
                 Icon = ThemedIconHelper.CreateWindowIcon(colorHex);
+
+                // Borderless/transparent windows often ignore Window.Icon for the taskbar;
+                // push themed HICONs via WM_SETICON once the HWND exists.
+                ApplyNativeTaskbarIcons(colorHex);
+
+                // Pinned shortcuts use .lnk IconLocation, not WM_SETICON — refresh AppData .ico.
+                var pinColor = colorHex;
+                _ = System.Threading.Tasks.Task.Run(() =>
+                    PinnedTaskbarIconService.SyncThemedPinnedIcon(pinColor));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to apply themed app icons: {ex.Message}");
+            }
+        }
+
+        private void ApplyNativeTaskbarIcons(string? colorHex)
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero)
+                return;
+
+            try
+            {
+                var small = ThemedIconHelper.CreateTaskbarIconSmall(colorHex);
+                var big = ThemedIconHelper.CreateTaskbarIconBig(colorHex);
+
+                var previousSmall = _ownedTaskbarIconSmall;
+                var previousBig = _ownedTaskbarIconBig;
+                _ownedTaskbarIconSmall = small;
+                _ownedTaskbarIconBig = big;
+
+                SendMessage(hwnd, WM_SETICON, (IntPtr)ICON_SMALL, small.Handle);
+                SendMessage(hwnd, WM_SETICON, (IntPtr)ICON_BIG, big.Handle);
+
+                previousSmall?.Dispose();
+                previousBig?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply native taskbar icons: {ex.Message}");
             }
         }
 
@@ -2529,6 +2576,10 @@ namespace SharpShot
             // Make the window non-activating when clicked (but still allow interaction)
             // This prevents focus stealing when buttons are clicked
             MakeWindowNonActivating(hwnd);
+
+            // HWND now exists — re-apply themed taskbar icons via WM_SETICON
+            // (InitializeTrayIcon runs before the handle is available).
+            ApplyNativeTaskbarIcons(_settingsService.CurrentSettings.IconColor);
             
             // CRITICAL: NOW apply saved hotkeys AFTER the window handle is set
             ApplySavedHotkeys();

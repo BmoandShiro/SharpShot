@@ -21,6 +21,9 @@ namespace SharpShot
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // Before any window: group this process with Start Menu / pinned shortcuts.
+            PinnedTaskbarIconService.SetProcessAppUserModelId();
+
             base.OnStartup(e);
             
             // Initialize services
@@ -58,6 +61,10 @@ namespace SharpShot
             {
                 Task.Run(async () => await CheckForUpdatesAsync());
             }
+
+            // Write themed .ico + refresh Start Menu / pinned taskbar shortcuts (off UI).
+            var iconColor = _settingsService.CurrentSettings.IconColor;
+            _ = Task.Run(() => PinnedTaskbarIconService.SyncThemedPinnedIcon(iconColor));
         }
 
         private void EnsureDefaultSaveDirectoryExists()

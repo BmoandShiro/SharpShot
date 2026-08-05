@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -38,6 +40,32 @@ namespace SharpShot.Utils
             return CreateOwnedIcon(source);
         }
 
+        /// <summary>
+        /// Small taskbar / alt-tab icon (16 or 32). Caller owns and must Dispose.
+        /// </summary>
+        public static Icon CreateTaskbarIconSmall(string? colorHex)
+        {
+            var color = ParseColor(colorHex);
+            using var bmp = TintEmbeddedPng(Resource16, color) ?? TintEmbeddedPng(Resource32, color);
+            if (bmp == null)
+                return SystemIcons.Application;
+            return CreateOwnedIcon(bmp);
+        }
+
+        /// <summary>
+        /// Large taskbar / alt-tab icon (128 preferred). Caller owns and must Dispose.
+        /// </summary>
+        public static Icon CreateTaskbarIconBig(string? colorHex)
+        {
+            var color = ParseColor(colorHex);
+            using var bmp = TintEmbeddedPng(Resource128, color)
+                ?? TintEmbeddedPng(Resource32, color)
+                ?? TintEmbeddedPng(Resource16, color);
+            if (bmp == null)
+                return SystemIcons.Application;
+            return CreateOwnedIcon(bmp);
+        }
+
         public static BitmapSource CreateWindowIcon(string? colorHex)
         {
             var color = ParseColor(colorHex);
@@ -55,6 +83,81 @@ namespace SharpShot.Utils
                 BitmapSizeOptions.FromEmptyOptions());
             source.Freeze();
             return source;
+        }
+
+        /// <summary>
+        /// Writes a multi-size PNG-in-ICO file for Start Menu / pinned taskbar shortcuts.
+        /// </summary>
+        public static void SaveThemedIcoFile(string path, string? colorHex)
+        {
+            var color = ParseColor(colorHex);
+            var pngBlobs = new List<byte[]>();
+
+            void AddPng(string resourceName)
+            {
+                using var bmp = TintEmbeddedPng(resourceName, color);
+                if (bmp == null)
+                    return;
+                using var ms = new MemoryStream();
+                bmp.Save(ms, ImageFormat.Png);
+                pngBlobs.Add(ms.ToArray());
+            }
+
+            AddPng(Resource16);
+            AddPng(Resource32);
+            AddPng(Resource128);
+
+            if (pngBlobs.Count == 0)
+                throw new InvalidOperationException("No themed icon resources available.");
+
+            WritePngIco(path, pngBlobs);
+        }
+
+        private static void WritePngIco(string path, IReadOnlyList<byte[]> pngImages)
+        {
+            // ICONDIR (6) + ICONDIRENTRY (16 * n) + PNG payloads
+            const int dirSize = 6;
+            const int entrySize = 16;
+            int offset = dirSize + (entrySize * pngImages.Count);
+
+            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read);
+            using var bw = new BinaryWriter(fs);
+
+            bw.Write((ushort)0); // reserved
+            bw.Write((ushort)1); // type = icon
+            bw.Write((ushort)pngImages.Count);
+
+            var payloads = new List<(byte width, byte height, byte[] data)>();
+            foreach (var png in pngImages)
+            {
+                byte w = 0, h = 0;
+                // IHDR width/height at bytes 16..23 of a PNG (big-endian)
+                if (png.Length >= 24)
+                {
+                    int fullW = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+                    int fullH = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+                    w = (byte)(fullW >= 256 ? 0 : fullW);
+                    h = (byte)(fullH >= 256 ? 0 : fullH);
+                }
+
+                payloads.Add((w, h, png));
+            }
+
+            foreach (var (width, height, data) in payloads)
+            {
+                bw.Write(width);
+                bw.Write(height);
+                bw.Write((byte)0); // color count
+                bw.Write((byte)0); // reserved
+                bw.Write((ushort)1); // planes
+                bw.Write((ushort)32); // bit count
+                bw.Write(data.Length);
+                bw.Write(offset);
+                offset += data.Length;
+            }
+
+            foreach (var (_, _, data) in payloads)
+                bw.Write(data);
         }
 
         private static Icon CreateOwnedIcon(Bitmap bmp)

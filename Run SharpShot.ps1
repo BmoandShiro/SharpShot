@@ -24,7 +24,9 @@ if (Test-Path "SharpShot.csproj") {
     # Run the application with Hot Reload enabled
     Write-Host "Starting SharpShot with Hot Reload (dotnet watch run)..." -ForegroundColor Yellow
     Write-Host 'If build fails with MSB3021/MSB3027 (file locked), stop this script (Ctrl+C), close SharpShot, then run again. Watch cannot overwrite SharpShot.exe while it is running.' -ForegroundColor DarkGray
-    dotnet watch run
+    # Remove leftover WPF temp projects that confuse "dotnet watch" when multiple .csproj exist
+    Get-ChildItem -Path . -Filter "*_wpftmp.csproj" -File -ErrorAction SilentlyContinue | Remove-Item -Force
+    dotnet watch run --project SharpShot.csproj
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "SharpShot started successfully!" -ForegroundColor Green

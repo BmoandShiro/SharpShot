@@ -151,11 +151,12 @@ start "" "SharpShot.exe"
     Write-Host ""
     Write-Host "Launching SharpShot..." -ForegroundColor Yellow
     try {
-        dotnet run --configuration $Configuration -p:Platform=$Platform
+        Get-ChildItem -Path . -Filter "*_wpftmp.csproj" -File -ErrorAction SilentlyContinue | Remove-Item -Force
+        dotnet run --project SharpShot.csproj --configuration $Configuration -p:Platform=$Platform
         Write-Host "SharpShot launched successfully!" -ForegroundColor Green
     } catch {
         Write-Host "Failed to launch SharpShot: $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host "You can manually run: dotnet run --configuration $Configuration -p:Platform=$Platform" -ForegroundColor Yellow
+        Write-Host "You can manually run: dotnet run --project SharpShot.csproj --configuration $Configuration -p:Platform=$Platform" -ForegroundColor Yellow
     }
     
 } catch {
