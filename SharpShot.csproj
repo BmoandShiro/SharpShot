@@ -77,6 +77,13 @@
     <None Include="Version" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- Base app icons tinted at runtime to match Settings IconColor -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\tray_icon_16.png" />
+    <EmbeddedResource Include="Resources\tray_icon_32.png" />
+    <EmbeddedResource Include="Resources\app_icon_128.png" />
+  </ItemGroup>
+
   <!-- OBS Studio Bundling removed to prevent infinite loop -->
 
 </Project> 

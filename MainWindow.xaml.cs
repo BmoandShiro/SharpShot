@@ -27,6 +27,7 @@ namespace SharpShot
         private readonly RecordingService _recordingService;
         private readonly HotkeyManager _hotkeyManager;
         private System.Windows.Forms.NotifyIcon? _trayIcon;
+        private Icon? _ownedTrayIcon;
         private Point? _dashboardPreCapturePosition;
         private bool _dashboardTemporarilyMovedFromCapture;
         private double _effectiveBaseDashboardWidth;
@@ -1063,6 +1064,9 @@ namespace SharpShot
                     _trayIcon.Dispose();
                     _trayIcon = null;
                 }
+
+                _ownedTrayIcon?.Dispose();
+                _ownedTrayIcon = null;
             }
             catch (Exception ex)
             {
@@ -1080,13 +1084,7 @@ namespace SharpShot
                 }
 
                 _trayIcon = new System.Windows.Forms.NotifyIcon();
-
-                // Try to reuse the application icon if available
-                var appIcon = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetEntryAssembly()!.Location);
-                if (appIcon != null)
-                {
-                    _trayIcon.Icon = appIcon;
-                }
+                ApplyThemedAppIcons(_settingsService.CurrentSettings.IconColor);
 
                 _trayIcon.Text = "SharpShot";
                 _trayIcon.Visible = true;
@@ -2211,12 +2209,40 @@ namespace SharpShot
                 
                 // Update separator colors
                 UpdateSeparatorColors(color);
+
+                // Tray + taskbar icons follow the theme color
+                ApplyThemedAppIcons(color);
                 
                 System.Diagnostics.Debug.WriteLine($"Applied icon color: {color}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Failed to update icon colors: {ex.Message}");
+            }
+        }
+
+        private void ApplyThemedAppIcons(string? colorHex)
+        {
+            try
+            {
+                var themedIcon = ThemedIconHelper.CreateTrayIcon(colorHex);
+                if (_trayIcon != null)
+                {
+                    var previous = _ownedTrayIcon;
+                    _trayIcon.Icon = themedIcon;
+                    _ownedTrayIcon = themedIcon;
+                    previous?.Dispose();
+                }
+                else
+                {
+                    themedIcon.Dispose();
+                }
+
+                Icon = ThemedIconHelper.CreateWindowIcon(colorHex);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to apply themed app icons: {ex.Message}");
             }
         }
 
