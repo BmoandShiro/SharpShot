@@ -200,6 +200,12 @@ namespace SharpShot.UI
         private bool _colorPresetDeleteMode;
         private List<string> _accumulatedModifiers = new List<string>();
 
+        // Snapshot of live-preview theme values when Settings opened (restored on Cancel).
+        private readonly string _themeColorAtOpen;
+        private readonly double _hoverOpacityAtOpen;
+        private readonly double _dropShadowOpacityAtOpen;
+        private bool _settingsSaved;
+
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
             InitializeComponent();
@@ -211,6 +217,11 @@ namespace SharpShot.UI
             
             // Copy current settings to avoid modifying the original
             CopySettings(_settingsService.CurrentSettings, _originalSettings);
+
+            _themeColorAtOpen = _settingsService.CurrentSettings.IconColor ?? "#FFFF8C00";
+            _hoverOpacityAtOpen = _settingsService.CurrentSettings.HoverOpacity;
+            _dropShadowOpacityAtOpen = _settingsService.CurrentSettings.DropShadowOpacity;
+            Closing += SettingsWindow_Closing;
             
             // Populate screen dropdown with actual monitors
             PopulateScreenDropdown();
@@ -379,6 +390,41 @@ namespace SharpShot.UI
         {
             DialogResult = false;
             Close();
+        }
+
+        private void SettingsWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!_settingsSaved)
+                RevertLiveThemePreview();
+        }
+
+        /// <summary>
+        /// Live color/opacity previews write into CurrentSettings; undo that if the user didn't Save.
+        /// </summary>
+        private void RevertLiveThemePreview()
+        {
+            try
+            {
+                var current = _settingsService.CurrentSettings;
+                bool changed =
+                    !string.Equals(current.IconColor, _themeColorAtOpen, StringComparison.OrdinalIgnoreCase)
+                    || Math.Abs(current.HoverOpacity - _hoverOpacityAtOpen) > 0.0001
+                    || Math.Abs(current.DropShadowOpacity - _dropShadowOpacityAtOpen) > 0.0001;
+
+                if (!changed)
+                    return;
+
+                current.IconColor = _themeColorAtOpen;
+                current.HoverOpacity = _hoverOpacityAtOpen;
+                current.DropShadowOpacity = _dropShadowOpacityAtOpen;
+
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                    mainWindow.ApplyThemeSettings();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to revert live theme preview: {ex.Message}");
+            }
         }
 
         private void LoadSettings()
@@ -1078,6 +1124,12 @@ namespace SharpShot.UI
                 
                 // Save settings
                 _settingsService.SaveSettings();
+                _settingsSaved = true;
+
+                // Pinned taskbar icon is expensive (shell shortcuts / icon cache) — only sync on Save.
+                var pinColor = _settingsService.CurrentSettings.IconColor;
+                _ = System.Threading.Tasks.Task.Run(() =>
+                    SharpShot.Utils.PinnedTaskbarIconService.SyncThemedPinnedIcon(pinColor));
 
                 if (_settingsService.CurrentSettings.UseDxgiCapture)
                 {

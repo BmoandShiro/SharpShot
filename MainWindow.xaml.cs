@@ -2213,11 +2213,6 @@ namespace SharpShot
                 // Borderless/transparent windows often ignore Window.Icon for the taskbar;
                 // push themed HICONs via WM_SETICON once the HWND exists.
                 ApplyNativeTaskbarIcons(colorHex);
-
-                // Pinned shortcuts use .lnk IconLocation, not WM_SETICON — refresh AppData .ico.
-                var pinColor = colorHex;
-                _ = System.Threading.Tasks.Task.Run(() =>
-                    PinnedTaskbarIconService.SyncThemedPinnedIcon(pinColor));
             }
             catch (Exception ex)
             {

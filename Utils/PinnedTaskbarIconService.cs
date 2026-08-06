@@ -17,6 +17,7 @@ namespace SharpShot.Utils
 
         private static readonly object SyncLock = new();
         private static string? _lastIconPath;
+        private static string? _lastSyncedColorHex;
         private static int _iconGeneration;
 
         [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -49,6 +50,7 @@ namespace SharpShot.Utils
         /// <summary>
         /// Writes a themed .ico under %AppData%\SharpShot and points Start Menu /
         /// User Pinned TaskBar shortcuts at it (with matching AUMID).
+        /// Intended for startup + Settings Save only — shell icon refresh is slow.
         /// </summary>
         public static void SyncThemedPinnedIcon(string? colorHex)
         {
@@ -56,6 +58,14 @@ namespace SharpShot.Utils
             {
                 try
                 {
+                    var normalized = string.IsNullOrWhiteSpace(colorHex) ? "#FFFF8C00" : colorHex.Trim();
+                    if (string.Equals(_lastSyncedColorHex, normalized, StringComparison.OrdinalIgnoreCase)
+                        && !string.IsNullOrEmpty(_lastIconPath)
+                        && File.Exists(_lastIconPath))
+                    {
+                        return;
+                    }
+
                     var exePath = Environment.ProcessPath;
                     if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
                         return;
@@ -68,7 +78,7 @@ namespace SharpShot.Utils
                     // Alternate filenames so Windows icon cache notices the change.
                     _iconGeneration ^= 1;
                     var iconPath = Path.Combine(appData, _iconGeneration == 0 ? "taskbar.ico" : "taskbar_alt.ico");
-                    ThemedIconHelper.SaveThemedIcoFile(iconPath, colorHex);
+                    ThemedIconHelper.SaveThemedIcoFile(iconPath, normalized);
 
                     EnsureStartMenuShortcut(exePath, iconPath);
                     UpdateExistingSharpShotShortcuts(exePath, iconPath);
@@ -81,6 +91,7 @@ namespace SharpShot.Utils
                     }
 
                     _lastIconPath = iconPath;
+                    _lastSyncedColorHex = normalized;
 
                     SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
                 }
