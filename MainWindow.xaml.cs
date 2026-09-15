@@ -281,6 +281,13 @@ namespace SharpShot
             PositionWindow();
         }
 
+        public void RefreshLinkedAppButtons()
+        {
+            ApplyDashboardFeatureVisibility();
+            if (RegionRecordButton.Visibility == Visibility.Visible)
+                UpdateExternalLauncherButtonsVisibility();
+        }
+
         private void ApplyDashboardFeatureVisibility()
         {
             bool showOcrQuickButton = _settingsService.CurrentSettings.ShowOcrButtonOnDashboard;
@@ -290,12 +297,16 @@ namespace SharpShot
             if (SmartRegionToggleButton != null)
                 SmartRegionToggleButton.Visibility = showSmartButton ? Visibility.Visible : Visibility.Collapsed;
 
+            RebuildLinkedAppButtons();
+
             // Auto-expand dashboard width only when using default width.
             if (_settingsService.CurrentSettings.DashboardWidth <= 0)
             {
                 double w = _effectiveBaseDashboardWidth;
                 if (showOcrQuickButton) w += 70;
                 if (showSmartButton) w += 90;
+                int mainApps = CountLinkedAppsForMenu(mainMenu: true);
+                if (mainApps > 0) w += 16 + (mainApps * 68);
                 Width = w;
             }
 
@@ -685,11 +696,6 @@ namespace SharpShot
             await OpenOBSStudio();
         }
 
-        private void CustomAppButton_Click(object sender, RoutedEventArgs e)
-        {
-            OpenOrLinkCustomApp();
-        }
-
         private void CancelRecordButton_Click(object sender, RoutedEventArgs e)
         {
             ShowNormalButtons();
@@ -785,10 +791,15 @@ namespace SharpShot
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
+                HideMainLinkedAppButtons();
 
                 // Show recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Visible;
                 FullScreenRecordButton.Visibility = Visibility.Visible;
+                if (MainLinkedAppsHost != null)
+                    MainLinkedAppsHost.Visibility = Visibility.Collapsed;
+                if (MainLinkedAppsSeparator != null)
+                    MainLinkedAppsSeparator.Visibility = Visibility.Collapsed;
                 UpdateExternalLauncherButtonsVisibility();
                 
                 // Show cancel button on the far right
@@ -796,48 +807,226 @@ namespace SharpShot
             });
         }
 
+        private void ApplyLinkedAppButtonTheme(SolidColorBrush brush)
+        {
+            ThemeLinkedAppHost(MainLinkedAppsHost, brush);
+            ThemeLinkedAppHost(RecordingLinkedAppsHost, brush);
+        }
+
+        private static void ThemeLinkedAppHost(StackPanel? host, SolidColorBrush brush)
+        {
+            if (host == null) return;
+            foreach (var child in host.Children)
+            {
+                if (child is not Button button) continue;
+                if (button.Content is System.Windows.Shapes.Path path)
+                    path.Stroke = brush;
+                else if (button.Content is TextBlock text)
+                    text.Foreground = brush;
+            }
+        }
+
+        private void HideMainLinkedAppButtons()
+        {
+            if (MainLinkedAppsHost != null)
+                MainLinkedAppsHost.Visibility = Visibility.Collapsed;
+            if (MainLinkedAppsSeparator != null)
+                MainLinkedAppsSeparator.Visibility = Visibility.Collapsed;
+        }
+
+        private int CountLinkedAppsForMenu(bool mainMenu)
+        {
+            var apps = _settingsService.CurrentSettings.LinkedApps;
+            if (apps == null) return 0;
+            return apps.Count(a => mainMenu ? a.ShowsOnMain : a.ShowsOnRecording);
+        }
+
         private bool HasValidLinkedObs() =>
             OBSDetection.IsValidLinkedObsPath(_settingsService.CurrentSettings.LinkedObsPath);
 
-        private bool HasValidLinkedCustomApp() =>
-            ExternalAppLauncher.IsValidExecutable(_settingsService.CurrentSettings.LinkedCustomAppPath);
+        private void RebuildLinkedAppButtons()
+        {
+            bool showMainHost = RegionButton.Visibility == Visibility.Visible;
+            RebuildLinkedAppHost(MainLinkedAppsHost, mainMenu: true, showMainHost);
+            if (MainLinkedAppsSeparator != null)
+            {
+                MainLinkedAppsSeparator.Visibility = showMainHost && CountLinkedAppsForMenu(mainMenu: true) > 0
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
+
+            UpdateExternalLauncherButtonsVisibility();
+        }
+
+        private void RebuildLinkedAppHost(StackPanel? host, bool mainMenu, bool visible)
+        {
+            if (host == null) return;
+            host.Children.Clear();
+
+            var apps = _settingsService.CurrentSettings.LinkedApps ?? new List<LinkedExternalApp>();
+            var matching = apps.Where(a => mainMenu ? a.ShowsOnMain : a.ShowsOnRecording).ToList();
+            host.Visibility = visible && matching.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            if (matching.Count == 0)
+                return;
+
+            var buttonStyle = TryFindResource("ToolbarButtonStyle") as Style
+                ?? Application.Current.Resources["ToolbarButtonStyle"] as Style;
+            var iconColor = _settingsService.CurrentSettings.IconColor;
+            if (string.IsNullOrWhiteSpace(iconColor))
+                iconColor = "#FFFF8C00";
+            var brush = new SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor));
+
+            foreach (var app in matching)
+            {
+                var button = new Button
+                {
+                    Style = buttonStyle,
+                    Width = 60,
+                    Height = 50,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = string.IsNullOrWhiteSpace(app.DisplayName)
+                        ? $"Launch {app.ExecutablePath}"
+                        : $"Launch {app.DisplayName}",
+                    Tag = app.Id
+                };
+                button.Content = CreateLinkedAppButtonContent(app, brush);
+                var captured = app;
+                button.Click += (_, _) => LaunchLinkedApp(captured);
+                host.Children.Add(button);
+            }
+        }
+
+        private object CreateLinkedAppButtonContent(LinkedExternalApp app, SolidColorBrush brush)
+        {
+            if (string.Equals(app.Icon, "Letters", StringComparison.OrdinalIgnoreCase))
+            {
+                return new TextBlock
+                {
+                    Text = app.NormalizedLetters(),
+                    Foreground = brush,
+                    FontSize = app.NormalizedLetters().Length >= 3 ? 14 : 18,
+                    FontWeight = FontWeights.SemiBold,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center
+                };
+            }
+
+            var geometry = ResolveLinkedAppGeometry(app.Icon);
+            return new System.Windows.Shapes.Path
+            {
+                Data = geometry,
+                Stroke = brush,
+                StrokeThickness = 1.5,
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                Fill = string.Equals(app.Icon, "Star", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(app.Icon, "Play", StringComparison.OrdinalIgnoreCase)
+                    ? System.Windows.Media.Brushes.Transparent
+                    : System.Windows.Media.Brushes.Transparent,
+                Stretch = Stretch.Uniform,
+                Width = string.Equals(app.Icon, "OBS", StringComparison.OrdinalIgnoreCase) ? 40 : 28,
+                Height = string.Equals(app.Icon, "OBS", StringComparison.OrdinalIgnoreCase) ? 40 : 28
+            };
+        }
+
+        private Geometry ResolveLinkedAppGeometry(string icon)
+        {
+            object? resource = icon switch
+            {
+                "Camera" => TryFindResource("CameraIcon"),
+                "Video" => TryFindResource("VideoIcon"),
+                "Region" => TryFindResource("RegionIcon"),
+                "Settings" => TryFindResource("SettingsIcon"),
+                "OBS" => TryFindResource("OBSIcon"),
+                "FullScreen" => TryFindResource("FullScreenRecordIcon"),
+                _ => null
+            };
+            if (resource is Geometry geometry)
+                return geometry;
+
+            return icon switch
+            {
+                "Star" => LinkedAppIconCatalog.StarGeometry,
+                "Play" => LinkedAppIconCatalog.PlayGeometry,
+                _ => LinkedAppIconCatalog.WindowGeometry
+            };
+        }
+
+        private void LaunchLinkedApp(LinkedExternalApp app)
+        {
+            try
+            {
+                var settings = _settingsService.CurrentSettings;
+                var live = settings.LinkedApps?.FirstOrDefault(a => a.Id == app.Id) ?? app;
+                if (!ExternalAppLauncher.IsValidExecutable(live.ExecutablePath))
+                {
+                    if (AppLinkDialog.TryLinkCustomApp(this, out var path, out var displayName))
+                    {
+                        live.ExecutablePath = path;
+                        live.DisplayName = displayName;
+                        settings.SyncLegacyLinkedAppFields();
+                        _settingsService.SaveSettings();
+                        RebuildLinkedAppButtons();
+                    }
+                    else
+                    {
+                        ShowNormalButtons();
+                        return;
+                    }
+                }
+
+                if (ExternalAppLauncher.TryLaunch(live.ExecutablePath, out var error))
+                {
+                    if (RegionRecordButton.Visibility == Visibility.Visible)
+                        ShowNormalButtons();
+                }
+                else
+                {
+                    ThemedMessageBox.Show(this,
+                        $"Could not launch the linked application.\n\n{error}",
+                        "Launch App", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Linked app launch failed: {ex.Message}");
+            }
+        }
 
         private void UpdateExternalLauncherButtonsVisibility()
         {
             var settings = _settingsService.CurrentSettings;
             bool showObs = settings.ShowObsButtonOnRecordingToolbar;
-            bool showCustom = settings.ShowCustomAppButtonOnRecordingToolbar;
+            bool recordingSelect = RegionRecordButton.Visibility == Visibility.Visible;
+            int recordingApps = CountLinkedAppsForMenu(mainMenu: false);
 
-            OBSRecordButton.Visibility = showObs ? Visibility.Visible : Visibility.Collapsed;
-            CustomAppButton.Visibility = showCustom ? Visibility.Visible : Visibility.Collapsed;
+            OBSRecordButton.Visibility = (showObs && recordingSelect) ? Visibility.Visible : Visibility.Collapsed;
+            if (RecordingLinkedAppsHost != null && !recordingSelect)
+                RecordingLinkedAppsHost.Visibility = Visibility.Collapsed;
 
-            // Separator after fullscreen when at least one launcher is shown
-            RecordingSelectionSeparator2.Visibility = (showObs || showCustom) ? Visibility.Visible : Visibility.Collapsed;
-            // Separator between OBS and custom only when both are shown
-            RecordingSelectionSeparatorCustomApp.Visibility = (showObs && showCustom) ? Visibility.Visible : Visibility.Collapsed;
-            RecordingSelectionSeparator3.Visibility = Visibility.Visible;
+            RecordingSelectionSeparator2.Visibility = recordingSelect && (showObs || recordingApps > 0)
+                ? Visibility.Visible : Visibility.Collapsed;
+            RecordingSelectionSeparatorCustomApp.Visibility = recordingSelect && showObs && recordingApps > 0
+                ? Visibility.Visible : Visibility.Collapsed;
+            RecordingSelectionSeparator3.Visibility = recordingSelect ? Visibility.Visible : Visibility.Collapsed;
 
             OBSRecordButton.ToolTip = HasValidLinkedObs()
                 ? "Launch OBS Studio"
                 : "Link OBS Studio";
 
-            var customName = settings.LinkedCustomAppDisplayName;
-            if (HasValidLinkedCustomApp())
-            {
-                CustomAppButton.ToolTip = string.IsNullOrWhiteSpace(customName)
-                    ? $"Launch {settings.LinkedCustomAppPath}"
-                    : $"Launch {customName}";
-            }
-            else
-            {
-                CustomAppButton.ToolTip = "Link a custom application";
-            }
+            if (recordingSelect)
+                RebuildLinkedAppHost(RecordingLinkedAppsHost, mainMenu: false, visible: true);
         }
 
         private void HideExternalLauncherButtons()
         {
             OBSRecordButton.Visibility = Visibility.Collapsed;
-            CustomAppButton.Visibility = Visibility.Collapsed;
+            if (RecordingLinkedAppsHost != null)
+            {
+                RecordingLinkedAppsHost.Visibility = Visibility.Collapsed;
+                RecordingLinkedAppsHost.Children.Clear();
+            }
             RecordingSelectionSeparator2.Visibility = Visibility.Collapsed;
             RecordingSelectionSeparatorCustomApp.Visibility = Visibility.Collapsed;
             RecordingSelectionSeparator3.Visibility = Visibility.Collapsed;
@@ -863,6 +1052,7 @@ namespace SharpShot
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
+                HideMainLinkedAppButtons();
                 
                 // Hide recording selection buttons
                 RegionRecordButton.Visibility = Visibility.Collapsed;
@@ -919,6 +1109,7 @@ namespace SharpShot
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
+                HideMainLinkedAppButtons();
 
                 // Show completion options for video
                 CancelButton.Visibility = Visibility.Visible;
@@ -1558,6 +1749,7 @@ namespace SharpShot
                 MainToolbarSeparator1.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator2.Visibility = Visibility.Collapsed;
                 MainToolbarSeparator3.Visibility = Visibility.Collapsed;
+                HideMainLinkedAppButtons();
 
                 // Show completion options in correct order: Copy, Save, Separator, Cancel (X on far right)
                 CopyButton.Visibility = Visibility.Visible;
@@ -1919,46 +2111,6 @@ namespace SharpShot
             return Task.CompletedTask;
         }
 
-        private void OpenOrLinkCustomApp()
-        {
-            try
-            {
-                var settings = _settingsService.CurrentSettings;
-                if (!ExternalAppLauncher.IsValidExecutable(settings.LinkedCustomAppPath))
-                {
-                    if (AppLinkDialog.TryLinkCustomApp(this, out var path, out var displayName))
-                    {
-                        settings.LinkedCustomAppPath = path;
-                        settings.LinkedCustomAppDisplayName = displayName;
-                        _settingsService.SaveSettings();
-                        UpdateExternalLauncherButtonsVisibility();
-                    }
-                    else
-                    {
-                        ShowNormalButtons();
-                        return;
-                    }
-                }
-
-                if (ExternalAppLauncher.TryLaunch(settings.LinkedCustomAppPath, out var error))
-                {
-                    ShowNormalButtons();
-                }
-                else
-                {
-                    ThemedMessageBox.Show(this,
-                        $"Could not launch the linked application.\n\n{error}",
-                        "Launch App", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    ShowNormalButtons();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Custom app launch failed: {ex.Message}");
-                ShowNormalButtons();
-            }
-        }
-
         private void RestoreOriginalRecordingEngine()
         {
             if (_originalRecordingEngine != null)
@@ -2160,9 +2312,8 @@ namespace SharpShot
                 
                 if (OBSRecordButton.Content is System.Windows.Shapes.Path obsRecordPath)
                     obsRecordPath.Stroke = brush;
-
-                if (CustomAppButton.Content is System.Windows.Shapes.Path customAppPath)
-                    customAppPath.Stroke = brush;
+                
+                ApplyLinkedAppButtonTheme(brush);
                 
                 if (CancelRecordButton.Content is System.Windows.Shapes.Path cancelRecordPath)
                     cancelRecordPath.Stroke = brush;
@@ -2483,7 +2634,6 @@ namespace SharpShot
             if (RegionRecordButton != null) RegionRecordButton.Style = null;
             if (FullScreenRecordButton != null) FullScreenRecordButton.Style = null;
             if (OBSRecordButton != null) OBSRecordButton.Style = null;
-            if (CustomAppButton != null) CustomAppButton.Style = null;
             if (CancelRecordButton != null) CancelRecordButton.Style = null;
             
             // Re-apply the style
@@ -2548,16 +2698,13 @@ namespace SharpShot
                     OBSRecordButton.Style = buttonStyle;
                     OBSRecordButton.Width = 60;
                 }
-                if (CustomAppButton != null)
-                {
-                    CustomAppButton.Style = buttonStyle;
-                    CustomAppButton.Width = 60;
-                }
                 if (CancelRecordButton != null) 
                 {
                     CancelRecordButton.Style = buttonStyle;
                     CancelRecordButton.Width = 60;
                 }
+
+                RebuildLinkedAppButtons();
             }
         }
 

@@ -16,6 +16,7 @@ namespace SharpShot.Models
         private string _linkedObsPath = string.Empty;
         private string _linkedCustomAppPath = string.Empty;
         private string _linkedCustomAppDisplayName = string.Empty;
+        private List<LinkedExternalApp> _linkedApps = new();
         private string _selectedOutputAudioDevice = string.Empty;
         private string _selectedInputAudioDevice = string.Empty;
         private bool _enableGlobalHotkeys;
@@ -84,6 +85,7 @@ namespace SharpShot.Models
             LinkedObsPath = string.Empty;
             LinkedCustomAppPath = string.Empty;
             LinkedCustomAppDisplayName = string.Empty;
+            LinkedApps = new List<LinkedExternalApp>();
             ShowObsButtonOnRecordingToolbar = true;
             ShowCustomAppButtonOnRecordingToolbar = false;
             SelectedOutputAudioDevice = string.Empty;
@@ -207,6 +209,38 @@ namespace SharpShot.Models
         {
             get => _linkedCustomAppDisplayName;
             set => SetProperty(ref _linkedCustomAppDisplayName, value ?? string.Empty);
+        }
+
+        /// <summary>User-linked applications shown on the main dashboard and/or recording toolbar.</summary>
+        public List<LinkedExternalApp> LinkedApps
+        {
+            get => _linkedApps ??= new List<LinkedExternalApp>();
+            set => SetProperty(ref _linkedApps, value ?? new List<LinkedExternalApp>());
+        }
+
+        public void MigrateLegacyLinkedApps()
+        {
+            LinkedApps ??= new List<LinkedExternalApp>();
+            if (LinkedApps.Count == 0 && !string.IsNullOrWhiteSpace(LinkedCustomAppPath))
+            {
+                LinkedApps.Add(new LinkedExternalApp
+                {
+                    ExecutablePath = LinkedCustomAppPath,
+                    DisplayName = LinkedCustomAppDisplayName,
+                    Menu = ShowCustomAppButtonOnRecordingToolbar ? "Recording" : "Main",
+                    Icon = "Window",
+                    Letters = string.Empty
+                });
+            }
+
+            SyncLegacyLinkedAppFields();
+        }
+
+        public void SyncLegacyLinkedAppFields()
+        {
+            var first = LinkedApps?.Find(a => !string.IsNullOrWhiteSpace(a.ExecutablePath));
+            LinkedCustomAppPath = first?.ExecutablePath ?? string.Empty;
+            LinkedCustomAppDisplayName = first?.DisplayName ?? string.Empty;
         }
 
         /// <summary>When true, the OBS button is shown on the recording toolbar independently of the custom app button.</summary>

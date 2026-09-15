@@ -30,6 +30,7 @@ namespace SharpShot.Services
                     if (settings != null)
                     {
                         CurrentSettings = settings;
+                        CurrentSettings.MigrateLegacyLinkedApps();
                         // New setting: default ON for existing installs that lack the key
                         if (json.IndexOf("ShowSmartRegionButtonOnDashboard", StringComparison.OrdinalIgnoreCase) < 0)
                             CurrentSettings.ShowSmartRegionButtonOnDashboard = true;

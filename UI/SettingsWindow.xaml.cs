@@ -493,6 +493,7 @@ namespace SharpShot.UI
             if (!string.Equals(_originalSettings.RecordingEngine, "FFmpeg", StringComparison.OrdinalIgnoreCase))
                 _originalSettings.RecordingEngine = "FFmpeg";
 
+            _originalSettings.MigrateLegacyLinkedApps();
             UpdateLinkedAppStatusUI();
 
             // Audio recording mode combo box commented out
@@ -556,8 +557,6 @@ namespace SharpShot.UI
             ShowSmartRegionButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowSmartRegionButtonOnDashboard;
             if (ShowObsButtonOnRecordingToolbarCheckBox != null)
                 ShowObsButtonOnRecordingToolbarCheckBox.IsChecked = _originalSettings.ShowObsButtonOnRecordingToolbar;
-            if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null)
-                ShowCustomAppButtonOnRecordingToolbarCheckBox.IsChecked = _originalSettings.ShowCustomAppButtonOnRecordingToolbar;
             UseDenseOcrForSmartRegionsCheckBox.IsChecked = _originalSettings.UseDenseOcrForSmartRegions;
             SkipPostCaptureMenuCheckBox.IsChecked = _originalSettings.SkipPostCaptureMenu;
             HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
@@ -1006,8 +1005,6 @@ namespace SharpShot.UI
                 _originalSettings.ShowSmartRegionButtonOnDashboard = ShowSmartRegionButtonOnDashboardCheckBox.IsChecked ?? false;
                 if (ShowObsButtonOnRecordingToolbarCheckBox != null)
                     _originalSettings.ShowObsButtonOnRecordingToolbar = ShowObsButtonOnRecordingToolbarCheckBox.IsChecked ?? true;
-                if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null)
-                    _originalSettings.ShowCustomAppButtonOnRecordingToolbar = ShowCustomAppButtonOnRecordingToolbarCheckBox.IsChecked ?? false;
                 _originalSettings.UseDenseOcrForSmartRegions = UseDenseOcrForSmartRegionsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
@@ -1241,6 +1238,9 @@ namespace SharpShot.UI
             target.LinkedObsPath = source.LinkedObsPath;
             target.LinkedCustomAppPath = source.LinkedCustomAppPath;
             target.LinkedCustomAppDisplayName = source.LinkedCustomAppDisplayName;
+            target.LinkedApps = source.LinkedApps != null
+                ? source.LinkedApps.Select(a => a.Clone()).ToList()
+                : new List<LinkedExternalApp>();
             target.ShowObsButtonOnRecordingToolbar = source.ShowObsButtonOnRecordingToolbar;
             target.ShowCustomAppButtonOnRecordingToolbar = source.ShowCustomAppButtonOnRecordingToolbar;
             target.AudioRecordingMode = source.AudioRecordingMode;
@@ -1649,8 +1649,6 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(ShowSmartRegionButtonOnDashboardCheckBox, themeColor);
                 if (ShowObsButtonOnRecordingToolbarCheckBox != null && ShowObsButtonOnRecordingToolbarCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(ShowObsButtonOnRecordingToolbarCheckBox, themeColor);
-                if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null && ShowCustomAppButtonOnRecordingToolbarCheckBox.IsLoaded)
-                    UpdateCheckboxVisualTree(ShowCustomAppButtonOnRecordingToolbarCheckBox, themeColor);
                 if (UseDenseOcrForSmartRegionsCheckBox != null && UseDenseOcrForSmartRegionsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(UseDenseOcrForSmartRegionsCheckBox, themeColor);
                 if (SkipPostCaptureMenuCheckBox != null && SkipPostCaptureMenuCheckBox.IsLoaded)
@@ -2208,8 +2206,9 @@ namespace SharpShot.UI
             ApplyThemedButton(DetectObsButton, color, brush, 90, 32, allowDynamicWidth: true);
             ApplyThemedButton(BrowseObsButton, color, brush, 100, 32, allowDynamicWidth: true);
             ApplyThemedButton(UnlinkObsButton, color, brush, 90, 32, allowDynamicWidth: true);
-            ApplyThemedButton(LinkCustomAppButton, color, brush, 90, 32, allowDynamicWidth: true);
-            ApplyThemedButton(UnlinkCustomAppButton, color, brush, 90, 32, allowDynamicWidth: true);
+            ApplyThemedButton(AddLinkedAppButton, color, brush, 150, 32, allowDynamicWidth: true);
+            if (LinkedAppsListPanel != null)
+                ThemeLinkedAppRowButtons(LinkedAppsListPanel, color, brush);
         }
 
         private void UpdateThemeColors()
@@ -3978,6 +3977,8 @@ namespace SharpShot.UI
             }
         }
 
+        private bool _rebuildingLinkedAppsList;
+
         private void UpdateLinkedAppStatusUI()
         {
             if (LinkedObsStatusText != null)
@@ -3988,38 +3989,31 @@ namespace SharpShot.UI
                 else if (!string.IsNullOrWhiteSpace(obsPath))
                     LinkedObsStatusText.Text = $"Missing or invalid: {obsPath}";
                 else
-                    LinkedObsStatusText.Text = "Not linked — click the OBS toolbar button or Detect/Browse here";
+                    LinkedObsStatusText.Text = "Not linked — click the OBS toolbar button or Detect/Change here";
             }
 
-            if (LinkedCustomAppStatusText != null)
+            if (BrowseObsButton != null)
             {
-                var customPath = _originalSettings.LinkedCustomAppPath;
-                var name = _originalSettings.LinkedCustomAppDisplayName;
-                if (ExternalAppLauncher.IsValidExecutable(customPath))
-                {
-                    LinkedCustomAppStatusText.Text = string.IsNullOrWhiteSpace(name)
-                        ? customPath
-                        : $"{name}\n{customPath}";
-                }
-                else if (!string.IsNullOrWhiteSpace(customPath))
-                {
-                    LinkedCustomAppStatusText.Text = $"Missing or invalid: {customPath}";
-                }
-                else
-                {
-                    LinkedCustomAppStatusText.Text = "Not linked — click the custom app toolbar button or Link… here";
-                }
+                bool linked = OBSDetection.IsValidLinkedObsPath(_originalSettings.LinkedObsPath);
+                BrowseObsButton.Content = linked ? "Change…" : "Browse…";
             }
+
+            PopulateLinkedAppsList();
         }
 
         private void PersistLinkedAppSettingsToService()
         {
+            _originalSettings.MigrateLegacyLinkedApps();
+            _originalSettings.SyncLegacyLinkedAppFields();
             _settingsService.CurrentSettings.LinkedObsPath = _originalSettings.LinkedObsPath;
             _settingsService.CurrentSettings.LinkedCustomAppPath = _originalSettings.LinkedCustomAppPath;
             _settingsService.CurrentSettings.LinkedCustomAppDisplayName = _originalSettings.LinkedCustomAppDisplayName;
+            _settingsService.CurrentSettings.LinkedApps = _originalSettings.LinkedApps.Select(a => a.Clone()).ToList();
             _settingsService.CurrentSettings.ShowObsButtonOnRecordingToolbar = _originalSettings.ShowObsButtonOnRecordingToolbar;
-            _settingsService.CurrentSettings.ShowCustomAppButtonOnRecordingToolbar = _originalSettings.ShowCustomAppButtonOnRecordingToolbar;
             _settingsService.SaveSettings();
+
+            if (Owner is MainWindow mainWindow)
+                mainWindow.RefreshLinkedAppButtons();
         }
 
         private void EnableObsToolbarToggle()
@@ -4027,13 +4021,6 @@ namespace SharpShot.UI
             _originalSettings.ShowObsButtonOnRecordingToolbar = true;
             if (ShowObsButtonOnRecordingToolbarCheckBox != null)
                 ShowObsButtonOnRecordingToolbarCheckBox.IsChecked = true;
-        }
-
-        private void EnableCustomAppToolbarToggle()
-        {
-            _originalSettings.ShowCustomAppButtonOnRecordingToolbar = true;
-            if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null)
-                ShowCustomAppButtonOnRecordingToolbarCheckBox.IsChecked = true;
         }
 
         private void DetectObsButton_Click(object sender, RoutedEventArgs e)
@@ -4060,7 +4047,7 @@ namespace SharpShot.UI
             else
             {
                 ThemedMessageBox.Show(this,
-                    "OBS Studio was not found in common locations.\n\nInstall OBS from https://obsproject.com/ or use Browse…",
+                    "OBS Studio was not found in common locations.\n\nInstall OBS from https://obsproject.com/ or use Change…",
                     "Link OBS", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
@@ -4083,24 +4070,230 @@ namespace SharpShot.UI
             UpdateLinkedAppStatusUI();
         }
 
-        private void LinkCustomAppButton_Click(object sender, RoutedEventArgs e)
+        private void AddLinkedAppButton_Click(object sender, RoutedEventArgs e)
         {
+            _originalSettings.LinkedApps ??= new List<LinkedExternalApp>();
+            if (_originalSettings.LinkedApps.Count >= LinkedExternalApp.MaxCount)
+            {
+                ThemedMessageBox.Show(this,
+                    $"You can link up to {LinkedExternalApp.MaxCount} apps.",
+                    "Linked apps", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             if (!AppLinkDialog.TryLinkCustomApp(this, out var path, out var displayName))
                 return;
 
-            _originalSettings.LinkedCustomAppPath = path;
-            _originalSettings.LinkedCustomAppDisplayName = displayName;
-            EnableCustomAppToolbarToggle();
+            _originalSettings.LinkedApps.Add(new LinkedExternalApp
+            {
+                ExecutablePath = path,
+                DisplayName = displayName,
+                Menu = "Main",
+                Icon = "Window"
+            });
             PersistLinkedAppSettingsToService();
             UpdateLinkedAppStatusUI();
         }
 
-        private void UnlinkCustomAppButton_Click(object sender, RoutedEventArgs e)
+        private void PopulateLinkedAppsList()
         {
-            _originalSettings.LinkedCustomAppPath = string.Empty;
-            _originalSettings.LinkedCustomAppDisplayName = string.Empty;
-            PersistLinkedAppSettingsToService();
-            UpdateLinkedAppStatusUI();
+            if (LinkedAppsListPanel == null)
+                return;
+
+            _rebuildingLinkedAppsList = true;
+            LinkedAppsListPanel.Children.Clear();
+            _originalSettings.LinkedApps ??= new List<LinkedExternalApp>();
+
+            if (_originalSettings.LinkedApps.Count == 0)
+            {
+                LinkedAppsListPanel.Children.Add(new TextBlock
+                {
+                    Text = "No linked apps yet. Use Add linked app… to choose an executable.",
+                    Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88)),
+                    FontSize = 12,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 8)
+                });
+                _rebuildingLinkedAppsList = false;
+                return;
+            }
+
+            foreach (var app in _originalSettings.LinkedApps.ToList())
+                LinkedAppsListPanel.Children.Add(CreateLinkedAppRow(app));
+
+            var iconColor = GetCurrentIconColorHex() ?? _originalSettings.IconColor;
+            if (string.IsNullOrEmpty(iconColor))
+                iconColor = "#FFFF8C00";
+            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
+            var brush = new SolidColorBrush(color);
+            ThemeLinkedAppRowButtons(LinkedAppsListPanel, color, brush);
+
+            _rebuildingLinkedAppsList = false;
+        }
+
+        private UIElement CreateLinkedAppRow(LinkedExternalApp app)
+        {
+            var card = new Border
+            {
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x2A, 0x2A, 0x2A)),
+                BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x44, 0x44, 0x44)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(8),
+                Padding = new Thickness(10),
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+
+            var root = new StackPanel();
+            var title = string.IsNullOrWhiteSpace(app.DisplayName)
+                ? System.IO.Path.GetFileNameWithoutExtension(app.ExecutablePath)
+                : app.DisplayName;
+            root.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(title) ? "Linked app" : title,
+                Foreground = (System.Windows.Media.Brush)FindResource("TextBrush"),
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 13
+            });
+            root.Children.Add(new TextBlock
+            {
+                Text = ExternalAppLauncher.IsValidExecutable(app.ExecutablePath)
+                    ? app.ExecutablePath
+                    : (string.IsNullOrWhiteSpace(app.ExecutablePath) ? "No executable selected" : $"Missing or invalid: {app.ExecutablePath}"),
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xAA, 0xAA, 0xAA)),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 2, 0, 8)
+            });
+
+            var options = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+
+            var menuBox = new ComboBox
+            {
+                Style = (Style)FindResource("DarkComboBoxStyle"),
+                Width = 160,
+                Margin = new Thickness(0, 0, 8, 0),
+                ToolTip = "Which SharpShot menu shows this button"
+            };
+            foreach (var key in LinkedAppIconCatalog.MenuKeys)
+            {
+                var item = new ComboBoxItem { Content = LinkedAppIconCatalog.MenuDisplayName(key), Tag = key };
+                menuBox.Items.Add(item);
+                if (string.Equals(app.Menu, key, StringComparison.OrdinalIgnoreCase))
+                    menuBox.SelectedItem = item;
+            }
+            if (menuBox.SelectedItem == null && menuBox.Items.Count > 0)
+                menuBox.SelectedIndex = 0;
+            menuBox.SelectionChanged += (_, _) =>
+            {
+                if (_rebuildingLinkedAppsList) return;
+                if (menuBox.SelectedItem is ComboBoxItem selected && selected.Tag is string menu)
+                {
+                    app.Menu = menu;
+                    PersistLinkedAppSettingsToService();
+                }
+            };
+
+            var iconBox = new ComboBox
+            {
+                Style = (Style)FindResource("DarkComboBoxStyle"),
+                Width = 130,
+                Margin = new Thickness(0, 0, 8, 0),
+                ToolTip = "Toolbar icon"
+            };
+            foreach (var key in LinkedAppIconCatalog.IconKeys)
+            {
+                var item = new ComboBoxItem { Content = LinkedAppIconCatalog.DisplayName(key), Tag = key };
+                iconBox.Items.Add(item);
+                if (string.Equals(app.Icon, key, StringComparison.OrdinalIgnoreCase))
+                    iconBox.SelectedItem = item;
+            }
+            if (iconBox.SelectedItem == null && iconBox.Items.Count > 0)
+                iconBox.SelectedIndex = 0;
+
+            var lettersBox = new TextBox
+            {
+                Style = (Style)FindResource("DarkTextBoxStyle"),
+                Width = 72,
+                MaxLength = LinkedExternalApp.MaxLetters,
+                Text = app.Letters,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                ToolTip = "Up to 3 letters shown on the button",
+                IsEnabled = string.Equals(app.Icon, "Letters", StringComparison.OrdinalIgnoreCase)
+            };
+            lettersBox.TextChanged += (_, _) =>
+            {
+                if (_rebuildingLinkedAppsList) return;
+                var value = lettersBox.Text ?? string.Empty;
+                if (value.Length > LinkedExternalApp.MaxLetters)
+                    value = value[..LinkedExternalApp.MaxLetters];
+                app.Letters = value;
+                PersistLinkedAppSettingsToService();
+            };
+
+            iconBox.SelectionChanged += (_, _) =>
+            {
+                if (_rebuildingLinkedAppsList) return;
+                if (iconBox.SelectedItem is ComboBoxItem selected && selected.Tag is string icon)
+                {
+                    app.Icon = icon;
+                    lettersBox.IsEnabled = string.Equals(icon, "Letters", StringComparison.OrdinalIgnoreCase);
+                    PersistLinkedAppSettingsToService();
+                }
+            };
+
+            options.Children.Add(menuBox);
+            options.Children.Add(iconBox);
+            options.Children.Add(lettersBox);
+            root.Children.Add(options);
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal };
+            var changeBtn = new Button
+            {
+                Content = "Change…",
+                Padding = new Thickness(12, 6, 12, 6),
+                Margin = new Thickness(0, 0, 8, 0),
+                ToolTip = "Choose a different executable"
+            };
+            changeBtn.Click += (_, _) =>
+            {
+                if (!AppLinkDialog.TryLinkCustomApp(this, out var path, out var displayName))
+                    return;
+                app.ExecutablePath = path;
+                app.DisplayName = displayName;
+                PersistLinkedAppSettingsToService();
+                UpdateLinkedAppStatusUI();
+            };
+
+            var unlinkBtn = new Button
+            {
+                Content = "Unlink",
+                Padding = new Thickness(12, 6, 12, 6),
+                ToolTip = "Remove this linked app"
+            };
+            unlinkBtn.Click += (_, _) =>
+            {
+                _originalSettings.LinkedApps.Remove(app);
+                PersistLinkedAppSettingsToService();
+                UpdateLinkedAppStatusUI();
+            };
+
+            actions.Children.Add(changeBtn);
+            actions.Children.Add(unlinkBtn);
+            root.Children.Add(actions);
+            card.Child = root;
+            return card;
+        }
+
+        private void ThemeLinkedAppRowButtons(DependencyObject parent, System.Windows.Media.Color color, SolidColorBrush brush)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is Button button)
+                    ApplyThemedButton(button, color, brush, 90, 32, allowDynamicWidth: true);
+                else
+                    ThemeLinkedAppRowButtons(child, color, brush);
+            }
         }
 
         private async void ShowOBSSettings()
