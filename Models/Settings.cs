@@ -62,6 +62,8 @@ namespace SharpShot.Models
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
         private bool _showOcrButtonOnDashboard;
+        private bool _showObsButtonOnRecordingToolbar;
+        private bool _showCustomAppButtonOnRecordingToolbar;
         private bool _showSmartRegionButtonOnDashboard;
         private bool _useDenseOcrForSmartRegions;
         private bool _skipPostCaptureMenu;
@@ -82,6 +84,8 @@ namespace SharpShot.Models
             LinkedObsPath = string.Empty;
             LinkedCustomAppPath = string.Empty;
             LinkedCustomAppDisplayName = string.Empty;
+            ShowObsButtonOnRecordingToolbar = true;
+            ShowCustomAppButtonOnRecordingToolbar = false;
             SelectedOutputAudioDevice = string.Empty;
             SelectedInputAudioDevice = string.Empty;
             EnableGlobalHotkeys = true;
@@ -184,7 +188,7 @@ namespace SharpShot.Models
             set => SetProperty(ref _recordingEngine, value);
         }
 
-        /// <summary>User-linked path to obs64.exe / obs32.exe. Empty means OBS launcher is hidden.</summary>
+        /// <summary>User-linked path to obs64.exe / obs32.exe.</summary>
         public string LinkedObsPath
         {
             get => _linkedObsPath;
@@ -203,6 +207,20 @@ namespace SharpShot.Models
         {
             get => _linkedCustomAppDisplayName;
             set => SetProperty(ref _linkedCustomAppDisplayName, value ?? string.Empty);
+        }
+
+        /// <summary>When true, the OBS button is shown on the recording toolbar independently of the custom app button.</summary>
+        public bool ShowObsButtonOnRecordingToolbar
+        {
+            get => _showObsButtonOnRecordingToolbar;
+            set => SetProperty(ref _showObsButtonOnRecordingToolbar, value);
+        }
+
+        /// <summary>When true, the custom app launcher is shown on the recording toolbar independently of the OBS button.</summary>
+        public bool ShowCustomAppButtonOnRecordingToolbar
+        {
+            get => _showCustomAppButtonOnRecordingToolbar;
+            set => SetProperty(ref _showCustomAppButtonOnRecordingToolbar, value);
         }
 
         public string SelectedOutputAudioDevice

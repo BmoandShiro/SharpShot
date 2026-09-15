@@ -804,20 +804,28 @@ namespace SharpShot
 
         private void UpdateExternalLauncherButtonsVisibility()
         {
-            bool showObs = HasValidLinkedObs();
-            OBSRecordButton.Visibility = showObs ? Visibility.Visible : Visibility.Collapsed;
-            RecordingSelectionSeparator2.Visibility = showObs ? Visibility.Visible : Visibility.Collapsed;
+            var settings = _settingsService.CurrentSettings;
+            bool showObs = settings.ShowObsButtonOnRecordingToolbar;
+            bool showCustom = settings.ShowCustomAppButtonOnRecordingToolbar;
 
-            // Custom app button always shown in recording submenu (click-to-link when unlinked)
-            CustomAppButton.Visibility = Visibility.Visible;
-            RecordingSelectionSeparatorCustomApp.Visibility = Visibility.Visible;
+            OBSRecordButton.Visibility = showObs ? Visibility.Visible : Visibility.Collapsed;
+            CustomAppButton.Visibility = showCustom ? Visibility.Visible : Visibility.Collapsed;
+
+            // Separator after fullscreen when at least one launcher is shown
+            RecordingSelectionSeparator2.Visibility = (showObs || showCustom) ? Visibility.Visible : Visibility.Collapsed;
+            // Separator between OBS and custom only when both are shown
+            RecordingSelectionSeparatorCustomApp.Visibility = (showObs && showCustom) ? Visibility.Visible : Visibility.Collapsed;
             RecordingSelectionSeparator3.Visibility = Visibility.Visible;
 
-            var customName = _settingsService.CurrentSettings.LinkedCustomAppDisplayName;
+            OBSRecordButton.ToolTip = HasValidLinkedObs()
+                ? "Launch OBS Studio"
+                : "Link OBS Studio";
+
+            var customName = settings.LinkedCustomAppDisplayName;
             if (HasValidLinkedCustomApp())
             {
                 CustomAppButton.ToolTip = string.IsNullOrWhiteSpace(customName)
-                    ? $"Launch {_settingsService.CurrentSettings.LinkedCustomAppPath}"
+                    ? $"Launch {settings.LinkedCustomAppPath}"
                     : $"Launch {customName}";
             }
             else

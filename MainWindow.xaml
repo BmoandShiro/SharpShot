@@ -320,7 +320,7 @@
                            VerticalAlignment="Center"
                            Visibility="Collapsed"/>
 
-                <!-- OBS Record Button (Hidden unless OBS is linked in settings) -->
+                <!-- OBS Record Button (visibility controlled by Settings → Recording) -->
                 <Button x:Name="OBSRecordButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="OBSRecordButton_Click"
@@ -347,7 +347,7 @@
                            VerticalAlignment="Center"
                            Visibility="Collapsed"/>
 
-                <!-- Custom App Launcher (always available in recording submenu for link-or-launch) -->
+                <!-- Custom App Launcher (visibility controlled by Settings → Recording) -->
                 <Button x:Name="CustomAppButton" 
                         Style="{StaticResource ToolbarButtonStyle}"
                         Click="CustomAppButton_Click"

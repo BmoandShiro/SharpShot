@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Microsoft.Win32;
 using SharpShot.Utils;
 
@@ -19,6 +20,7 @@ namespace SharpShot.UI
         {
             InitializeComponent();
             _obsMode = obsMode;
+            ApplyThemedChrome();
 
             TitleTextBlock.Text = obsMode ? "Link OBS Studio" : "Link Custom Application";
             MessageTextBlock.Text = obsMode
@@ -114,6 +116,34 @@ namespace SharpShot.UI
 
             executablePath = dialog.FileName;
             return true;
+        }
+
+        private void ApplyThemedChrome()
+        {
+            var s = App.SettingsService.CurrentSettings;
+            var iconColor = string.IsNullOrEmpty(s.IconColor) ? "#FFFF8C00" : s.IconColor;
+            var color = (Color)ColorConverter.ConvertFromString(iconColor);
+            var brush = new SolidColorBrush(color);
+
+            CloseButton.Style = ThemeButtonStyleHelper.CreateCloseButtonStyle(
+                color, s.HoverOpacity, s.DropShadowOpacity);
+            if (CloseButton.Content is System.Windows.Controls.TextBlock closeTb)
+                closeTb.Foreground = brush;
+
+            ApplyThemedActionButton(BrowseButton, color, brush, s.HoverOpacity, s.DropShadowOpacity);
+            ApplyThemedActionButton(CancelButton, color, brush, s.HoverOpacity, s.DropShadowOpacity);
+            ApplyThemedActionButton(LinkButton, color, brush, s.HoverOpacity, s.DropShadowOpacity);
+        }
+
+        private static void ApplyThemedActionButton(
+            System.Windows.Controls.Button button, Color color, SolidColorBrush brush,
+            double hoverOpacity, double dropShadowOpacity)
+        {
+            button.Style = ThemeButtonStyleHelper.CreateModernButtonStyle(
+                color, hoverOpacity, dropShadowOpacity, 100, 36, allowDynamicWidth: true);
+            button.Foreground = brush;
+            if (button.Content is System.Windows.Controls.TextBlock tb)
+                tb.Foreground = brush;
         }
 
         private void LoadApps()

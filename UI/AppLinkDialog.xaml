@@ -10,6 +10,41 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         ShowInTaskbar="False">
+    <Window.Resources>
+        <Style x:Key="AppLinkListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Margin" Value="2,1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.19"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource AccentColor}" Opacity="0.08"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
     <Border CornerRadius="10" Background="#FF1E1E1E" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="0">
         <Border.Effect>
             <DropShadowEffect Color="Black" Direction="315" ShadowDepth="5" BlurRadius="12" Opacity="0.55"/>
@@ -54,10 +89,17 @@
                      Margin="18,0,18,8"
                      Background="#FF2A2A2A"
                      Foreground="{StaticResource TextBrush}"
-                     BorderBrush="#FF444444"
+                     BorderBrush="{DynamicResource AccentBrush}"
                      BorderThickness="1"
                      DisplayMemberPath="DisplayName"
-                     SelectionChanged="AppsListBox_SelectionChanged"/>
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ItemContainerStyle="{StaticResource AppLinkListItemStyle}"
+                     SelectionChanged="AppsListBox_SelectionChanged">
+                <ListBox.Resources>
+                    <Style TargetType="ScrollBar" BasedOn="{StaticResource ThemedScrollBarStyle}"/>
+                </ListBox.Resources>
+            </ListBox>
 
             <TextBlock x:Name="SelectedPathTextBlock" Grid.Row="3"
                        Margin="18,0,18,8"
@@ -68,16 +110,13 @@
 
             <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right"
                         Margin="12,8,14,14">
-                <Button x:Name="BrowseButton" Click="BrowseButton_Click" Margin="0,0,10,0"
-                        Style="{StaticResource ModernButtonStyle}" Padding="12,6">
+                <Button x:Name="BrowseButton" Click="BrowseButton_Click" Margin="0,0,10,0">
                     <TextBlock Text="Browse…" FontSize="13" FontWeight="SemiBold"/>
                 </Button>
-                <Button x:Name="CancelButton" Click="CancelButton_Click" Margin="0,0,10,0"
-                        Style="{StaticResource ModernButtonStyle}" Padding="12,6">
+                <Button x:Name="CancelButton" Click="CancelButton_Click" Margin="0,0,10,0">
                     <TextBlock Text="Cancel" FontSize="13" FontWeight="SemiBold"/>
                 </Button>
-                <Button x:Name="LinkButton" Click="LinkButton_Click"
-                        Style="{StaticResource ModernButtonStyle}" Padding="12,6" IsEnabled="False">
+                <Button x:Name="LinkButton" Click="LinkButton_Click" IsEnabled="False">
                     <TextBlock Text="Link" FontSize="13" FontWeight="SemiBold"/>
                 </Button>
             </StackPanel>

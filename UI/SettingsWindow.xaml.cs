@@ -554,6 +554,10 @@ namespace SharpShot.UI
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
             ShowOcrButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowOcrButtonOnDashboard;
             ShowSmartRegionButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowSmartRegionButtonOnDashboard;
+            if (ShowObsButtonOnRecordingToolbarCheckBox != null)
+                ShowObsButtonOnRecordingToolbarCheckBox.IsChecked = _originalSettings.ShowObsButtonOnRecordingToolbar;
+            if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null)
+                ShowCustomAppButtonOnRecordingToolbarCheckBox.IsChecked = _originalSettings.ShowCustomAppButtonOnRecordingToolbar;
             UseDenseOcrForSmartRegionsCheckBox.IsChecked = _originalSettings.UseDenseOcrForSmartRegions;
             SkipPostCaptureMenuCheckBox.IsChecked = _originalSettings.SkipPostCaptureMenu;
             HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
@@ -1000,6 +1004,10 @@ namespace SharpShot.UI
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
                 _originalSettings.ShowOcrButtonOnDashboard = ShowOcrButtonOnDashboardCheckBox.IsChecked ?? false;
                 _originalSettings.ShowSmartRegionButtonOnDashboard = ShowSmartRegionButtonOnDashboardCheckBox.IsChecked ?? false;
+                if (ShowObsButtonOnRecordingToolbarCheckBox != null)
+                    _originalSettings.ShowObsButtonOnRecordingToolbar = ShowObsButtonOnRecordingToolbarCheckBox.IsChecked ?? true;
+                if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null)
+                    _originalSettings.ShowCustomAppButtonOnRecordingToolbar = ShowCustomAppButtonOnRecordingToolbarCheckBox.IsChecked ?? false;
                 _originalSettings.UseDenseOcrForSmartRegions = UseDenseOcrForSmartRegionsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
@@ -1233,6 +1241,8 @@ namespace SharpShot.UI
             target.LinkedObsPath = source.LinkedObsPath;
             target.LinkedCustomAppPath = source.LinkedCustomAppPath;
             target.LinkedCustomAppDisplayName = source.LinkedCustomAppDisplayName;
+            target.ShowObsButtonOnRecordingToolbar = source.ShowObsButtonOnRecordingToolbar;
+            target.ShowCustomAppButtonOnRecordingToolbar = source.ShowCustomAppButtonOnRecordingToolbar;
             target.AudioRecordingMode = source.AudioRecordingMode;
             target.SelectedOutputAudioDevice = source.SelectedOutputAudioDevice;
             target.SelectedInputAudioDevice = source.SelectedInputAudioDevice;
@@ -1637,6 +1647,10 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(ShowOcrButtonOnDashboardCheckBox, themeColor);
                 if (ShowSmartRegionButtonOnDashboardCheckBox != null && ShowSmartRegionButtonOnDashboardCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(ShowSmartRegionButtonOnDashboardCheckBox, themeColor);
+                if (ShowObsButtonOnRecordingToolbarCheckBox != null && ShowObsButtonOnRecordingToolbarCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(ShowObsButtonOnRecordingToolbarCheckBox, themeColor);
+                if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null && ShowCustomAppButtonOnRecordingToolbarCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(ShowCustomAppButtonOnRecordingToolbarCheckBox, themeColor);
                 if (UseDenseOcrForSmartRegionsCheckBox != null && UseDenseOcrForSmartRegionsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(UseDenseOcrForSmartRegionsCheckBox, themeColor);
                 if (SkipPostCaptureMenuCheckBox != null && SkipPostCaptureMenuCheckBox.IsLoaded)
@@ -3974,7 +3988,7 @@ namespace SharpShot.UI
                 else if (!string.IsNullOrWhiteSpace(obsPath))
                     LinkedObsStatusText.Text = $"Missing or invalid: {obsPath}";
                 else
-                    LinkedObsStatusText.Text = "Not linked — OBS button stays hidden until linked";
+                    LinkedObsStatusText.Text = "Not linked — click the OBS toolbar button or Detect/Browse here";
             }
 
             if (LinkedCustomAppStatusText != null)
@@ -4003,7 +4017,23 @@ namespace SharpShot.UI
             _settingsService.CurrentSettings.LinkedObsPath = _originalSettings.LinkedObsPath;
             _settingsService.CurrentSettings.LinkedCustomAppPath = _originalSettings.LinkedCustomAppPath;
             _settingsService.CurrentSettings.LinkedCustomAppDisplayName = _originalSettings.LinkedCustomAppDisplayName;
+            _settingsService.CurrentSettings.ShowObsButtonOnRecordingToolbar = _originalSettings.ShowObsButtonOnRecordingToolbar;
+            _settingsService.CurrentSettings.ShowCustomAppButtonOnRecordingToolbar = _originalSettings.ShowCustomAppButtonOnRecordingToolbar;
             _settingsService.SaveSettings();
+        }
+
+        private void EnableObsToolbarToggle()
+        {
+            _originalSettings.ShowObsButtonOnRecordingToolbar = true;
+            if (ShowObsButtonOnRecordingToolbarCheckBox != null)
+                ShowObsButtonOnRecordingToolbarCheckBox.IsChecked = true;
+        }
+
+        private void EnableCustomAppToolbarToggle()
+        {
+            _originalSettings.ShowCustomAppButtonOnRecordingToolbar = true;
+            if (ShowCustomAppButtonOnRecordingToolbarCheckBox != null)
+                ShowCustomAppButtonOnRecordingToolbarCheckBox.IsChecked = true;
         }
 
         private void DetectObsButton_Click(object sender, RoutedEventArgs e)
@@ -4012,6 +4042,7 @@ namespace SharpShot.UI
             if (OBSDetection.IsValidLinkedObsPath(detected))
             {
                 _originalSettings.LinkedObsPath = detected;
+                EnableObsToolbarToggle();
                 PersistLinkedAppSettingsToService();
                 UpdateLinkedAppStatusUI();
                 ThemedMessageBox.Show(this, $"Linked OBS at:\n{detected}", "Link OBS",
@@ -4022,6 +4053,7 @@ namespace SharpShot.UI
             if (AppLinkDialog.TryBrowseForObs(this, out var browsed))
             {
                 _originalSettings.LinkedObsPath = browsed;
+                EnableObsToolbarToggle();
                 PersistLinkedAppSettingsToService();
                 UpdateLinkedAppStatusUI();
             }
@@ -4039,6 +4071,7 @@ namespace SharpShot.UI
                 return;
 
             _originalSettings.LinkedObsPath = path;
+            EnableObsToolbarToggle();
             PersistLinkedAppSettingsToService();
             UpdateLinkedAppStatusUI();
         }
@@ -4057,6 +4090,7 @@ namespace SharpShot.UI
 
             _originalSettings.LinkedCustomAppPath = path;
             _originalSettings.LinkedCustomAppDisplayName = displayName;
+            EnableCustomAppToolbarToggle();
             PersistLinkedAppSettingsToService();
             UpdateLinkedAppStatusUI();
         }

@@ -35,6 +35,12 @@ namespace SharpShot.Services
                             CurrentSettings.ShowSmartRegionButtonOnDashboard = true;
                         if (json.IndexOf("UseDenseOcrForSmartRegions", StringComparison.OrdinalIgnoreCase) < 0)
                             CurrentSettings.UseDenseOcrForSmartRegions = true;
+                        // Existing installs: restore OBS independently of the custom launcher,
+                        // and keep the custom button they already have on the recording toolbar.
+                        if (json.IndexOf("ShowObsButtonOnRecordingToolbar", StringComparison.OrdinalIgnoreCase) < 0)
+                            CurrentSettings.ShowObsButtonOnRecordingToolbar = true;
+                        if (json.IndexOf("ShowCustomAppButtonOnRecordingToolbar", StringComparison.OrdinalIgnoreCase) < 0)
+                            CurrentSettings.ShowCustomAppButtonOnRecordingToolbar = true;
                     }
                 }
             }
