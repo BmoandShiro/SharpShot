@@ -39,6 +39,8 @@ namespace SharpShot.Services
                             CurrentSettings.ShowObsButtonOnRecordingToolbar = true;
                         if (json.IndexOf("ShowCustomAppButtonOnRecordingToolbar", StringComparison.OrdinalIgnoreCase) < 0)
                             CurrentSettings.ShowCustomAppButtonOnRecordingToolbar = true;
+                        if (string.IsNullOrWhiteSpace(CurrentSettings.SelectedInputAudioDevice))
+                            CurrentSettings.SelectedInputAudioDevice = "Auto-detect";
                         if (json.IndexOf("SmartRegionHorizontalSplit", StringComparison.OrdinalIgnoreCase) < 0)
                         {
                             // The old on/off toggle was too aggressive and split sentences.

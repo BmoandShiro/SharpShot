@@ -18,7 +18,7 @@ namespace SharpShot.Models
         private string _linkedCustomAppDisplayName = string.Empty;
         private List<LinkedExternalApp> _linkedApps = new();
         private string _selectedOutputAudioDevice = string.Empty;
-        private string _selectedInputAudioDevice = string.Empty;
+        private string _selectedInputAudioDevice = "Auto-detect";
         private bool _enableGlobalHotkeys;
         private bool _startMinimized;
         private bool _startWithWindowsMinimized;
@@ -92,7 +92,7 @@ namespace SharpShot.Models
             ShowObsButtonOnRecordingToolbar = true;
             ShowCustomAppButtonOnRecordingToolbar = false;
             SelectedOutputAudioDevice = string.Empty;
-            SelectedInputAudioDevice = string.Empty;
+            SelectedInputAudioDevice = "Auto-detect";
             EnableGlobalHotkeys = true;
             StartMinimized = false;
             IconColor = "#FFFF8C00";
