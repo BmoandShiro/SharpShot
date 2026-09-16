@@ -127,7 +127,7 @@ namespace SharpShot.Models
             SkipEditorAndAutoCopy = false; // Default to false - show editor
             AdjustRegionBeforeEditor = false; // Default off — mouse-up commits the region
             ShowOcrButtonOnDashboard = true;
-            ShowSmartRegionButtonOnDashboard = true;
+            ShowSmartRegionButtonOnDashboard = false;
             UseDenseOcrForSmartRegions = true; // Tiled dual-PSM OCR — slower, much better coverage
             SmartRegionTextGrouping = 0; // 0 line, 1 paragraph, 2 multiple paragraphs
             SmartRegionHorizontalSplit = 1; // 0 off, 1 widest, 2 far apart, 3 wide, 4 medium, 5 close

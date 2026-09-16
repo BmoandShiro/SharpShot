@@ -567,7 +567,6 @@ namespace SharpShot.UI
             HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
             UseDxgiCaptureCheckBox.IsChecked = _originalSettings.UseDxgiCapture;
             EnableMagnifierCheckBox.IsChecked = _originalSettings.EnableMagnifier;
-            EnableSmartRegionDetectionCheckBox.IsChecked = _originalSettings.EnableSmartRegionDetection;
             DisableAllPopupsCheckBox.IsChecked = _originalSettings.DisableAllPopups;
             EnableAutoUpdateCheckBox.IsChecked = _originalSettings.EnableAutoUpdateCheck;
 
@@ -1018,7 +1017,6 @@ namespace SharpShot.UI
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.UseDxgiCapture = UseDxgiCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
-                _originalSettings.EnableSmartRegionDetection = EnableSmartRegionDetectionCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
 
                 // Apply Windows startup registration based on new setting
@@ -1711,8 +1709,6 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(UseDxgiCaptureCheckBox, themeColor);
                 if (EnableMagnifierCheckBox != null && EnableMagnifierCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(EnableMagnifierCheckBox, themeColor);
-                if (EnableSmartRegionDetectionCheckBox != null && EnableSmartRegionDetectionCheckBox.IsLoaded)
-                    UpdateCheckboxVisualTree(EnableSmartRegionDetectionCheckBox, themeColor);
                 if (DisableAllPopupsCheckBox != null && DisableAllPopupsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(DisableAllPopupsCheckBox, themeColor);
                 if (FindName("StartWithWindowsMinimizedCheckBox") is System.Windows.Controls.CheckBox startWithWindowsCheckBox && startWithWindowsCheckBox.IsLoaded)

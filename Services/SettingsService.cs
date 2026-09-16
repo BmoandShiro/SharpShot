@@ -31,9 +31,6 @@ namespace SharpShot.Services
                     {
                         CurrentSettings = settings;
                         CurrentSettings.MigrateLegacyLinkedApps();
-                        // New setting: default ON for existing installs that lack the key
-                        if (json.IndexOf("ShowSmartRegionButtonOnDashboard", StringComparison.OrdinalIgnoreCase) < 0)
-                            CurrentSettings.ShowSmartRegionButtonOnDashboard = true;
                         if (json.IndexOf("UseDenseOcrForSmartRegions", StringComparison.OrdinalIgnoreCase) < 0)
                             CurrentSettings.UseDenseOcrForSmartRegions = true;
                         // Existing installs: restore OBS independently of the custom launcher,

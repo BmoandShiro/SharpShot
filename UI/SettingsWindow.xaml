@@ -571,13 +571,6 @@
                </StackPanel>
                    </StackPanel>
                </Expander>
-
-                            <TextBlock Text="Region selection" Style="{StaticResource SettingsGroupHeaderStyle}"/>
-                <CheckBox x:Name="EnableSmartRegionDetectionCheckBox"
-                          Content="Enable Smart Regions (also toggled from the dashboard Smart button)"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="When enabled, detects content blocks on the active window and lets you click them to OCR/copy text. Prefer the dashboard Smart toggle for day-to-day use."/>
                         </StackPanel>
 
                         <StackPanel x:Name="RecordingSection" Visibility="Collapsed">
