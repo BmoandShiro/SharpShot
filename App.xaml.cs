@@ -29,7 +29,9 @@ namespace SharpShot
             // Initialize services
             _settingsService = new SettingsService();
             _hotkeyManager = new HotkeyManager(_settingsService);
-            _updateService = new UpdateService(_settingsService);
+            // Steam and Microsoft Store own updates. GitHub builds still construct the updater.
+            if (!BuildInfo.DisableInAppUpdates)
+                _updateService = new UpdateService(_settingsService);
             
             // Load settings
             _settingsService.LoadSettings();
@@ -56,8 +58,8 @@ namespace SharpShot
                 _ = Task.Run(() => DxgiDesktopCapture.Warmup());
             }
 
-            // Check for updates in background (if enabled)
-            if (_settingsService.CurrentSettings.EnableAutoUpdateCheck)
+            // Check for updates in background (GitHub builds only).
+            if (!BuildInfo.DisableInAppUpdates && _settingsService.CurrentSettings.EnableAutoUpdateCheck)
             {
                 Task.Run(async () => await CheckForUpdatesAsync());
             }

@@ -1,5 +1,7 @@
-# SharpShot Store / no-OBS build
+# SharpShot Microsoft Store / no-OBS build
 # Builds a portable ZIP and an MSIX package WITHOUT bundling OBS Studio.
+# Publish uses StoreBuild=true so the GitHub updater is compiled out.
+# Partner Center re-signs the .msix; this script does not require a local cert.
 # Does not modify build-release.ps1 or other existing packaging scripts.
 # OBS can be linked at runtime from Settings or the custom/OBS launcher buttons.
 
@@ -26,7 +28,8 @@ elseif ($parts.Length -eq 3) { $version = "$version.0" }
 
 $releaseFolder = "SharpShot-Store-v$version"
 $zipName = "SharpShot-Store-v$version.zip"
-$publishDir = "bin\$Configuration\net8.0-windows\win-x64\publish"
+# Platform=x64 writes to bin\x64\... even when some older scripts assumed bin\Release\...
+$publishDir = "bin\x64\$Configuration\net8.0-windows\win-x64\publish"
 $msixContentDir = "bin\$Configuration\msix-content-no-obs"
 $msixFile = "bin\$Configuration\SharpShot-Store-v$version.msix"
 
@@ -53,10 +56,11 @@ function Find-MakeAppx {
     return $null
 }
 
-Write-Host "`nStep 1: Publish (ExcludeObsBundle=true)..." -ForegroundColor Yellow
+Write-Host "`nStep 1: Publish (StoreBuild=true, ExcludeObsBundle=true)..." -ForegroundColor Yellow
 dotnet publish SharpShot.csproj `
     --configuration $Configuration `
     -p:Platform=x64 `
+    -p:StoreBuild=true `
     -p:ExcludeObsBundle=true `
     -p:PublishSingleFile=true `
     -p:SelfContained=true `
@@ -68,8 +72,14 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if (-not (Test-Path "$publishDir\SharpShot.exe")) {
-    Write-Host "SharpShot.exe not found at $publishDir" -ForegroundColor Red
-    exit 1
+    $fallback = "bin\$Configuration\net8.0-windows\win-x64\publish"
+    if (Test-Path "$fallback\SharpShot.exe") {
+        $publishDir = $fallback
+    }
+    else {
+        Write-Host "SharpShot.exe not found at $publishDir" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # Portable folder
@@ -102,6 +112,7 @@ if (Test-Path "ffmpeg") {
 # Docs / licenses (skip OBS-LICENSE / OBS_INTEGRATION for store package)
 if (Test-Path "README.md") { Copy-Item "README.md" $releaseFolder -Force }
 if (Test-Path "LICENSE") { Copy-Item "LICENSE" $releaseFolder -Force }
+if (Test-Path "PRIVACY.md") { Copy-Item "PRIVACY.md" $releaseFolder -Force }
 if (Test-Path "FFmpeg-LICENSE.txt") { Copy-Item "FFmpeg-LICENSE.txt" $releaseFolder -Force }
 
 $launcherContent = @"
@@ -148,8 +159,23 @@ if (-not $SkipMsix) {
             Copy-Item -Path "ffmpeg" -Destination (Join-Path $msixContentDir "ffmpeg") -Recurse -Force
         }
 
-        # Manifest must be named AppxManifest.xml for MakeAppx
+        $requiredAssets = @(
+            "Assets\StoreLogo.png",
+            "Assets\Square150x150Logo.png",
+            "Assets\Square44x44Logo.png",
+            "Assets\Wide310x150Logo.png",
+            "Assets\SplashScreen.png"
+        )
+        foreach ($asset in $requiredAssets) {
+            if (-not (Test-Path $asset)) {
+                Write-Host "Missing Store asset: $asset" -ForegroundColor Red
+                exit 1
+            }
+        }
+
+        # Manifest must be named AppxManifest.xml for MakeAppx. Partner Center re-signs this package.
         Copy-Item "Package.appxmanifest" -Destination (Join-Path $msixContentDir "AppxManifest.xml") -Force
+        if (Test-Path "PRIVACY.md") { Copy-Item "PRIVACY.md" $msixContentDir -Force }
 
         if (Test-Path "Assets") {
             Copy-Item "Assets" -Destination $msixContentDir -Recurse -Force

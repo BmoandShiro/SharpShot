@@ -1,36 +1,20 @@
-# SharpShot MSIX Build Script for Microsoft Store
-# This script builds the MSIX bundle required for Microsoft Store submission
+# Microsoft Store MSIX entry point.
+# GenerateAppxPackageOnBuild does not produce a Store-ready package for this WPF project.
+# This script delegates to the MakeAppx path in build-store-no-obs.ps1.
 
 param(
     [string]$Configuration = "Release",
-    [switch]$Clean
+    [switch]$Clean,
+    [string]$Platform = "x64"
 )
 
-Write-Host "Building SharpShot MSIX Bundle for Microsoft Store..." -ForegroundColor Green
-
-# Set error action preference
 $ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
 
-# Clean if requested
 if ($Clean) {
     Write-Host "Cleaning previous builds..." -ForegroundColor Yellow
     dotnet clean SharpShot.csproj --configuration $Configuration
-    if (Test-Path "bin") { Remove-Item -Recurse -Force "bin" }
-    if (Test-Path "obj") { Remove-Item -Recurse -Force "obj" }
 }
 
-# Restore packages
-Write-Host "Restoring NuGet packages..." -ForegroundColor Yellow
-dotnet restore SharpShot.csproj
-
-# Build the project
-Write-Host "Building project..." -ForegroundColor Yellow
-dotnet build SharpShot.csproj --configuration $Configuration --no-restore
-
-# Publish with MSIX generation enabled
-Write-Host "Publishing MSIX package..." -ForegroundColor Yellow
-dotnet publish SharpShot.csproj --configuration $Configuration --no-build -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false
-
-Write-Host "Build completed!" -ForegroundColor Green
-Write-Host "Check the bin\$Configuration folder for output files." -ForegroundColor Cyan
-Write-Host "Look for .msix and .msixbundle files in the publish directory." -ForegroundColor Cyan
+& "$PSScriptRoot\build-store-no-obs.ps1" -Configuration $Configuration -SkipZip -NoPrompt
+exit $LASTEXITCODE

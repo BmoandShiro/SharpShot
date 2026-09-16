@@ -69,7 +69,7 @@ $nsiPath = Join-Path $ProjectDir "Installer\SharpShot.nsi"
 if (Test-Path $nsiPath) {
     $content = Get-Content $nsiPath -Raw
     $content = $content -replace '!define APP_VERSION "\d+\.\d+\.\d+\.\d+"', "!define APP_VERSION `"$version`""
-    $content = $content -replace '!define APP_PORTABLE_DIR "SharpShot-Release-v\d+\.\d+\.\d+\.\d+"', "!define APP_PORTABLE_DIR `"$releaseFolder`""
+    $content = $content -replace '!define APP_PORTABLE_DIR "[^"]*SharpShot-Release-v\d+\.\d+\.\d+\.\d+"', "!define APP_PORTABLE_DIR `"..\$releaseFolder`""
     Update-FileContent $nsiPath $content
     Write-Host "  Updated Installer\SharpShot.nsi" -ForegroundColor Gray
 }
@@ -112,13 +112,22 @@ if (Test-Path $build3Path) {
     Write-Host "  Updated 3xbuild.bat" -ForegroundColor Gray
 }
 
-# 9. Package.appxmanifest
+# 9. Package.appxmanifest — Identity Version only.
+# TargetDeviceFamily MinVersion is a Windows OS version (e.g. 10.0.17763.0), not the app version.
 $appxPath = Join-Path $ProjectDir "Package.appxmanifest"
 if (Test-Path $appxPath) {
     $content = Get-Content $appxPath -Raw
-    $content = $content -replace 'Version="\d+\.\d+\.\d+\.\d+"', "Version=`"$version`""
-    Update-FileContent $appxPath $content
-    Write-Host "  Updated Package.appxmanifest" -ForegroundColor Gray
+    if ($content -notmatch '<Identity\b[^>]*\bVersion="[^"]+"') {
+        Write-Host "  WARNING: Package.appxmanifest Identity Version was not found." -ForegroundColor Yellow
+    }
+    else {
+        $identityUpdated = [regex]::Replace(
+            $content,
+            '(<Identity\b[^>]*\bVersion=")[^"]+(")',
+            "`${1}$version`$2")
+        Update-FileContent $appxPath $identityUpdated
+        Write-Host "  Updated Package.appxmanifest Identity Version" -ForegroundColor Gray
+    }
 }
 
 # 10. .gitignore (release folder pattern)
