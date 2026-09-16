@@ -62,6 +62,7 @@ namespace SharpShot.Models
         private bool _editorFollowsCaptureMonitor;
         private bool _disableAllPopups;
         private bool _skipEditorAndAutoCopy;
+        private bool _adjustRegionBeforeEditor;
         private bool _showOcrButtonOnDashboard;
         private bool _showObsButtonOnRecordingToolbar;
         private bool _showCustomAppButtonOnRecordingToolbar;
@@ -122,6 +123,7 @@ namespace SharpShot.Models
             EditorFollowsCaptureMonitor = false; // Default: editor uses configured monitor
             DisableAllPopups = true;
             SkipEditorAndAutoCopy = false; // Default to false - show editor
+            AdjustRegionBeforeEditor = false; // Default off — mouse-up commits the region
             ShowOcrButtonOnDashboard = true;
             ShowSmartRegionButtonOnDashboard = true;
             UseDenseOcrForSmartRegions = true; // Tiled dual-PSM OCR — slower, much better coverage
@@ -526,6 +528,16 @@ namespace SharpShot.Models
         {
             get => _skipEditorAndAutoCopy;
             set => SetProperty(ref _skipEditorAndAutoCopy, value);
+        }
+
+        /// <summary>
+        /// When true, region capture keeps the all-monitor freeze after the drag and lets the
+        /// dashed selection be moved/resized until Enter confirms the crop.
+        /// </summary>
+        public bool AdjustRegionBeforeEditor
+        {
+            get => _adjustRegionBeforeEditor;
+            set => SetProperty(ref _adjustRegionBeforeEditor, value);
         }
 
         public bool ShowOcrButtonOnDashboard

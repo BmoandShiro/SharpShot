@@ -208,7 +208,8 @@ namespace SharpShot.Utils
             IntPtr windowHandle,
             Bitmap? screenSnapshot = null,
             Rectangle screenSnapshotBounds = default,
-            bool denseOcr = true)
+            bool denseOcr = true,
+            Action<List<Rectangle>>? onPartial = null)
         {
             if (windowHandle == IntPtr.Zero)
                 return new List<Rectangle>();
@@ -216,7 +217,21 @@ namespace SharpShot.Utils
             var ocrRects = new List<Rectangle>();
             try
             {
-                ocrRects = await CollectOcrRegionsAsync(windowHandle, screenSnapshot, screenSnapshotBounds, denseOcr)
+                ocrRects = await CollectOcrRegionsAsync(
+                        windowHandle, screenSnapshot, screenSnapshotBounds, denseOcr,
+                        sparse =>
+                        {
+                            if (onPartial == null || sparse.Count == 0)
+                                return;
+                            try
+                            {
+                                onPartial(MergeOcrAndUia(windowHandle, sparse));
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"SmartRegion partial OCR: {ex.Message}");
+                            }
+                        })
                     .ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -224,14 +239,16 @@ namespace SharpShot.Utils
                 Debug.WriteLine($"SmartRegion OCR enrich: {ex.Message}");
             }
 
-            // Light UIA supplement only — never let tiny chrome dominate when OCR found real text.
-            var uia = CollectUsefulUiaSupplement(windowHandle);
+            return MergeOcrAndUia(windowHandle, ocrRects);
+        }
 
+        private static List<Rectangle> MergeOcrAndUia(IntPtr windowHandle, List<Rectangle> ocrRects)
+        {
+            var uia = CollectUsefulUiaSupplement(windowHandle);
             if (ocrRects.Count > 0)
             {
                 var merged = new List<Rectangle>(ocrRects.Count + Math.Min(uia.Count, 20));
                 merged.AddRange(ocrRects);
-                // Only keep large UIA regions (images/cards) that don't swamp text lines
                 foreach (var r in uia)
                 {
                     if (r.Width >= 80 && r.Height >= 48 && Area(r) >= 80 * 48)
@@ -240,7 +257,6 @@ namespace SharpShot.Utils
                 return DedupAndCap(merged);
             }
 
-            // OCR failed — filtered UIA is better than nothing (Explorer etc.)
             return DedupAndCap(uia);
         }
 
@@ -416,7 +432,8 @@ namespace SharpShot.Utils
             IntPtr hwnd,
             Bitmap? screenSnapshot = null,
             Rectangle screenSnapshotBounds = default,
-            bool denseOcr = true)
+            bool denseOcr = true,
+            Action<List<Rectangle>>? onSparse = null)
         {
             var result = new List<Rectangle>();
             if (!OcrService.IsAvailable())
@@ -427,45 +444,52 @@ namespace SharpShot.Utils
 
             try
             {
-                IReadOnlyList<OcrWordResult> lines = denseOcr
-                    ? await OcrService.RecognizeSmartRegionLinesAsync(bmp).ConfigureAwait(false)
-                    : await OcrService.RecognizeTextLinesAsync(bmp).ConfigureAwait(false);
-
-                if (lines.Count == 0)
+                var sparseLines = await OcrService.RecognizeTextLinesAsync(bmp).ConfigureAwait(false);
+                var sparseRects = LinesToScreenRects(sparseLines, bmp, originX, originY, denseOcr ? 45f : OcrService.DefaultMinConfidence);
+                if (sparseRects.Count == 0)
                 {
                     var words = await OcrService.RecognizeWordsAsync(bmp).ConfigureAwait(false);
                     var clustered = ClusterWordsIntoLines(words);
                     foreach (var line in clustered)
                     {
                         if (IsGhostImageRect(line, bmp.Width, bmp.Height)) continue;
-                        TryAddImageRect(result, originX, originY, line);
+                        TryAddImageRect(sparseRects, originX, originY, line);
                     }
-                    return result;
                 }
+                onSparse?.Invoke(sparseRects);
+                if (!denseOcr)
+                    return sparseRects;
 
-                float minConf = denseOcr ? 45f : OcrService.DefaultMinConfidence;
-                var lineRects = new List<RectangleF>();
-                foreach (var line in lines)
-                {
-                    if (!TryAcceptOcrLine(line, bmp.Width, bmp.Height, out var rf, minConf))
-                        continue;
-                    lineRects.Add(rf);
-                    TryAddImageRect(result, originX, originY, rf);
-                }
-
-                // Paragraph blocks for multi-line clusters (bullet lists, blurbs) — keep lines too.
-                foreach (var block in MergeLinesIntoBlocks(lineRects))
-                {
-                    if (block.Height < 36) continue;
-                    if (IsGhostImageRect(block, bmp.Width, bmp.Height)) continue;
-                    TryAddImageRect(result, originX, originY, block, pad: 3);
-                }
+                var denseLines = await OcrService.RecognizeSmartRegionLinesAsync(bmp).ConfigureAwait(false);
+                if (denseLines.Count == 0)
+                    return sparseRects;
+                return LinesToScreenRects(denseLines, bmp, originX, originY, 45f);
             }
             finally
             {
                 bmp.Dispose();
             }
+        }
 
+        private static List<Rectangle> LinesToScreenRects(
+            IReadOnlyList<OcrWordResult> lines, Bitmap bmp, int originX, int originY, float minConf)
+        {
+            var result = new List<Rectangle>();
+            var lineRects = new List<RectangleF>();
+            foreach (var line in lines)
+            {
+                if (!TryAcceptOcrLine(line, bmp.Width, bmp.Height, out var rf, minConf))
+                    continue;
+                lineRects.Add(rf);
+                TryAddImageRect(result, originX, originY, rf);
+            }
+
+            foreach (var block in MergeLinesIntoBlocks(lineRects))
+            {
+                if (block.Height < 36) continue;
+                if (IsGhostImageRect(block, bmp.Width, bmp.Height)) continue;
+                TryAddImageRect(result, originX, originY, block, pad: 3);
+            }
             return result;
         }
 
@@ -580,6 +604,13 @@ namespace SharpShot.Utils
                     Debug.WriteLine($"Freeze crop failed: {ex.Message}");
                 }
             }
+            else if (TryCaptureVisibleClient(originX, originY, w, h, out bitmap))
+            {
+                // Live overlay: OCR the pixels actually on screen. PrintWindow on Chromium
+                // often returns a partial composite that is not black, so the old fallback
+                // never ran and most of the page was missed.
+                return true;
+            }
 
             int clientOffsetX = topLeft.X - windowRect.Left + insetX;
             int clientOffsetY = topLeft.Y - windowRect.Top + insetTop;
@@ -640,6 +671,57 @@ namespace SharpShot.Utils
                 full?.Dispose();
                 bitmap?.Dispose();
                 bitmap = null!;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Capture the visible client pixels (DXGI when enabled, otherwise CopyFromScreen).
+        /// Caller must hide any highlight overlay first so pink boxes are not OCR'd.
+        /// </summary>
+        private static bool TryCaptureVisibleClient(int originX, int originY, int w, int h, out Bitmap bitmap)
+        {
+            bitmap = null!;
+            bool useDxgi = false;
+            try
+            {
+                useDxgi = App.SettingsService?.CurrentSettings?.UseDxgiCapture == true;
+            }
+            catch
+            {
+                useDxgi = false;
+            }
+
+            if (useDxgi)
+            {
+                var dxgi = DxgiDesktopCapture.TryCaptureRegion(new Rectangle(originX, originY, w, h), out _);
+                if (dxgi != null && !IsMostlyBlack(dxgi))
+                {
+                    bitmap = dxgi;
+                    return true;
+                }
+                dxgi?.Dispose();
+            }
+
+            Bitmap? screen = null;
+            try
+            {
+                screen = new Bitmap(w, h, PixelFormat.Format24bppRgb);
+                using var g = Graphics.FromImage(screen);
+                g.CopyFromScreen(originX, originY, 0, 0, new Size(w, h), CopyPixelOperation.SourceCopy);
+                if (IsMostlyBlack(screen))
+                {
+                    screen.Dispose();
+                    return false;
+                }
+                bitmap = screen;
+                screen = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Visible client capture failed: {ex.Message}");
+                screen?.Dispose();
                 return false;
             }
         }

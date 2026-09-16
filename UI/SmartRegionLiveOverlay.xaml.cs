@@ -246,7 +246,18 @@ namespace SharpShot.UI
 
                 var enriched = await SmartRegionDetection.GetDetectedRegionsAsync(
                     hwnd,
-                    denseOcr: _settingsService.CurrentSettings.UseDenseOcrForSmartRegions);
+                    denseOcr: _settingsService.CurrentSettings.UseDenseOcrForSmartRegions,
+                    onPartial: partial =>
+                    {
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            if (generation != _refreshGeneration || _busyOcr || !IsLoaded || partial == null || partial.Count == 0)
+                                return;
+                            _rects.Clear();
+                            _rects.AddRange(partial);
+                            DrawHighlights();
+                        }));
+                    });
                 if (generation != _refreshGeneration || _busyOcr || !IsLoaded || enriched == null)
                     return;
 

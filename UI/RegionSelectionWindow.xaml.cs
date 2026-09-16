@@ -57,6 +57,20 @@ namespace SharpShot.UI
         [DllImport("user32.dll")]
         private static extern bool GetCursorPos(out POINT lpPoint);
 
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string? lpModuleName);
+
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
         
@@ -76,6 +90,13 @@ namespace SharpShot.UI
             public int Bottom;
         }
         
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_SYSKEYDOWN = 0x0104;
+        private const int VK_ESCAPE = 0x1B;
+        private const int VK_RETURN = 0x0D;
+        private const int VK_SPACE = 0x20;
+        private const int AdjustGripPhysical = 14;
         private const int MDT_EFFECTIVE_DPI = 0;
         private const int MONITOR_DEFAULTTONEAREST = 0x00000002;
         
@@ -123,6 +144,18 @@ namespace SharpShot.UI
         private readonly IntPtr _targetWindowForSmartDetection;
         private List<Rectangle> _smartRegionRects = new List<Rectangle>();
         private bool _isPotentialClick; // true until user moves enough to count as drag
+        private bool _adjustMode;
+        private bool _adjustDragActive;
+        private bool _replacingAdjust;
+        private bool _closingSelection;
+        private AdjustHit _adjustHit;
+        private Rectangle _adjustRectPhysical;
+        private System.Drawing.Point _adjustDragOriginCursor;
+        private Rectangle _adjustDragOriginRect;
+        private readonly System.Windows.Shapes.Rectangle[] _adjustGrips = new System.Windows.Shapes.Rectangle[8];
+        private IntPtr _kbHook;
+        private LowLevelKeyboardProc? _kbHookProc;
+        private volatile bool _keyHookActive;
         private Bitmap? _freezeFrame; // desktop snapshot taken before overlay (preserves menus)
         private Rectangle? _hoveredSmartRegion;
         private bool _applyingPhysicalBounds;
@@ -188,6 +221,8 @@ namespace SharpShot.UI
                 LayoutFreezeFrameLayers();
                 if (IsLoaded)
                     DrawSmartRegionHighlights(_smartRegionRects);
+                if (_adjustMode)
+                    SyncAdjustVisuals();
             };
 
             var timer = new System.Windows.Threading.DispatcherTimer
@@ -196,14 +231,24 @@ namespace SharpShot.UI
             };
             timer.Tick += (sender, e) =>
             {
+                if (_adjustMode)
+                    return;
                 InstructionsText.Visibility = Visibility.Collapsed;
                 timer.Stop();
             };
             timer.Start();
 
+            bool adjustBeforeEditor = settingsService?.CurrentSettings?.AdjustRegionBeforeEditor == true
+                && !isRecordingMode && !directCaptureOnly;
             if (_settingsService?.CurrentSettings?.EnableSmartRegionDetection == true)
             {
-                InstructionsText.Text = "Click a highlighted region to copy its text (OCR), or drag to capture an image. Press ESC to cancel.";
+                InstructionsText.Text = adjustBeforeEditor
+                    ? "Click a highlight to copy text, or drag a region. Then resize the dashed box and press Enter. Esc cancels."
+                    : "Click a highlighted region to copy its text (OCR), or drag to capture an image. Press ESC to cancel.";
+            }
+            else if (adjustBeforeEditor)
+            {
+                InstructionsText.Text = "Drag a region, then resize the dashed box. Enter to capture, Esc to cancel.";
             }
 
             // Magnifier is deferred until after the overlay paints — constructing/showing it in
@@ -216,6 +261,7 @@ namespace SharpShot.UI
                 ApplyFreezeFrameToImage();
                 DrawSmartRegionHighlights(_smartRegionRects);
                 CaptureMouseInput();
+                InstallAdjustKeyHook();
                 if (GetCursorPos(out POINT cursor))
                     UpdateSmartHover(cursor.X, cursor.Y);
 
@@ -234,6 +280,7 @@ namespace SharpShot.UI
 
             Closed += (sender, e) =>
             {
+                RemoveAdjustKeyHook();
                 if (_activeInstance == this)
                 {
                     _activeInstance = null;
@@ -741,7 +788,19 @@ namespace SharpShot.UI
             {
                 var enriched = await SmartRegionDetection.GetDetectedRegionsAsync(
                     hwnd, _freezeFrame, _virtualDesktopBounds,
-                    denseOcr: _settingsService?.CurrentSettings?.UseDenseOcrForSmartRegions ?? true);
+                    denseOcr: _settingsService?.CurrentSettings?.UseDenseOcrForSmartRegions ?? true,
+                    onPartial: partial =>
+                    {
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            if (_activeInstance != this || partial == null || partial.Count == 0)
+                                return;
+                            _smartRegionRects = partial;
+                            DrawSmartRegionHighlights(_smartRegionRects);
+                            if (GetCursorPos(out POINT cursor))
+                                UpdateSmartHover(cursor.X, cursor.Y);
+                        }));
+                    });
                 if (_activeInstance != this || enriched == null || enriched.Count == 0)
                     return;
                 await Dispatcher.InvokeAsync(() =>
@@ -865,14 +924,50 @@ namespace SharpShot.UI
             return SmartRegionDetection.GetSmallestRegionAtPoint(_smartRegionRects, screenX, screenY);
         }
 
-        private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private enum AdjustHit { None, Move, N, S, E, W, NE, NW, SE, SW }
+
+        private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) => HandlePointerDown(e, true);
+        private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e) => HandlePointerDown(e, false);
+        private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => HandlePointerUp(e, true);
+        private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => HandlePointerUp(e, false);
+        private void OnPreviewMouseMove(object sender, MouseEventArgs e) => HandlePointerMove(e, true);
+        private void OnMouseMove(object sender, MouseEventArgs e) => HandlePointerMove(e, false);
+
+        private void HandlePointerDown(MouseButtonEventArgs e, bool markHandled)
         {
-            e.Handled = true;
+            if (markHandled) e.Handled = true;
+            if (!GetCursorPos(out POINT cursor))
+                return;
+
+            if (_adjustMode && e.ClickCount >= 2 && HitTestAdjust(cursor.X, cursor.Y) != AdjustHit.None)
+            {
+                ConfirmAdjust();
+                return;
+            }
+
+            if (_adjustMode)
+            {
+                var hit = HitTestAdjust(cursor.X, cursor.Y);
+                if (hit != AdjustHit.None)
+                {
+                    CaptureMouseInput();
+                    _adjustHit = hit;
+                    _adjustDragActive = true;
+                    _replacingAdjust = false;
+                    _adjustDragOriginCursor = new System.Drawing.Point(cursor.X, cursor.Y);
+                    _adjustDragOriginRect = _adjustRectPhysical;
+                    _isSelecting = false;
+                    return;
+                }
+
+                // Drag outside replaces the box. A click with no drag restores it.
+                _replacingAdjust = true;
+                HideAdjustChrome(keepMode: true);
+            }
+
             CaptureMouseInput();
-            var canvasPoint = e.GetPosition(SelectionCanvas);
-            _startPoint = canvasPoint;
-            GetCursorPos(out POINT startCursor);
-            _startCursorPhysical = new System.Drawing.Point(startCursor.X, startCursor.Y);
+            _startPoint = e.GetPosition(SelectionCanvas);
+            _startCursorPhysical = new System.Drawing.Point(cursor.X, cursor.Y);
             _isSelecting = true;
             _isPotentialClick = true;
             SelectionRect.Visibility = Visibility.Visible;
@@ -881,22 +976,50 @@ namespace SharpShot.UI
             SelectionRect.Width = 0;
             SelectionRect.Height = 0;
         }
-        
-        private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+
+        private void HandlePointerUp(MouseButtonEventArgs e, bool markHandled)
         {
-            e.Handled = true;
-            if (!_isSelecting) return;
+            if (markHandled) e.Handled = true;
+
+            if (_adjustDragActive)
+            {
+                ReleaseCapture();
+                _adjustDragActive = false;
+                var hit = _adjustHit;
+                _adjustHit = AdjustHit.None;
+                if (GetCursorPos(out POINT end))
+                {
+                    int moved = Math.Abs(end.X - _adjustDragOriginCursor.X) + Math.Abs(end.Y - _adjustDragOriginCursor.Y);
+                    if (moved <= 6 && hit == AdjustHit.Move)
+                    {
+                        var smart = GetSmartRegionAtScreenPoint(end.X, end.Y);
+                        if (smart.HasValue && _smartRegionRects.Count > 0 && !_isRecordingMode && !_directCaptureOnly)
+                        {
+                            ExitAdjustMode();
+                            SelectedRegion = smart;
+                            SelectionRect.Visibility = Visibility.Collapsed;
+                            _ = CaptureSmartRegionAsOcrAsync();
+                            return;
+                        }
+                    }
+                }
+                SyncAdjustVisuals();
+                return;
+            }
+
+            if (!_isSelecting)
+                return;
             ReleaseCapture();
             _isSelecting = false;
+            if (!GetCursorPos(out POINT endCursor))
+                return;
 
-            // Use the true physical-pixel cursor positions (captured at drag start + read now) so
-            // the region matches the screen exactly, independent of the overlay's DPI/transform.
-            GetCursorPos(out POINT endCursor);
             int startX = _startCursorPhysical.X;
             int startY = _startCursorPhysical.Y;
             var smartRect = GetSmartRegionAtScreenPoint(startX, startY);
             if (_isPotentialClick && smartRect.HasValue && _smartRegionRects.Count > 0)
             {
+                ExitAdjustMode();
                 SelectedRegion = smartRect;
                 SelectionRect.Visibility = Visibility.Collapsed;
                 if (_isRecordingMode)
@@ -908,153 +1031,366 @@ namespace SharpShot.UI
                 return;
             }
 
-            var screenRectX = Math.Min(startX, endCursor.X);
-            var screenRectY = Math.Min(startY, endCursor.Y);
             var screenWidth = Math.Abs(endCursor.X - startX);
             var screenHeight = Math.Abs(endCursor.Y - startY);
             if (screenWidth > 10 && screenHeight > 10)
             {
-                SelectedRegion = new Rectangle(screenRectX, screenRectY, screenWidth, screenHeight);
+                var drawn = new Rectangle(
+                    Math.Min(startX, endCursor.X),
+                    Math.Min(startY, endCursor.Y),
+                    screenWidth,
+                    screenHeight);
+                SelectedRegion = drawn;
                 if (_isRecordingMode)
                     Close();
+                else if (ShouldAdjustBeforeCommit())
+                    EnterAdjustMode(drawn);
                 else
+                {
+                    ExitAdjustMode();
                     CaptureRegion();
+                }
+            }
+            else if (_replacingAdjust && _adjustMode)
+            {
+                _replacingAdjust = false;
+                SyncAdjustVisuals();
             }
             else
             {
                 SelectionRect.Visibility = Visibility.Collapsed;
             }
         }
-        
-        private void OnPreviewMouseMove(object sender, MouseEventArgs e)
+
+        private void HandlePointerMove(MouseEventArgs e, bool markHandled)
         {
-            e.Handled = true;
-            GetCursorPos(out POINT cursor);
-            if (!_isSelecting)
+            if (markHandled) e.Handled = true;
+            if (!GetCursorPos(out POINT cursor))
+                return;
+
+            if (_adjustDragActive)
             {
+                ApplyAdjustDrag(cursor.X, cursor.Y);
+                return;
+            }
+
+            if (_adjustMode && !_isSelecting)
+            {
+                UpdateAdjustCursor(HitTestAdjust(cursor.X, cursor.Y));
                 UpdateSmartHover(cursor.X, cursor.Y);
                 return;
             }
+
+            if (!_isSelecting)
+            {
+                Cursor = Cursors.Arrow;
+                UpdateSmartHover(cursor.X, cursor.Y);
+                return;
+            }
+
             var currentPoint = e.GetPosition(SelectionCanvas);
-            double dx = currentPoint.X - _startPoint.X;
-            double dy = currentPoint.Y - _startPoint.Y;
-            if (Math.Abs(dx) > 5 || Math.Abs(dy) > 5)
+            if (Math.Abs(currentPoint.X - _startPoint.X) > 5 || Math.Abs(currentPoint.Y - _startPoint.Y) > 5)
                 _isPotentialClick = false;
             var x = Math.Min(_startPoint.X, currentPoint.X);
             var y = Math.Min(_startPoint.Y, currentPoint.Y);
-            var width = Math.Abs(currentPoint.X - _startPoint.X);
-            var height = Math.Abs(currentPoint.Y - _startPoint.Y);
             System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
             System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
-            SelectionRect.Width = width;
-            SelectionRect.Height = height;
-        }
-        
-        private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            CaptureMouseInput();
-            _startPoint = e.GetPosition(SelectionCanvas);
-            GetCursorPos(out POINT startCursor);
-            _startCursorPhysical = new System.Drawing.Point(startCursor.X, startCursor.Y);
-            _isSelecting = true;
-            _isPotentialClick = true;
-            SelectionRect.Visibility = Visibility.Visible;
-            System.Windows.Controls.Canvas.SetLeft(SelectionRect, _startPoint.X);
-            System.Windows.Controls.Canvas.SetTop(SelectionRect, _startPoint.Y);
-            SelectionRect.Width = 0;
-            SelectionRect.Height = 0;
+            SelectionRect.Width = Math.Abs(currentPoint.X - _startPoint.X);
+            SelectionRect.Height = Math.Abs(currentPoint.Y - _startPoint.Y);
         }
 
-        private void OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private bool ShouldAdjustBeforeCommit()
         {
-            if (!_isSelecting) return;
-            ReleaseCapture();
+            if (_isRecordingMode || _directCaptureOnly)
+                return false;
+            return _settingsService?.CurrentSettings?.AdjustRegionBeforeEditor == true;
+        }
+
+        private void EnterAdjustMode(Rectangle physical)
+        {
+            _adjustMode = true;
+            _replacingAdjust = false;
+            _adjustHit = AdjustHit.None;
+            _adjustDragActive = false;
+            _adjustRectPhysical = physical;
+            SelectedRegion = physical;
             _isSelecting = false;
+            InstructionsText.Text = "Drag edges to adjust. Enter to capture, Esc to cancel.";
+            InstructionsText.Visibility = Visibility.Visible;
+            SyncAdjustVisuals();
+        }
 
-            // Use true physical-pixel cursor positions (DPI/transform independent).
-            GetCursorPos(out POINT endCursor);
-            int startX = _startCursorPhysical.X;
-            int startY = _startCursorPhysical.Y;
-            var smartRect = GetSmartRegionAtScreenPoint(startX, startY);
-            if (_isPotentialClick && smartRect.HasValue && _smartRegionRects.Count > 0)
-            {
-                SelectedRegion = smartRect;
-                SelectionRect.Visibility = Visibility.Collapsed;
-                if (_isRecordingMode) Close();
-                else if (_directCaptureOnly) CaptureRegion();
-                else _ = CaptureSmartRegionAsOcrAsync();
+        private void ExitAdjustMode()
+        {
+            _adjustMode = false;
+            _adjustDragActive = false;
+            _replacingAdjust = false;
+            _adjustHit = AdjustHit.None;
+            HideAdjustChrome(keepMode: false);
+            Cursor = Cursors.Arrow;
+        }
+
+        private void ConfirmAdjust()
+        {
+            if (!_adjustMode || _closingSelection)
                 return;
-            }
-            var screenRectX = Math.Min(startX, endCursor.X);
-            var screenRectY = Math.Min(startY, endCursor.Y);
-            var screenWidth = Math.Abs(endCursor.X - startX);
-            var screenHeight = Math.Abs(endCursor.Y - startY);
-            if (screenWidth > 10 && screenHeight > 10)
+            if (_adjustRectPhysical.Width < 10 || _adjustRectPhysical.Height < 10)
+                return;
+            SelectedRegion = _adjustRectPhysical;
+            ExitAdjustMode();
+            CaptureRegion();
+        }
+
+        private void CancelSelection()
+        {
+            if (_closingSelection)
+                return;
+            _closingSelection = true;
+            RemoveAdjustKeyHook();
+            if (_activeInstance == this)
+                _activeInstance = null;
+            OnRegionSelectionCanceled?.Invoke();
+            Close();
+        }
+
+        private void ApplyAdjustDrag(int x, int y)
+        {
+            int dx = x - _adjustDragOriginCursor.X;
+            int dy = y - _adjustDragOriginCursor.Y;
+            var o = _adjustDragOriginRect;
+            int left = o.Left, right = o.Right, top = o.Top, bottom = o.Bottom;
+            switch (_adjustHit)
             {
-                SelectedRegion = new Rectangle(screenRectX, screenRectY, screenWidth, screenHeight);
-                if (_isRecordingMode) Close();
-                else CaptureRegion();
+                case AdjustHit.Move:
+                    left += dx; right += dx; top += dy; bottom += dy;
+                    break;
+                case AdjustHit.N: top += dy; break;
+                case AdjustHit.S: bottom += dy; break;
+                case AdjustHit.W: left += dx; break;
+                case AdjustHit.E: right += dx; break;
+                case AdjustHit.NW: top += dy; left += dx; break;
+                case AdjustHit.NE: top += dy; right += dx; break;
+                case AdjustHit.SW: bottom += dy; left += dx; break;
+                case AdjustHit.SE: bottom += dy; right += dx; break;
             }
-            else
+
+            if (right < left) (left, right) = (right, left);
+            if (bottom < top) (top, bottom) = (bottom, top);
+            const int min = 10;
+            if (right - left < min) right = left + min;
+            if (bottom - top < min) bottom = top + min;
+
+            var b = _virtualDesktopBounds;
+            if (left < b.Left) { int shift = b.Left - left; left += shift; right += shift; }
+            if (top < b.Top) { int shift = b.Top - top; top += shift; bottom += shift; }
+            if (right > b.Right) { int shift = right - b.Right; left -= shift; right -= shift; }
+            if (bottom > b.Bottom) { int shift = bottom - b.Bottom; top -= shift; bottom -= shift; }
+            left = Math.Max(b.Left, left);
+            top = Math.Max(b.Top, top);
+            right = Math.Min(b.Right, Math.Max(left + min, right));
+            bottom = Math.Min(b.Bottom, Math.Max(top + min, bottom));
+            if (right - left < min || bottom - top < min)
+                return;
+
+            _adjustRectPhysical = new Rectangle(left, top, right - left, bottom - top);
+            SelectedRegion = _adjustRectPhysical;
+            SyncAdjustVisuals();
+        }
+
+        private AdjustHit HitTestAdjust(int x, int y)
+        {
+            var r = _adjustRectPhysical;
+            int g = AdjustGripPhysical;
+            bool nearL = Math.Abs(x - r.Left) <= g && y >= r.Top - g && y <= r.Bottom + g;
+            bool nearR = Math.Abs(x - r.Right) <= g && y >= r.Top - g && y <= r.Bottom + g;
+            bool nearT = Math.Abs(y - r.Top) <= g && x >= r.Left - g && x <= r.Right + g;
+            bool nearB = Math.Abs(y - r.Bottom) <= g && x >= r.Left - g && x <= r.Right + g;
+            if (nearL && nearT) return AdjustHit.NW;
+            if (nearR && nearT) return AdjustHit.NE;
+            if (nearL && nearB) return AdjustHit.SW;
+            if (nearR && nearB) return AdjustHit.SE;
+            if (nearT) return AdjustHit.N;
+            if (nearB) return AdjustHit.S;
+            if (nearL) return AdjustHit.W;
+            if (nearR) return AdjustHit.E;
+            if (x >= r.Left && x <= r.Right && y >= r.Top && y <= r.Bottom)
+                return AdjustHit.Move;
+            return AdjustHit.None;
+        }
+
+        private void UpdateAdjustCursor(AdjustHit hit)
+        {
+            Cursor = hit switch
             {
-                SelectionRect.Visibility = Visibility.Collapsed;
+                AdjustHit.N or AdjustHit.S => Cursors.SizeNS,
+                AdjustHit.E or AdjustHit.W => Cursors.SizeWE,
+                AdjustHit.NE or AdjustHit.SW => Cursors.SizeNESW,
+                AdjustHit.NW or AdjustHit.SE => Cursors.SizeNWSE,
+                AdjustHit.Move => Cursors.SizeAll,
+                _ => Cursors.Arrow
+            };
+        }
+
+        private void SyncAdjustVisuals()
+        {
+            if (!_adjustMode)
+                return;
+            if (!TryMapPhysicalRectToCanvas(_adjustRectPhysical, out double x, out double y, out double w, out double h))
+                return;
+
+            SelectionRect.Visibility = Visibility.Visible;
+            System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
+            System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
+            SelectionRect.Width = w;
+            SelectionRect.Height = h;
+            LayoutAdjustGrips(x, y, w, h);
+            LayoutDimHole(x, y, w, h);
+            PositionAdjustInstructions();
+        }
+
+        private void LayoutAdjustGrips(double x, double y, double w, double h)
+        {
+            EnsureAdjustGrips();
+            AdjustGripsCanvas.Visibility = Visibility.Visible;
+            var points = new (double X, double Y)[]
+            {
+                (x, y), (x + w / 2, y), (x + w, y),
+                (x + w, y + h / 2), (x + w, y + h), (x + w / 2, y + h),
+                (x, y + h), (x, y + h / 2)
+            };
+            for (int i = 0; i < 8; i++)
+            {
+                System.Windows.Controls.Canvas.SetLeft(_adjustGrips[i], points[i].X - 4);
+                System.Windows.Controls.Canvas.SetTop(_adjustGrips[i], points[i].Y - 4);
             }
         }
 
-        private void OnMouseMove(object sender, MouseEventArgs e)
+        private void EnsureAdjustGrips()
         {
-            GetCursorPos(out POINT cursor);
-            if (!_isSelecting)
+            if (_adjustGrips[0] != null || AdjustGripsCanvas == null)
+                return;
+            var accent = TryFindResource("AccentBrush") as SolidColorBrush ?? new SolidColorBrush(Colors.Orange);
+            for (int i = 0; i < 8; i++)
             {
-                UpdateSmartHover(cursor.X, cursor.Y);
+                _adjustGrips[i] = new System.Windows.Shapes.Rectangle
+                {
+                    Width = 8,
+                    Height = 8,
+                    Fill = accent,
+                    Stroke = System.Windows.Media.Brushes.White,
+                    StrokeThickness = 1,
+                    IsHitTestVisible = false
+                };
+                AdjustGripsCanvas.Children.Add(_adjustGrips[i]);
+            }
+        }
+
+        private void LayoutDimHole(double x, double y, double w, double h)
+        {
+            double canvasW = SelectionCanvas.ActualWidth > 0 ? SelectionCanvas.ActualWidth : Width;
+            double canvasH = SelectionCanvas.ActualHeight > 0 ? SelectionCanvas.ActualHeight : Height;
+            FreezeDimOverlay.Visibility = Visibility.Collapsed;
+
+            PlaceDimBand(DimBandTop, 0, 0, canvasW, Math.Max(0, y));
+            PlaceDimBand(DimBandBottom, 0, y + h, canvasW, Math.Max(0, canvasH - (y + h)));
+            PlaceDimBand(DimBandLeft, 0, y, Math.Max(0, x), Math.Max(0, h));
+            PlaceDimBand(DimBandRight, x + w, y, Math.Max(0, canvasW - (x + w)), Math.Max(0, h));
+        }
+
+        private static void PlaceDimBand(System.Windows.Shapes.Rectangle band, double x, double y, double w, double h)
+        {
+            if (band == null) return;
+            if (w <= 0 || h <= 0)
+            {
+                band.Visibility = Visibility.Collapsed;
                 return;
             }
-            var currentPoint = e.GetPosition(SelectionCanvas);
-            double dx = currentPoint.X - _startPoint.X;
-            double dy = currentPoint.Y - _startPoint.Y;
-            if (Math.Abs(dx) > 5 || Math.Abs(dy) > 5)
-                _isPotentialClick = false;
-            var x = Math.Min(_startPoint.X, currentPoint.X);
-            var y = Math.Min(_startPoint.Y, currentPoint.Y);
-            var width = Math.Abs(currentPoint.X - _startPoint.X);
-            var height = Math.Abs(currentPoint.Y - _startPoint.Y);
-            System.Windows.Controls.Canvas.SetLeft(SelectionRect, x);
-            System.Windows.Controls.Canvas.SetTop(SelectionRect, y);
-            SelectionRect.Width = width;
-            SelectionRect.Height = height;
+            System.Windows.Controls.Canvas.SetLeft(band, x);
+            System.Windows.Controls.Canvas.SetTop(band, y);
+            band.Width = w;
+            band.Height = h;
+            band.Visibility = Visibility.Visible;
+        }
+
+        private void HideAdjustChrome(bool keepMode)
+        {
+            if (!keepMode)
+                _adjustMode = false;
+            if (AdjustGripsCanvas != null)
+                AdjustGripsCanvas.Visibility = Visibility.Collapsed;
+            if (DimBandTop != null) DimBandTop.Visibility = Visibility.Collapsed;
+            if (DimBandBottom != null) DimBandBottom.Visibility = Visibility.Collapsed;
+            if (DimBandLeft != null) DimBandLeft.Visibility = Visibility.Collapsed;
+            if (DimBandRight != null) DimBandRight.Visibility = Visibility.Collapsed;
+            if (FreezeDimOverlay != null)
+                FreezeDimOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void PositionAdjustInstructions()
+        {
+            if (InstructionsText == null || SelectionCanvas == null)
+                return;
+            InstructionsText.Visibility = Visibility.Visible;
+            double canvasW = SelectionCanvas.ActualWidth > 0 ? SelectionCanvas.ActualWidth : Width;
+            InstructionsText.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            double textW = InstructionsText.DesiredSize.Width;
+            System.Windows.Controls.Canvas.SetLeft(InstructionsText, Math.Max(12, (canvasW - textW) / 2));
+            System.Windows.Controls.Canvas.SetTop(InstructionsText, 24);
+        }
+
+        private void InstallAdjustKeyHook()
+        {
+            _keyHookActive = true;
+            if (_kbHook != IntPtr.Zero)
+                return;
+            _kbHookProc = AdjustKeyHook;
+            _kbHook = SetWindowsHookEx(WH_KEYBOARD_LL, _kbHookProc, GetModuleHandle(null), 0);
+        }
+
+        private void RemoveAdjustKeyHook()
+        {
+            _keyHookActive = false;
+            if (_kbHook == IntPtr.Zero)
+                return;
+            UnhookWindowsHookEx(_kbHook);
+            _kbHook = IntPtr.Zero;
+            _kbHookProc = null;
+        }
+
+        private IntPtr AdjustKeyHook(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (_keyHookActive && nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN) && lParam != IntPtr.Zero)
+            {
+                int vk = Marshal.ReadInt32(lParam);
+                if (vk == VK_ESCAPE)
+                {
+                    Dispatcher.BeginInvoke(new Action(CancelSelection));
+                    return (IntPtr)1;
+                }
+                if (_adjustMode && (vk == VK_RETURN || vk == VK_SPACE))
+                {
+                    Dispatcher.BeginInvoke(new Action(ConfirmAdjust));
+                    return (IntPtr)1;
+                }
+            }
+            return CallNextHookEx(_kbHook, nCode, wParam, lParam);
         }
 
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine($"Key pressed in RegionSelectionWindow: {e.Key} (Handled: {e.Handled})");
-            
-            // Test any key press to see if keyboard input is working
-            if (e.Key == Key.Space)
-            {
-                System.Diagnostics.Debug.WriteLine("SPACE key pressed - testing keyboard input");
-                e.Handled = true;
-                return;
-            }
-            
             if (e.Key == Key.Escape)
             {
-                System.Diagnostics.Debug.WriteLine("ESC key pressed - canceling region selection");
-                e.Handled = true; // Mark as handled to prevent other handlers from processing it
-                
-                // Reset the hotkey toggle state when ESC is pressed
-                if (_activeInstance == this)
-                {
-                    _activeInstance = null;
-                }
-                
-                // Notify that region selection was canceled
-                OnRegionSelectionCanceled?.Invoke();
-                
-                // Magnifier will be stopped when window closes
-                Close();
+                e.Handled = true;
+                CancelSelection();
+                return;
+            }
+
+            if (_adjustMode && (e.Key == Key.Enter || e.Key == Key.Space))
+            {
+                e.Handled = true;
+                ConfirmAdjust();
             }
         }
-
         private Bitmap? CropSelectedRegionFromFreezeOrScreen()
         {
             if (!SelectedRegion.HasValue)
@@ -1114,6 +1450,7 @@ namespace SharpShot.UI
                 }
 
                 CapturedBitmap = bitmap;
+                _keyHookActive = false;
                 Visibility = Visibility.Hidden;
 
                 if (!OcrService.IsAvailable())
@@ -1190,6 +1527,7 @@ namespace SharpShot.UI
                 {
                     // Stop magnifier before capturing
                     StopMagnifier();
+                    HideAdjustChrome(keepMode: false);
 
                     // Hide the selection UI before capturing
                     SelectionRect.Visibility = Visibility.Collapsed;
@@ -1245,7 +1583,8 @@ namespace SharpShot.UI
             {
                 // Stop magnifier before launching editor
                 StopMagnifier();
-                
+                _keyHookActive = false;
+
                 // Hide this window
                 Visibility = Visibility.Hidden;
                 

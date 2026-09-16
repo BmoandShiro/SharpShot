@@ -241,6 +241,11 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="When enabled, region screenshots will skip the editor overlay and automatically copy to clipboard for immediate pasting"/>
+                <CheckBox x:Name="AdjustRegionBeforeEditorCheckBox"
+                          Content="Adjust region before opening the editor"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="Freezes all monitors, then keeps the dashed selection on screen so you can drag the edges to resize before Enter opens the editor (or copies, if skip-editor is on). Esc cancels."/>
                 <CheckBox x:Name="ShowOcrButtonOnDashboardCheckBox"
                           Content="Show OCR quick-capture button on dashboard"
                           Style="{StaticResource DarkCheckBoxStyle}"

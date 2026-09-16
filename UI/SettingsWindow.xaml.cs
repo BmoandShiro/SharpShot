@@ -553,6 +553,7 @@ namespace SharpShot.UI
             }
             AutoCopyScreenshotsCheckBox.IsChecked = _originalSettings.AutoCopyScreenshots;
             SkipEditorAndAutoCopyCheckBox.IsChecked = _originalSettings.SkipEditorAndAutoCopy;
+            AdjustRegionBeforeEditorCheckBox.IsChecked = _originalSettings.AdjustRegionBeforeEditor;
             ShowOcrButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowOcrButtonOnDashboard;
             ShowSmartRegionButtonOnDashboardCheckBox.IsChecked = _originalSettings.ShowSmartRegionButtonOnDashboard;
             if (ShowObsButtonOnRecordingToolbarCheckBox != null)
@@ -1001,6 +1002,7 @@ namespace SharpShot.UI
                 }
                 _originalSettings.AutoCopyScreenshots = AutoCopyScreenshotsCheckBox.IsChecked ?? false;
                 _originalSettings.SkipEditorAndAutoCopy = SkipEditorAndAutoCopyCheckBox.IsChecked ?? false;
+                _originalSettings.AdjustRegionBeforeEditor = AdjustRegionBeforeEditorCheckBox.IsChecked ?? false;
                 _originalSettings.ShowOcrButtonOnDashboard = ShowOcrButtonOnDashboardCheckBox.IsChecked ?? false;
                 _originalSettings.ShowSmartRegionButtonOnDashboard = ShowSmartRegionButtonOnDashboardCheckBox.IsChecked ?? false;
                 if (ShowObsButtonOnRecordingToolbarCheckBox != null)
@@ -1259,6 +1261,7 @@ namespace SharpShot.UI
             target.SelectedScreen = source.SelectedScreen;
             target.AutoCopyScreenshots = source.AutoCopyScreenshots;
             target.SkipEditorAndAutoCopy = source.SkipEditorAndAutoCopy;
+            target.AdjustRegionBeforeEditor = source.AdjustRegionBeforeEditor;
             target.ShowOcrButtonOnDashboard = source.ShowOcrButtonOnDashboard;
             target.ShowSmartRegionButtonOnDashboard = source.ShowSmartRegionButtonOnDashboard;
             target.UseDenseOcrForSmartRegions = source.UseDenseOcrForSmartRegions;
@@ -1643,6 +1646,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(AutoCopyScreenshotsCheckBox, themeColor);
                 if (SkipEditorAndAutoCopyCheckBox != null && SkipEditorAndAutoCopyCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(SkipEditorAndAutoCopyCheckBox, themeColor);
+                if (AdjustRegionBeforeEditorCheckBox != null && AdjustRegionBeforeEditorCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(AdjustRegionBeforeEditorCheckBox, themeColor);
                 if (ShowOcrButtonOnDashboardCheckBox != null && ShowOcrButtonOnDashboardCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(ShowOcrButtonOnDashboardCheckBox, themeColor);
                 if (ShowSmartRegionButtonOnDashboardCheckBox != null && ShowSmartRegionButtonOnDashboardCheckBox.IsLoaded)
