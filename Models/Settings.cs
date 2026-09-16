@@ -68,6 +68,8 @@ namespace SharpShot.Models
         private bool _showCustomAppButtonOnRecordingToolbar;
         private bool _showSmartRegionButtonOnDashboard;
         private bool _useDenseOcrForSmartRegions;
+        private int _smartRegionTextGrouping;
+        private bool _smartRegionSplitOnLargeGap;
         private bool _skipPostCaptureMenu;
         private bool _hideSharpShotWindowsDuringCapture;
         private bool _useDxgiCapture;
@@ -127,6 +129,8 @@ namespace SharpShot.Models
             ShowOcrButtonOnDashboard = true;
             ShowSmartRegionButtonOnDashboard = true;
             UseDenseOcrForSmartRegions = true; // Tiled dual-PSM OCR — slower, much better coverage
+            SmartRegionTextGrouping = 0; // 0 line, 1 paragraph, 2 multiple paragraphs
+            SmartRegionSplitOnLargeGap = true;
             SkipPostCaptureMenu = true;
             HideSharpShotWindowsDuringCapture = false; // Default: same as today; enable to omit dashboard/editor from captures
             UseDxgiCapture = false; // Default off until verified; enable GPU Desktop Duplication for faster freezes
@@ -560,6 +564,25 @@ namespace SharpShot.Models
         {
             get => _useDenseOcrForSmartRegions;
             set => SetProperty(ref _useDenseOcrForSmartRegions, value);
+        }
+
+        /// <summary>
+        /// How far Smart Regions bundle stacked text: 0 = each line, 1 = paragraph, 2 = neighboring paragraphs.
+        /// </summary>
+        public int SmartRegionTextGrouping
+        {
+            get => _smartRegionTextGrouping;
+            set => SetProperty(ref _smartRegionTextGrouping, Math.Clamp(value, 0, 2));
+        }
+
+        /// <summary>
+        /// When true, a gap much larger than the usual line spacing starts a new region,
+        /// and columns that are far apart horizontally stay separate.
+        /// </summary>
+        public bool SmartRegionSplitOnLargeGap
+        {
+            get => _smartRegionSplitOnLargeGap;
+            set => SetProperty(ref _smartRegionSplitOnLargeGap, value);
         }
 
         public bool SkipPostCaptureMenu

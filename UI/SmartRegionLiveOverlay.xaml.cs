@@ -73,6 +73,15 @@ namespace SharpShot.UI
             };
         }
 
+        public void RefreshGrouping()
+        {
+            if (!IsLoaded)
+                return;
+            var hwnd = _activeHwnd != IntPtr.Zero ? _activeHwnd : LastExternalWindowTracker.GetLastWindow();
+            if (hwnd != IntPtr.Zero)
+                RefreshForWindow(hwnd, forceOcr: true);
+        }
+
         public void Start()
         {
             LastExternalWindowTracker.LastWindowChanged -= OnLastWindowChanged;

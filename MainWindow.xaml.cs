@@ -1164,6 +1164,8 @@ namespace SharpShot
             var settingsWindow = new UI.SettingsWindow(_settingsService, _hotkeyManager);
             settingsWindow.Owner = this;
             settingsWindow.ShowDialog();
+            SyncSmartRegionLiveMode();
+            _smartRegionOverlay?.RefreshGrouping();
         }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -1387,6 +1389,8 @@ namespace SharpShot
                 {
                     settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
                     settingsWindow.ShowDialog();
+                    SyncSmartRegionLiveMode();
+                    _smartRegionOverlay?.RefreshGrouping();
                     return;
                 }
 
@@ -1422,6 +1426,8 @@ namespace SharpShot
                     settingsWindow.Top = monitorTopDip + monitorHeightDip - settingsHeight;
 
                 settingsWindow.ShowDialog();
+                SyncSmartRegionLiveMode();
+                _smartRegionOverlay?.RefreshGrouping();
             }
             catch (Exception ex)
             {

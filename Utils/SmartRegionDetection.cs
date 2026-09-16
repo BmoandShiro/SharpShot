@@ -456,7 +456,7 @@ namespace SharpShot.Utils
 
             try
             {
-                var lines = await OcrService.RecognizeScreenTextAsync(bmp).ConfigureAwait(false);
+                var lines = await OcrService.RecognizeScreenTextAsync(bmp, splitOnLargeHorizontalGap: SplitSmartRegionsOnLargeGap()).ConfigureAwait(false);
                 var rects = LinesToScreenRects(lines, bmp, originX, originY, 30f);
                 onSparse?.Invoke(rects);
                 return rects;
@@ -477,16 +477,125 @@ namespace SharpShot.Utils
                 if (!TryAcceptOcrLine(line, bmp.Width, bmp.Height, out var rf, minConf))
                     continue;
                 lineRects.Add(rf);
-                TryAddImageRect(result, originX, originY, rf);
             }
 
-            foreach (var block in MergeLinesIntoBlocks(lineRects))
+            int grouping = ReadSmartRegionGrouping();
+            bool splitGaps = SplitSmartRegionsOnLargeGap();
+            var boxes = grouping <= 0
+                ? lineRects
+                : GroupTextLines(lineRects, grouping, splitGaps);
+
+            foreach (var box in boxes)
             {
-                if (block.Height < 36) continue;
-                if (IsGhostImageRect(block, bmp.Width, bmp.Height)) continue;
-                TryAddImageRect(result, originX, originY, block, pad: 3);
+                if (grouping > 0 && IsGhostImageRect(box, bmp.Width, bmp.Height))
+                    continue;
+                TryAddImageRect(result, originX, originY, box, pad: grouping > 0 ? 3 : 2);
             }
             return result;
+        }
+
+        private static int ReadSmartRegionGrouping()
+        {
+            try
+            {
+                return Math.Clamp(App.SettingsService?.CurrentSettings?.SmartRegionTextGrouping ?? 0, 0, 2);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private static bool SplitSmartRegionsOnLargeGap()
+        {
+            try
+            {
+                return App.SettingsService?.CurrentSettings?.SmartRegionSplitOnLargeGap ?? true;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Bundle stacked lines into paragraphs. grouping 1 joins tight lines; 2 also joins
+        /// neighboring paragraphs. A large vertical gap, or no horizontal overlap, starts a new box.
+        /// </summary>
+        private static List<RectangleF> GroupTextLines(List<RectangleF> lines, int grouping, bool splitOnLargeGap)
+        {
+            if (lines.Count == 0 || grouping <= 0)
+                return lines;
+
+            float lineH = Median(lines.Select(l => l.Height).Where(h => h > 0).ToList());
+            if (lineH < 8) lineH = 16;
+            float typicalGap = TypicalLineGap(lines, lineH);
+
+            float limit = grouping >= 2
+                ? Math.Max(typicalGap * 4.5f, lineH * 2.6f)
+                : Math.Max(typicalGap * 1.75f, lineH * 0.55f);
+            if (splitOnLargeGap)
+            {
+                float excessive = grouping >= 2
+                    ? Math.Max(lineH * 1.05f, typicalGap * 2.6f)
+                    : Math.Max(lineH * 0.7f, typicalGap * 1.7f);
+                limit = Math.Min(limit, excessive);
+            }
+
+            var sorted = lines.OrderBy(l => l.Y).ThenBy(l => l.X).ToList();
+            var blocks = new List<RectangleF>();
+            var current = sorted[0];
+            for (int i = 1; i < sorted.Count; i++)
+            {
+                var next = sorted[i];
+                float gap = next.Y - current.Bottom;
+                bool stacked = HorizontalOverlap(current, next) >= 0.35f
+                    || (Math.Abs(next.X - current.X) <= Math.Max(18f, lineH) && next.Width >= current.Width * 0.45f);
+                if (stacked && gap >= -lineH * 0.45f && gap <= limit)
+                {
+                    current = RectangleF.Union(current, next);
+                }
+                else
+                {
+                    blocks.Add(current);
+                    current = next;
+                }
+            }
+            blocks.Add(current);
+            return blocks;
+        }
+
+        private static float TypicalLineGap(List<RectangleF> lines, float lineH)
+        {
+            var gaps = new List<float>();
+            var sorted = lines.OrderBy(l => l.Y).ToList();
+            for (int i = 1; i < sorted.Count; i++)
+            {
+                float gap = sorted[i].Y - sorted[i - 1].Bottom;
+                if (gap < 0 || gap > lineH * 1.1f) continue;
+                if (HorizontalOverlap(sorted[i - 1], sorted[i]) < 0.3f) continue;
+                gaps.Add(gap);
+            }
+            return gaps.Count > 0 ? Median(gaps) : lineH * 0.35f;
+        }
+
+        private static float HorizontalOverlap(RectangleF a, RectangleF b)
+        {
+            float left = Math.Max(a.Left, b.Left);
+            float right = Math.Min(a.Right, b.Right);
+            float overlap = right - left;
+            if (overlap <= 0) return 0;
+            float narrower = Math.Max(1f, Math.Min(a.Width, b.Width));
+            return overlap / narrower;
+        }
+
+        private static float Median(List<float> values)
+        {
+            if (values.Count == 0) return 0;
+            var ordered = values.OrderBy(v => v).ToList();
+            int mid = ordered.Count / 2;
+            if (ordered.Count % 2 == 1) return ordered[mid];
+            return (ordered[mid - 1] + ordered[mid]) / 2f;
         }
 
         private static bool TryAcceptOcrLine(

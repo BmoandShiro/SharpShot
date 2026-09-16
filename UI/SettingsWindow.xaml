@@ -261,6 +261,38 @@
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="Runs overlapping tiled OCR (SparseText + Auto) so Smart Regions find more on-screen text in browsers, games, and Electron apps. Turn off for a faster but thinner pass."/>
+                <TextBlock Text="Group Smart Region text"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,4,0,6"/>
+                <DockPanel Margin="0,0,0,4" LastChildFill="True">
+                    <TextBlock x:Name="SmartRegionTextGroupingLabel"
+                               DockPanel.Dock="Right"
+                               Text="Line"
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"
+                               Width="150"
+                               Margin="10,0,0,0"/>
+                    <Slider x:Name="SmartRegionTextGroupingSlider"
+                            Style="{StaticResource DarkSliderStyle}"
+                            Minimum="0"
+                            Maximum="2"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            ValueChanged="SmartRegionTextGroupingSlider_ValueChanged"
+                            ToolTip="Line: one box per row. Paragraph: join tight lines. Multiple paragraphs: join neighboring paragraphs."/>
+                </DockPanel>
+                <Grid Margin="0,0,160,10">
+                    <TextBlock Text="Line" HorizontalAlignment="Left" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                    <TextBlock Text="Paragraph" HorizontalAlignment="Center" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                    <TextBlock Text="Multiple paragraphs" HorizontalAlignment="Right" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                </Grid>
+                <CheckBox x:Name="SmartRegionSplitOnLargeGapCheckBox"
+                          Content="Split groups when there is a large gap between lines"
+                          Style="{StaticResource DarkCheckBoxStyle}"
+                          Margin="0,0,0,10"
+                          ToolTip="If the space between text lines is much larger than the usual line spacing, keep them as separate regions. Columns that are far apart horizontally stay separate too."/>
                 <CheckBox x:Name="SkipPostCaptureMenuCheckBox"
                           Content="Skip post-capture menu for screenshots and videos"
                           Style="{StaticResource DarkCheckBoxStyle}"

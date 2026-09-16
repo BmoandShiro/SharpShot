@@ -76,7 +76,7 @@ namespace SharpShot.Services
         /// and use SingleBlock + SparseText. PageSegMode.Auto is what produced
         /// "boxClipToRectangle / Empty page" and dropped most of the window.
         /// </summary>
-        public static async Task<IReadOnlyList<OcrWordResult>> RecognizeScreenTextAsync(Bitmap source)
+        public static async Task<IReadOnlyList<OcrWordResult>> RecognizeScreenTextAsync(Bitmap source, bool splitOnLargeHorizontalGap = true)
         {
             if (source == null || source.Width < 40 || source.Height < 40)
                 return Array.Empty<OcrWordResult>();
@@ -115,7 +115,7 @@ namespace SharpShot.Services
                 }
             }
 
-            return ClusterScreenWords(DedupWords(all));
+            return ClusterScreenWords(DedupWords(all), splitOnLargeHorizontalGap);
         }
 
         private static List<Rectangle> BuildScreenTiles(int width, int height)
@@ -249,7 +249,25 @@ namespace SharpShot.Services
             return kept;
         }
 
-        private static IReadOnlyList<OcrWordResult> ClusterScreenWords(List<OcrWordResult> words)
+        private static double HorizontalWordGap(List<OcrWordResult> line, OcrWordResult word)
+        {
+            double right = line.Max(w => w.X + w.Width);
+            double left = line.Min(w => w.X);
+            if (word.X >= right - 2)
+                return word.X - right;
+            if (word.X + word.Width <= left + 2)
+                return left - (word.X + word.Width);
+            return 0;
+        }
+
+        private static double LargeHorizontalGap(List<OcrWordResult> line, OcrWordResult word)
+        {
+            double h = Math.Max(10, line.Average(w => w.Height));
+            double wordH = Math.Max(10, word.Height);
+            return Math.Max(36, Math.Max(h, wordH) * 3.2);
+        }
+
+        private static IReadOnlyList<OcrWordResult> ClusterScreenWords(List<OcrWordResult> words, bool splitOnLargeHorizontalGap)
         {
             var ordered = words
                 .Where(w => !string.IsNullOrWhiteSpace(w.Text) && w.Width >= 2 && w.Height >= 4)
@@ -268,11 +286,12 @@ namespace SharpShot.Services
                     var mid = candidate.Average(w => w.Y + w.Height / 2);
                     double wordMid = word.Y + word.Height / 2;
                     double tol = Math.Max(8, candidate.Average(w => w.Height) * 0.6);
-                    if (Math.Abs(wordMid - mid) <= tol)
-                    {
-                        line = candidate;
-                        break;
-                    }
+                    if (Math.Abs(wordMid - mid) > tol)
+                        continue;
+                    if (splitOnLargeHorizontalGap && HorizontalWordGap(candidate, word) > LargeHorizontalGap(candidate, word))
+                        continue;
+                    line = candidate;
+                    break;
                 }
                 if (line == null)
                 {
