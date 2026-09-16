@@ -69,7 +69,7 @@ namespace SharpShot.Models
         private bool _showSmartRegionButtonOnDashboard;
         private bool _useDenseOcrForSmartRegions;
         private int _smartRegionTextGrouping;
-        private bool _smartRegionSplitOnLargeGap;
+        private int _smartRegionHorizontalSplit;
         private bool _skipPostCaptureMenu;
         private bool _hideSharpShotWindowsDuringCapture;
         private bool _useDxgiCapture;
@@ -130,7 +130,7 @@ namespace SharpShot.Models
             ShowSmartRegionButtonOnDashboard = true;
             UseDenseOcrForSmartRegions = true; // Tiled dual-PSM OCR — slower, much better coverage
             SmartRegionTextGrouping = 0; // 0 line, 1 paragraph, 2 multiple paragraphs
-            SmartRegionSplitOnLargeGap = true;
+            SmartRegionHorizontalSplit = 1; // 0 off, 1 widest, 2 far apart, 3 wide, 4 medium, 5 close
             SkipPostCaptureMenu = true;
             HideSharpShotWindowsDuringCapture = false; // Default: same as today; enable to omit dashboard/editor from captures
             UseDxgiCapture = false; // Default off until verified; enable GPU Desktop Duplication for faster freezes
@@ -576,13 +576,13 @@ namespace SharpShot.Models
         }
 
         /// <summary>
-        /// When true, a gap much larger than the usual line spacing starts a new region,
-        /// and columns that are far apart horizontally stay separate.
+        /// How little horizontal space between neighboring words starts a new region.
+        /// 0 keeps the line together. 1 is the smallest split. 5 splits on smaller gaps.
         /// </summary>
-        public bool SmartRegionSplitOnLargeGap
+        public int SmartRegionHorizontalSplit
         {
-            get => _smartRegionSplitOnLargeGap;
-            set => SetProperty(ref _smartRegionSplitOnLargeGap, value);
+            get => _smartRegionHorizontalSplit;
+            set => SetProperty(ref _smartRegionHorizontalSplit, Math.Clamp(value, 0, 5));
         }
 
         public bool SkipPostCaptureMenu

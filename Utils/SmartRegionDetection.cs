@@ -456,7 +456,7 @@ namespace SharpShot.Utils
 
             try
             {
-                var lines = await OcrService.RecognizeScreenTextAsync(bmp, splitOnLargeHorizontalGap: SplitSmartRegionsOnLargeGap()).ConfigureAwait(false);
+                var lines = await OcrService.RecognizeScreenTextAsync(bmp, horizontalSplit: ReadSmartRegionHorizontalSplit()).ConfigureAwait(false);
                 var rects = LinesToScreenRects(lines, bmp, originX, originY, 30f);
                 onSparse?.Invoke(rects);
                 return rects;
@@ -480,10 +480,10 @@ namespace SharpShot.Utils
             }
 
             int grouping = ReadSmartRegionGrouping();
-            bool splitGaps = SplitSmartRegionsOnLargeGap();
+            int horizontalSplit = ReadSmartRegionHorizontalSplit();
             var boxes = grouping <= 0
                 ? lineRects
-                : GroupTextLines(lineRects, grouping, splitGaps);
+                : GroupTextLines(lineRects, grouping, horizontalSplit);
 
             foreach (var box in boxes)
             {
@@ -506,23 +506,24 @@ namespace SharpShot.Utils
             }
         }
 
-        private static bool SplitSmartRegionsOnLargeGap()
+        private static int ReadSmartRegionHorizontalSplit()
         {
             try
             {
-                return App.SettingsService?.CurrentSettings?.SmartRegionSplitOnLargeGap ?? true;
+                return Math.Clamp(App.SettingsService?.CurrentSettings?.SmartRegionHorizontalSplit ?? 1, 0, 5);
             }
             catch
             {
-                return true;
+                return 1;
             }
         }
 
         /// <summary>
         /// Bundle stacked lines into paragraphs. grouping 1 joins tight lines; 2 also joins
         /// neighboring paragraphs. A large vertical gap, or no horizontal overlap, starts a new box.
+        /// horizontalSplit 0 does not add an extra gap cap; higher values split sooner.
         /// </summary>
-        private static List<RectangleF> GroupTextLines(List<RectangleF> lines, int grouping, bool splitOnLargeGap)
+        private static List<RectangleF> GroupTextLines(List<RectangleF> lines, int grouping, int horizontalSplit)
         {
             if (lines.Count == 0 || grouping <= 0)
                 return lines;
@@ -534,11 +535,18 @@ namespace SharpShot.Utils
             float limit = grouping >= 2
                 ? Math.Max(typicalGap * 4.5f, lineH * 2.6f)
                 : Math.Max(typicalGap * 1.75f, lineH * 0.55f);
-            if (splitOnLargeGap)
+            if (horizontalSplit > 0)
             {
-                float excessive = grouping >= 2
-                    ? Math.Max(lineH * 1.05f, typicalGap * 2.6f)
-                    : Math.Max(lineH * 0.7f, typicalGap * 1.7f);
+                float excessive = horizontalSplit switch
+                {
+                    1 => Math.Max(lineH * 4.5f, typicalGap * 10f),
+                    2 => Math.Max(lineH * 3.2f, typicalGap * 6f),
+                    3 => Math.Max(lineH * 2.2f, typicalGap * 4f),
+                    4 => Math.Max(lineH * 1.4f, typicalGap * 2.6f),
+                    _ => grouping >= 2
+                        ? Math.Max(lineH * 0.9f, typicalGap * 1.8f)
+                        : Math.Max(lineH * 0.6f, typicalGap * 1.3f)
+                };
                 limit = Math.Min(limit, excessive);
             }
 

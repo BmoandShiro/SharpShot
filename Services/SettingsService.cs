@@ -42,6 +42,14 @@ namespace SharpShot.Services
                             CurrentSettings.ShowObsButtonOnRecordingToolbar = true;
                         if (json.IndexOf("ShowCustomAppButtonOnRecordingToolbar", StringComparison.OrdinalIgnoreCase) < 0)
                             CurrentSettings.ShowCustomAppButtonOnRecordingToolbar = true;
+                        if (json.IndexOf("SmartRegionHorizontalSplit", StringComparison.OrdinalIgnoreCase) < 0)
+                        {
+                            // The old on/off toggle was too aggressive and split sentences.
+                            // Off stays off; on maps to "far apart" so normal sentences stay together.
+                            bool oldSplitOff = json.IndexOf("\"SmartRegionSplitOnLargeGap\": false", StringComparison.OrdinalIgnoreCase) >= 0
+                                || json.IndexOf("\"SmartRegionSplitOnLargeGap\":false", StringComparison.OrdinalIgnoreCase) >= 0;
+                            CurrentSettings.SmartRegionHorizontalSplit = oldSplitOff ? 0 : 1;
+                        }
                     }
                 }
             }

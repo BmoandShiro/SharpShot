@@ -76,7 +76,7 @@ namespace SharpShot.Services
         /// and use SingleBlock + SparseText. PageSegMode.Auto is what produced
         /// "boxClipToRectangle / Empty page" and dropped most of the window.
         /// </summary>
-        public static async Task<IReadOnlyList<OcrWordResult>> RecognizeScreenTextAsync(Bitmap source, bool splitOnLargeHorizontalGap = true)
+        public static async Task<IReadOnlyList<OcrWordResult>> RecognizeScreenTextAsync(Bitmap source, int horizontalSplit = 1)
         {
             if (source == null || source.Width < 40 || source.Height < 40)
                 return Array.Empty<OcrWordResult>();
@@ -115,7 +115,7 @@ namespace SharpShot.Services
                 }
             }
 
-            return ClusterScreenWords(DedupWords(all), splitOnLargeHorizontalGap);
+            return ClusterScreenWords(DedupWords(all), horizontalSplit);
         }
 
         private static List<Rectangle> BuildScreenTiles(int width, int height)
@@ -249,25 +249,7 @@ namespace SharpShot.Services
             return kept;
         }
 
-        private static double HorizontalWordGap(List<OcrWordResult> line, OcrWordResult word)
-        {
-            double right = line.Max(w => w.X + w.Width);
-            double left = line.Min(w => w.X);
-            if (word.X >= right - 2)
-                return word.X - right;
-            if (word.X + word.Width <= left + 2)
-                return left - (word.X + word.Width);
-            return 0;
-        }
-
-        private static double LargeHorizontalGap(List<OcrWordResult> line, OcrWordResult word)
-        {
-            double h = Math.Max(10, line.Average(w => w.Height));
-            double wordH = Math.Max(10, word.Height);
-            return Math.Max(36, Math.Max(h, wordH) * 3.2);
-        }
-
-        private static IReadOnlyList<OcrWordResult> ClusterScreenWords(List<OcrWordResult> words, bool splitOnLargeHorizontalGap)
+        private static IReadOnlyList<OcrWordResult> ClusterScreenWords(List<OcrWordResult> words, int horizontalSplit)
         {
             var ordered = words
                 .Where(w => !string.IsNullOrWhiteSpace(w.Text) && w.Width >= 2 && w.Height >= 4)
@@ -277,6 +259,8 @@ namespace SharpShot.Services
             if (ordered.Count == 0)
                 return Array.Empty<OcrWordResult>();
 
+            // Group by baseline first. Splitting here used the line's outer edges while words
+            // were still arriving, so a long sentence looked like one huge gap.
             var lines = new List<List<OcrWordResult>>();
             foreach (var word in ordered)
             {
@@ -287,8 +271,6 @@ namespace SharpShot.Services
                     double wordMid = word.Y + word.Height / 2;
                     double tol = Math.Max(8, candidate.Average(w => w.Height) * 0.6);
                     if (Math.Abs(wordMid - mid) > tol)
-                        continue;
-                    if (splitOnLargeHorizontalGap && HorizontalWordGap(candidate, word) > LargeHorizontalGap(candidate, word))
                         continue;
                     line = candidate;
                     break;
@@ -301,26 +283,95 @@ namespace SharpShot.Services
                 line.Add(word);
             }
 
-            var result = new List<OcrWordResult>(lines.Count);
+            var result = new List<OcrWordResult>();
             foreach (var line in lines)
             {
-                double x1 = line.Min(w => w.X);
-                double y1 = line.Min(w => w.Y);
-                double x2 = line.Max(w => w.X + w.Width);
-                double y2 = line.Max(w => w.Y + w.Height);
-                var text = string.Join(" ", line.Select(w => w.Text).Where(t => !string.IsNullOrWhiteSpace(t))).Trim();
-                if (text.Length == 0) continue;
-                result.Add(new OcrWordResult
-                {
-                    Text = text,
-                    X = x1,
-                    Y = y1,
-                    Width = Math.Max(1, x2 - x1),
-                    Height = Math.Max(1, y2 - y1),
-                    Confidence = line.Average(w => w.Confidence)
-                });
+                foreach (var run in SplitBaselineOnAdjacentGaps(line, horizontalSplit))
+                    EmitWordRun(result, run);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Split a finished baseline only where neighboring words have an outlier gap.
+        /// A sentence's own word spacing is the reference, so a long line is not treated as one gap.
+        /// </summary>
+        private static List<List<OcrWordResult>> SplitBaselineOnAdjacentGaps(List<OcrWordResult> line, int sensitivity)
+        {
+            var ordered = line.OrderBy(w => w.X).ThenBy(w => w.Y).ToList();
+            if (sensitivity <= 0 || ordered.Count < 2)
+                return new List<List<OcrWordResult>> { ordered };
+
+            var gaps = new double[ordered.Count - 1];
+            for (int i = 0; i < gaps.Length; i++)
+            {
+                double gap = ordered[i + 1].X - (ordered[i].X + ordered[i].Width);
+                gaps[i] = Math.Max(0, gap);
+            }
+
+            double height = Math.Max(10, ordered.Average(w => w.Height));
+            var wordLike = gaps.Where(g => g <= height * 1.25).ToList();
+            double typical = wordLike.Count > 0 ? Median(wordLike) : Math.Max(4, height * 0.25);
+            double threshold = AdjacentGapThreshold(sensitivity, typical, height);
+
+            var runs = new List<List<OcrWordResult>>();
+            var run = new List<OcrWordResult> { ordered[0] };
+            for (int i = 1; i < ordered.Count; i++)
+            {
+                if (gaps[i - 1] > threshold)
+                {
+                    runs.Add(run);
+                    run = new List<OcrWordResult>();
+                }
+                run.Add(ordered[i]);
+            }
+            runs.Add(run);
+            return runs;
+        }
+
+        /// <summary>
+        /// 1 is the smallest split, just right of Off. Higher values split on smaller holes.
+        /// </summary>
+        private static double AdjacentGapThreshold(int sensitivity, double typicalWordGap, double lineHeight)
+        {
+            (double typicalMult, double heightMult, double floor) = Math.Clamp(sensitivity, 1, 5) switch
+            {
+                1 => (16.0, 10.0, 280),
+                2 => (10.0, 7.0, 180),
+                3 => (6.0, 4.5, 110),
+                4 => (3.8, 2.8, 64),
+                _ => (2.4, 1.8, 36)
+            };
+            return Math.Max(floor, Math.Max(typicalWordGap * typicalMult, lineHeight * heightMult));
+        }
+
+        private static double Median(List<double> values)
+        {
+            if (values.Count == 0) return 0;
+            var ordered = values.OrderBy(v => v).ToList();
+            int mid = ordered.Count / 2;
+            if (ordered.Count % 2 == 1) return ordered[mid];
+            return (ordered[mid - 1] + ordered[mid]) / 2;
+        }
+
+        private static void EmitWordRun(List<OcrWordResult> result, List<OcrWordResult> line)
+        {
+            if (line.Count == 0) return;
+            double x1 = line.Min(w => w.X);
+            double y1 = line.Min(w => w.Y);
+            double x2 = line.Max(w => w.X + w.Width);
+            double y2 = line.Max(w => w.Y + w.Height);
+            var text = string.Join(" ", line.OrderBy(w => w.X).Select(w => w.Text).Where(t => !string.IsNullOrWhiteSpace(t))).Trim();
+            if (text.Length == 0) return;
+            result.Add(new OcrWordResult
+            {
+                Text = text,
+                X = x1,
+                Y = y1,
+                Width = Math.Max(1, x2 - x1),
+                Height = Math.Max(1, y2 - y1),
+                Confidence = line.Average(w => w.Confidence)
+            });
         }
 
         /// <summary>

@@ -288,11 +288,33 @@
                     <TextBlock Text="Paragraph" HorizontalAlignment="Center" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
                     <TextBlock Text="Multiple paragraphs" HorizontalAlignment="Right" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
                 </Grid>
-                <CheckBox x:Name="SmartRegionSplitOnLargeGapCheckBox"
-                          Content="Split groups when there is a large gap between lines"
-                          Style="{StaticResource DarkCheckBoxStyle}"
-                          Margin="0,0,0,10"
-                          ToolTip="If the space between text lines is much larger than the usual line spacing, keep them as separate regions. Columns that are far apart horizontally stay separate too."/>
+                <TextBlock Text="Horizontal gap before split"
+                           Foreground="{StaticResource TextBrush}"
+                           FontWeight="SemiBold"
+                           Margin="0,4,0,6"/>
+                <DockPanel Margin="0,0,0,4" LastChildFill="True">
+                    <TextBlock x:Name="SmartRegionHorizontalSplitLabel"
+                               DockPanel.Dock="Right"
+                               Text="Widest"
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"
+                               Width="150"
+                               Margin="10,0,0,0"/>
+                    <Slider x:Name="SmartRegionHorizontalSplitSlider"
+                            Style="{StaticResource DarkSliderStyle}"
+                            Minimum="0"
+                            Maximum="5"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            ValueChanged="SmartRegionHorizontalSplitSlider_ValueChanged"
+                            ToolTip="Splits a line only when neighboring words have a hole much larger than the sentence's own spacing. Off never splits. Widest is the smallest split. Close splits on smaller gaps."/>
+                </DockPanel>
+                <Grid Margin="0,0,160,10">
+                    <TextBlock Text="Off" HorizontalAlignment="Left" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                    <TextBlock Text="Wide" HorizontalAlignment="Center" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                    <TextBlock Text="Close" HorizontalAlignment="Right" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                </Grid>
                 <CheckBox x:Name="SkipPostCaptureMenuCheckBox"
                           Content="Skip post-capture menu for screenshots and videos"
                           Style="{StaticResource DarkCheckBoxStyle}"

@@ -561,7 +561,8 @@ namespace SharpShot.UI
             UseDenseOcrForSmartRegionsCheckBox.IsChecked = _originalSettings.UseDenseOcrForSmartRegions;
             SmartRegionTextGroupingSlider.Value = Math.Clamp(_originalSettings.SmartRegionTextGrouping, 0, 2);
             UpdateSmartRegionGroupingLabel();
-            SmartRegionSplitOnLargeGapCheckBox.IsChecked = _originalSettings.SmartRegionSplitOnLargeGap;
+            SmartRegionHorizontalSplitSlider.Value = Math.Clamp(_originalSettings.SmartRegionHorizontalSplit, 0, 5);
+            UpdateSmartRegionHorizontalSplitLabel();
             SkipPostCaptureMenuCheckBox.IsChecked = _originalSettings.SkipPostCaptureMenu;
             HideSharpShotWindowsDuringCaptureCheckBox.IsChecked = _originalSettings.HideSharpShotWindowsDuringCapture;
             UseDxgiCaptureCheckBox.IsChecked = _originalSettings.UseDxgiCapture;
@@ -1012,7 +1013,7 @@ namespace SharpShot.UI
                     _originalSettings.ShowObsButtonOnRecordingToolbar = ShowObsButtonOnRecordingToolbarCheckBox.IsChecked ?? true;
                 _originalSettings.UseDenseOcrForSmartRegions = UseDenseOcrForSmartRegionsCheckBox.IsChecked ?? false;
                 _originalSettings.SmartRegionTextGrouping = (int)Math.Round(SmartRegionTextGroupingSlider.Value);
-                _originalSettings.SmartRegionSplitOnLargeGap = SmartRegionSplitOnLargeGapCheckBox.IsChecked ?? true;
+                _originalSettings.SmartRegionHorizontalSplit = (int)Math.Round(SmartRegionHorizontalSplitSlider.Value);
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.UseDxgiCapture = UseDxgiCaptureCheckBox.IsChecked ?? false;
@@ -1271,7 +1272,7 @@ namespace SharpShot.UI
             target.ShowSmartRegionButtonOnDashboard = source.ShowSmartRegionButtonOnDashboard;
             target.UseDenseOcrForSmartRegions = source.UseDenseOcrForSmartRegions;
             target.SmartRegionTextGrouping = source.SmartRegionTextGrouping;
-            target.SmartRegionSplitOnLargeGap = source.SmartRegionSplitOnLargeGap;
+            target.SmartRegionHorizontalSplit = source.SmartRegionHorizontalSplit;
             target.SkipPostCaptureMenu = source.SkipPostCaptureMenu;
             target.HideSharpShotWindowsDuringCapture = source.HideSharpShotWindowsDuringCapture;
             target.UseDxgiCapture = source.UseDxgiCapture;
@@ -1428,6 +1429,27 @@ namespace SharpShot.UI
                 >= 2 => "Multiple paragraphs",
                 1 => "Paragraph",
                 _ => "Line"
+            };
+        }
+
+        private void SmartRegionHorizontalSplitSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            UpdateSmartRegionHorizontalSplitLabel();
+        }
+
+        private void UpdateSmartRegionHorizontalSplitLabel()
+        {
+            if (SmartRegionHorizontalSplitLabel == null || SmartRegionHorizontalSplitSlider == null)
+                return;
+            int level = (int)Math.Round(SmartRegionHorizontalSplitSlider.Value);
+            SmartRegionHorizontalSplitLabel.Text = level switch
+            {
+                <= 0 => "Off",
+                1 => "Widest",
+                2 => "Far apart",
+                3 => "Wide",
+                4 => "Medium",
+                _ => "Close"
             };
         }
 
@@ -1681,8 +1703,6 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(ShowObsButtonOnRecordingToolbarCheckBox, themeColor);
                 if (UseDenseOcrForSmartRegionsCheckBox != null && UseDenseOcrForSmartRegionsCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(UseDenseOcrForSmartRegionsCheckBox, themeColor);
-                if (SmartRegionSplitOnLargeGapCheckBox != null && SmartRegionSplitOnLargeGapCheckBox.IsLoaded)
-                    UpdateCheckboxVisualTree(SmartRegionSplitOnLargeGapCheckBox, themeColor);
                 if (SkipPostCaptureMenuCheckBox != null && SkipPostCaptureMenuCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(SkipPostCaptureMenuCheckBox, themeColor);
                 if (HideSharpShotWindowsDuringCaptureCheckBox != null && HideSharpShotWindowsDuringCaptureCheckBox.IsLoaded)
