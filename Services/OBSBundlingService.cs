@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using SharpShot.UI;
+using SharpShot;
 
 namespace SharpShot.Services
 {
@@ -157,6 +158,12 @@ namespace SharpShot.Services
 
         private async Task<bool> DownloadAndInstallOBSAsync()
         {
+            if (BuildInfo.DisableInAppUpdates)
+            {
+                LogToFile("OBS download skipped: Steam/Store builds do not download OBS.");
+                return false;
+            }
+
             try
             {
                 LogToFile("Bundled OBS not found, downloading...");

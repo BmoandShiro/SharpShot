@@ -41,6 +41,11 @@ logs/
 # OBS Studio (bundled with application)
 OBS-Studio/
 
+# Channel outputs (Steam depot and Store portable/MSIX)
+/steam-depot
+/SharpShot-Store-*
+/SharpShot-Steam-*
+
 # SharpShot release distributions
 SharpShot*.zip
 SharpShot*.exe 

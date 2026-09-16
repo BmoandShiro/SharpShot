@@ -1,4 +1,5 @@
-# Build MSIX using Docker + Local MSIX Creation
+# Legacy Docker MSIX helper. Microsoft Store submissions should use build-store-no-obs.ps1
+# (MakeAppx + StoreBuild=true). This script is not the Store upload path.
 # This script uses your working Docker build, then creates MSIX locally
 
 Write-Host "Building SharpShot MSIX package using Docker + Local tools..." -ForegroundColor Green

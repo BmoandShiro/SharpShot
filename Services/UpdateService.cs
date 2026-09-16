@@ -36,56 +36,19 @@ namespace SharpShot.Services
         /// <summary>
         /// Gets the current application version (Version sidecar → FileVersion → assembly).
         /// </summary>
-        public Version GetCurrentVersion()
-        {
-            // 1) Sidecar Version file next to the exe (written on each release / update apply)
-            try
-            {
-                var versionPath = Path.Combine(AppContext.BaseDirectory, "Version");
-                if (File.Exists(versionPath))
-                {
-                    var text = File.ReadAllText(versionPath).Trim().TrimStart('v', 'V');
-                    if (Version.TryParse(text, out var fromFile))
-                        return fromFile;
-                }
-            }
-            catch
-            {
-                // ignore and fall through
-            }
-
-            // 2) FileVersion from the running executable (works for single-file publishes)
-            try
-            {
-                var exePath = Environment.ProcessPath;
-                if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath))
-                {
-                    var fvi = FileVersionInfo.GetVersionInfo(exePath);
-                    if (!string.IsNullOrWhiteSpace(fvi.FileVersion) &&
-                        Version.TryParse(fvi.FileVersion, out var fromFvi))
-                        return fromFvi;
-                }
-            }
-            catch
-            {
-                // ignore and fall through
-            }
-
-            var assembly = Assembly.GetExecutingAssembly().GetName().Version;
-            return assembly ?? new Version(1, 0, 0, 0);
-        }
+        public Version GetCurrentVersion() => AppVersion.GetCurrentVersion();
 
         /// <summary>Display string for UI (e.g. settings footer).</summary>
-        public string GetCurrentVersionDisplay()
-        {
-            return $"v{GetCurrentVersion()}";
-        }
+        public string GetCurrentVersionDisplay() => AppVersion.GetCurrentVersionDisplay();
 
         /// <summary>
         /// Checks if an update is available
         /// </summary>
         public async Task<UpdateInfo?> CheckForUpdatesAsync(bool forceCheck = false)
         {
+            if (BuildInfo.DisableInAppUpdates)
+                return null;
+
             try
             {
                 // Check if we should skip update check (too soon since last check)
@@ -135,6 +98,9 @@ namespace SharpShot.Services
         /// </summary>
         public async Task<bool> DownloadAndApplyUpdateAsync(UpdateInfo updateInfo, IProgress<UpdateProgress>? progress = null)
         {
+            if (BuildInfo.DisableInAppUpdates)
+                return false;
+
             try
             {
                 progress?.Report(new UpdateProgress { Status = "Downloading update...", Percentage = 0 });
@@ -717,8 +683,10 @@ Start-Sleep -Seconds 2
         {
             try
             {
-                var exePath = Environment.ProcessPath ?? Assembly.GetEntryAssembly()?.Location;
-                if (string.IsNullOrEmpty(exePath))
+                var exePath = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+                    exePath = Path.Combine(AppContext.BaseDirectory, "SharpShot.exe");
+                if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
                     return InstallType.Unknown;
 
                 var exeDir = Path.GetDirectoryName(exePath) ?? string.Empty;

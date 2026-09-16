@@ -1,22 +1,22 @@
-; Simple NSIS installer for SharpShot, built from the portable release folder.
-; Requires the portable bundle created by Build Release.bat (SharpShot-Release-v1.0).
+; GitHub NSIS installer for SharpShot, built from the portable release folder.
+; Requires the portable bundle created by Build Release.bat.
+; 32-bit makensis must still target 64-bit Program Files.
 
 !include "MUI2.nsh"
+!include "x64.nsh"
 
 !define APP_NAME "SharpShot"
 !define APP_PUBLISHER "BmoandShiro"
 !define APP_VERSION "1.3.1.7"
-!define APP_PORTABLE_DIR "SharpShot-Release-v1.3.1.7"
+; Relative to this script (Installer\), so the portable folder in the project root is found.
+!define APP_PORTABLE_DIR "..\SharpShot-Release-v1.3.1.7"
 !define APP_ICON "..\output_color.ico"
 
-; Output installer
-OutFile "SharpShot-Setup.exe"
+; Output next to the project, not inside Installer\
+OutFile "..\SharpShot-Setup.exe"
 
-; Default install directory (per-machine Program Files)
-InstallDir "$PROGRAMFILES\${APP_NAME}"
-
-; Allow user to change install dir
-InstallDirRegKey HKLM "Software\${APP_NAME}" "InstallDir"
+; Default install directory (64-bit Program Files even when compiled by 32-bit makensis)
+InstallDir "$PROGRAMFILES64\${APP_NAME}"
 
 RequestExecutionLevel admin
 
@@ -30,11 +30,25 @@ RequestExecutionLevel admin
 
 !insertmacro MUI_LANGUAGE "English"
 
+Function .onInit
+  SetRegView 64
+FunctionEnd
+
+Function un.onInit
+  SetRegView 64
+FunctionEnd
+
+; Read a previous install dir after the 64-bit registry view is active.
+InstallDirRegKey HKLM "Software\${APP_NAME}" "InstallDir"
+
 Section "Install"
+  SetRegView 64
   SetOutPath "$INSTDIR"
 
   ; Copy all files from the portable release into the install directory
   File /r "${APP_PORTABLE_DIR}\*.*"
+
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}.lnk" "$INSTDIR\SharpShot.exe" "" "$INSTDIR\SharpShot.exe" 0
 
   ; Write uninstall information
   WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -47,6 +61,8 @@ Section "Install"
 SectionEnd
 
 Section "Uninstall"
+  SetRegView 64
+  Delete "$SMPROGRAMS\${APP_NAME}.lnk"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir /r "$INSTDIR"
   DeleteRegKey HKLM "Software\${APP_NAME}"

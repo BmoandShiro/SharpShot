@@ -99,6 +99,7 @@ if (Test-Path "ffmpeg") {
 Write-Host "Step 6: Copying documentation and license files..." -ForegroundColor Yellow
 if (Test-Path "README.md") { Copy-Item -Path "README.md" -Destination $releaseFolder -Force }
 if (Test-Path "LICENSE") { Copy-Item -Path "LICENSE" -Destination $releaseFolder -Force }
+if (Test-Path "PRIVACY.md") { Copy-Item -Path "PRIVACY.md" -Destination $releaseFolder -Force }
 if (Test-Path "OBS_INTEGRATION.md") { Copy-Item -Path "OBS_INTEGRATION.md" -Destination $releaseFolder -Force }
 
 # Copy license files for third-party components

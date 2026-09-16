@@ -209,8 +209,9 @@ namespace SharpShot.UI
         public SettingsWindow(SettingsService settingsService, HotkeyManager? hotkeyManager = null)
         {
             InitializeComponent();
-            VersionTextBlock.Text = App.UpdateService?.GetCurrentVersionDisplay()
-                ?? (Assembly.GetExecutingAssembly().GetName().Version is { } av ? $"v{av}" : "v?");
+            VersionTextBlock.Text = AppVersion.GetCurrentVersionDisplay();
+            if (BuildInfo.DisableInAppUpdates && UpdatesNavItem != null)
+                UpdatesNavItem.Visibility = Visibility.Collapsed;
             _settingsService = settingsService;
             _hotkeyManager = hotkeyManager;
             _originalSettings = new Settings();
@@ -342,7 +343,9 @@ namespace SharpShot.UI
             DashboardSection.Visibility = section == "Dashboard" ? Visibility.Visible : Visibility.Collapsed;
             AppearanceSection.Visibility = section == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
             HotkeysSection.Visibility = section == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
-            UpdatesSection.Visibility = section == "Updates" ? Visibility.Visible : Visibility.Collapsed;
+            UpdatesSection.Visibility = section == "Updates" && !BuildInfo.DisableInAppUpdates
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1770,7 +1773,9 @@ namespace SharpShot.UI
 
             if (enable)
             {
-                var exePath = Environment.ProcessPath ?? System.Reflection.Assembly.GetEntryAssembly()?.Location;
+                var exePath = Environment.ProcessPath;
+                if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
+                    exePath = Path.Combine(AppContext.BaseDirectory, "SharpShot.exe");
                 if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
                     return;
 
@@ -4427,6 +4432,17 @@ namespace SharpShot.UI
 
         private async Task InstallOBSAsync()
         {
+            if (BuildInfo.DisableInAppUpdates)
+            {
+                ThemedMessageBox.Show(
+                    "This build does not download OBS Studio.\n\n" +
+                    "Install OBS separately (obsproject.com or Steam), then link it under Settings → Recording.",
+                    "OBS not bundled",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
             try
             {
                 LogToFile("Starting automatic OBS installation...");
@@ -4470,8 +4486,17 @@ namespace SharpShot.UI
             LogToFile("OBS recording engine deselected - hiding OBS-specific settings");
         }
 
+        private void PrivacyLink_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+            PrivacyWindow.Show(this);
+        }
+
         private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
         {
+            if (BuildInfo.DisableInAppUpdates)
+                return;
+
             if (App.UpdateService == null)
             {
                 UpdateStatusText.Text = "Update service not available.";

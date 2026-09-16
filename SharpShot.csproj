@@ -45,6 +45,18 @@
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
   </PropertyGroup>
 
+  <!-- Steam depot: no GitHub updater, no bundled OBS. -->
+  <PropertyGroup Condition="'$(SteamBuild)' == 'true'">
+    <DefineConstants>$(DefineConstants);STEAM;DISABLE_INAPP_UPDATES</DefineConstants>
+    <ExcludeObsBundle>true</ExcludeObsBundle>
+  </PropertyGroup>
+
+  <!-- Microsoft Store MSIX: Store owns updates; OBS is optional and user-installed. -->
+  <PropertyGroup Condition="'$(StoreBuild)' == 'true'">
+    <DefineConstants>$(DefineConstants);STORE;DISABLE_INAPP_UPDATES</DefineConstants>
+    <ExcludeObsBundle>true</ExcludeObsBundle>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -78,6 +90,7 @@
   <!-- Sidecar version for settings display / update checks (kept in sync by Apply-Version.ps1) -->
   <ItemGroup>
     <None Include="Version" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="PRIVACY.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Base app icons tinted at runtime to match Settings IconColor -->

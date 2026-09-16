@@ -21,20 +21,46 @@
 
     <Icon Id="SharpShotIcon.ico" SourceFile="..\output_color.ico" />
     <Property Id="ARPPRODUCTICON" Value="SharpShotIcon.ico" />
-    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="Installer\License.rtf" />
+    <UIRef Id="WixUI_InstallDir" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
 
     <Directory Id="TARGETDIR" Name="SourceDir">
       <Directory Id="ProgramFiles64Folder">
         <Directory Id="INSTALLDIR" Name="SharpShot" />
       </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ApplicationProgramsFolder" Name="SharpShot" />
+      </Directory>
     </Directory>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcut" Guid="A7C3E91D-2F4B-4E8A-9C1D-5B6E8F0A2C44">
+        <Shortcut
+          Id="ApplicationStartMenuShortcut"
+          Name="SharpShot"
+          Description="Screenshot and screen recording tool"
+          Target="[INSTALLDIR]SharpShot.exe"
+          WorkingDirectory="INSTALLDIR"
+          Icon="SharpShotIcon.ico" />
+        <RemoveFolder Id="CleanUpStartMenuFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\BmoandShiro\SharpShot"
+          Name="StartMenuShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
 
     <Feature
       Id="MainFeature"
       Title="SharpShot"
       Level="1">
       <ComponentGroupRef Id="SharpShotComponents" />
+      <ComponentRef Id="StartMenuShortcut" />
     </Feature>
   </Product>
 </Wix>
-

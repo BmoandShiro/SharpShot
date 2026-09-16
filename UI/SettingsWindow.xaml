@@ -131,7 +131,7 @@
                 <ListBoxItem Content="Dashboard" Tag="Dashboard"/>
                 <ListBoxItem Content="Appearance" Tag="Appearance"/>
                 <ListBoxItem Content="Hotkeys" Tag="Hotkeys"/>
-                <ListBoxItem Content="Updates" Tag="Updates"/>
+                <ListBoxItem x:Name="UpdatesNavItem" Content="Updates" Tag="Updates"/>
             </ListBox>
 
             <Border Grid.Column="2" Background="#FF1A1A1A" CornerRadius="8" Padding="16" BorderBrush="#FF404040" BorderThickness="1">
@@ -1244,6 +1244,14 @@
                 </StackPanel>
             </Grid>
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,15,0">
+                <TextBlock Text="Privacy"
+                           Foreground="{DynamicResource AccentBrush}"
+                           FontSize="11"
+                           Opacity="0.85"
+                           VerticalAlignment="Center"
+                           Cursor="Hand"
+                           MouseLeftButtonDown="PrivacyLink_MouseLeftButtonDown"/>
+                <TextBlock Text=" | " Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" Margin="4,0"/>
                 <TextBlock x:Name="VersionTextBlock" Text="" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
                 <TextBlock Text=" | " Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" Margin="4,0"/>
                 <TextBlock Text="Created by: BMOandShiro" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>

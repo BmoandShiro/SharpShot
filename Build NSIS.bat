@@ -57,7 +57,7 @@ if errorlevel 1 (
 ) else (
   echo.
   echo [OK] NSIS build completed successfully.
-  echo     Output: SharpShot-Setup.exe
+  echo     Output: SharpShot-Setup.exe in the project folder. Installs to Program Files, with a Start Menu shortcut.
 )
 
 :end

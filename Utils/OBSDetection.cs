@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Win32;
+using SharpShot;
 
 namespace SharpShot.Utils
 {
@@ -30,17 +34,26 @@ namespace SharpShot.Utils
                 return linkedObsPath;
             }
 
-            var possiblePaths = new[]
+            var possiblePaths = new List<string>();
+
+            // Steam and Store builds must not treat a leftover OBS-Studio folder next to the exe
+            // (or an AppData extract from the GitHub downloader) as "our" bundled copy.
+            if (!BuildInfo.DisableInAppUpdates)
             {
-                Path.Combine(Directory.GetCurrentDirectory(), "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio", "bin", "64bit", "obs64.exe"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio", "bin", "64bit", "obs64.exe"),
-                "obs64.exe",
-                "obs32.exe"
-            };
+                possiblePaths.Add(Path.Combine(Directory.GetCurrentDirectory(), "OBS-Studio", "bin", "64bit", "obs64.exe"));
+                possiblePaths.Add(Path.Combine(AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"));
+                possiblePaths.Add(Path.Combine(Directory.GetParent(AppContext.BaseDirectory)?.FullName ?? AppContext.BaseDirectory, "OBS-Studio", "bin", "64bit", "obs64.exe"));
+                possiblePaths.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SharpShot", "OBS-Studio", "bin", "64bit", "obs64.exe"));
+            }
+
+            possiblePaths.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "obs-studio", "bin", "64bit", "obs64.exe"));
+            possiblePaths.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "obs-studio", "bin", "64bit", "obs64.exe"));
+
+            if (BuildInfo.IsSteam)
+                possiblePaths.AddRange(GetSteamLibraryObsCandidates());
+
+            possiblePaths.Add("obs64.exe");
+            possiblePaths.Add("obs32.exe");
 
             foreach (var path in possiblePaths)
             {
@@ -73,6 +86,79 @@ namespace SharpShot.Utils
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// OBS Studio installed via Steam (app 1905180). Searches the Steam install plus extra libraries in libraryfolders.vdf.
+        /// </summary>
+        private static IEnumerable<string> GetSteamLibraryObsCandidates()
+        {
+            foreach (var library in GetSteamLibraryRoots())
+            {
+                yield return Path.Combine(library, "steamapps", "common", "OBS Studio", "bin", "64bit", "obs64.exe");
+                yield return Path.Combine(library, "steamapps", "common", "OBS-Studio", "bin", "64bit", "obs64.exe");
+            }
+        }
+
+        private static IEnumerable<string> GetSteamLibraryRoots()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var steam = GetSteamInstallPath();
+            if (!string.IsNullOrEmpty(steam) && seen.Add(steam))
+                yield return steam;
+
+            if (string.IsNullOrEmpty(steam))
+                yield break;
+
+            var vdf = Path.Combine(steam, "steamapps", "libraryfolders.vdf");
+            if (!File.Exists(vdf))
+                yield break;
+
+            string text;
+            try
+            {
+                text = File.ReadAllText(vdf);
+            }
+            catch
+            {
+                yield break;
+            }
+
+            foreach (Match match in Regex.Matches(text, "\"path\"\\s+\"([^\"]+)\""))
+            {
+                var path = match.Groups[1].Value.Replace("\\\\", "\\").Replace('/', '\\');
+                if (!string.IsNullOrWhiteSpace(path) && seen.Add(path))
+                    yield return path;
+            }
+        }
+
+        private static string? GetSteamInstallPath()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
+                var path = key?.GetValue("SteamPath") as string;
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    path = path.Replace('/', '\\');
+                    if (Directory.Exists(path))
+                        return path;
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            var pf86 = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam");
+            if (Directory.Exists(pf86))
+                return pf86;
+
+            var pf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Steam");
+            if (Directory.Exists(pf))
+                return pf;
+
+            return null;
         }
 
         public static bool IsValidLinkedObsPath(string? path)
