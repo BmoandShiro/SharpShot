@@ -241,7 +241,7 @@ namespace SharpShot.UI
                 {
                     Visibility = Visibility.Hidden;
                     await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
-                    await Task.Delay(16);
+                    await Task.Delay(80);
                 }
 
                 var enriched = await SmartRegionDetection.GetDetectedRegionsAsync(

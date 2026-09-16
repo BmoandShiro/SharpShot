@@ -72,6 +72,239 @@ namespace SharpShot.Services
             => RecognizeAsync(bitmap, PageIteratorLevel.TextLine, maxSide: 2200, PageSegMode.SparseText, DefaultMinConfidence);
 
         /// <summary>
+        /// Screen-text OCR for Smart Regions. Tiles stay at native resolution (upscaled 2x)
+        /// and use SingleBlock + SparseText. PageSegMode.Auto is what produced
+        /// "boxClipToRectangle / Empty page" and dropped most of the window.
+        /// </summary>
+        public static async Task<IReadOnlyList<OcrWordResult>> RecognizeScreenTextAsync(Bitmap source)
+        {
+            if (source == null || source.Width < 40 || source.Height < 40)
+                return Array.Empty<OcrWordResult>();
+
+            var all = new List<OcrWordResult>();
+            foreach (var tile in BuildScreenTiles(source.Width, source.Height))
+            {
+                if (IsNearlyBlank(source, tile))
+                    continue;
+
+                Bitmap? crop = null;
+                Bitmap? up = null;
+                try
+                {
+                    crop = CropForOcr(source, tile);
+                    up = ScaleForOcr(crop, 2);
+                    var words = await RecognizePreparedAsync(up, PageIteratorLevel.Word, maxSide: 4096,
+                        PageSegMode.SingleBlock, 28f).ConfigureAwait(false);
+                    OffsetScaled(words, tile.X, tile.Y, 0.5, all);
+
+                    if (CountLetters(words) < 12)
+                    {
+                        var sparse = await RecognizePreparedAsync(up, PageIteratorLevel.Word, maxSide: 4096,
+                            PageSegMode.SparseText, 28f).ConfigureAwait(false);
+                        OffsetScaled(sparse, tile.X, tile.Y, 0.5, all);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"OcrService screen tile failed: {ex.Message}");
+                }
+                finally
+                {
+                    up?.Dispose();
+                    crop?.Dispose();
+                }
+            }
+
+            return ClusterScreenWords(DedupWords(all));
+        }
+
+        private static List<Rectangle> BuildScreenTiles(int width, int height)
+        {
+            var tiles = new List<Rectangle>();
+            int tileW = width <= 900 ? width : 720;
+            int tileH = height <= 700 ? height : 540;
+            int stepX = Math.Max(1, tileW - 80);
+            int stepY = Math.Max(1, tileH - 60);
+            for (int y = 0; y < height; y += stepY)
+            {
+                int h = Math.Min(tileH, height - y);
+                if (h < 36) break;
+                for (int x = 0; x < width; x += stepX)
+                {
+                    int w = Math.Min(tileW, width - x);
+                    if (w < 36) break;
+                    tiles.Add(new Rectangle(x, y, w, h));
+                    if (x + w >= width) break;
+                }
+                if (y + h >= height) break;
+            }
+            if (tiles.Count == 0)
+                tiles.Add(new Rectangle(0, 0, width, height));
+            return tiles;
+        }
+
+        private static bool IsNearlyBlank(Bitmap bmp, Rectangle tile)
+        {
+            try
+            {
+                int samples = 0;
+                long sum = 0;
+                long sumSq = 0;
+                int stepX = Math.Max(4, tile.Width / 12);
+                int stepY = Math.Max(4, tile.Height / 12);
+                for (int y = tile.Top; y < tile.Bottom; y += stepY)
+                {
+                    for (int x = tile.Left; x < tile.Right; x += stepX)
+                    {
+                        var c = bmp.GetPixel(x, y);
+                        int lum = (c.R * 30 + c.G * 59 + c.B * 11) / 100;
+                        sum += lum;
+                        sumSq += lum * lum;
+                        samples++;
+                    }
+                }
+                if (samples < 4) return true;
+                double mean = sum / (double)samples;
+                double variance = (sumSq / (double)samples) - (mean * mean);
+                return variance < 12;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static Bitmap CropForOcr(Bitmap src, Rectangle tile)
+        {
+            tile = Rectangle.Intersect(tile, new Rectangle(0, 0, src.Width, src.Height));
+            var bmp = new Bitmap(Math.Max(1, tile.Width), Math.Max(1, tile.Height), PixelFormat.Format32bppArgb);
+            bmp.SetResolution(96, 96);
+            using var g = Graphics.FromImage(bmp);
+            g.DrawImage(src, new Rectangle(0, 0, bmp.Width, bmp.Height), tile, GraphicsUnit.Pixel);
+            return bmp;
+        }
+
+        private static Bitmap ScaleForOcr(Bitmap src, int factor)
+        {
+            int w = Math.Max(1, src.Width * factor);
+            int h = Math.Max(1, src.Height * factor);
+            var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            bmp.SetResolution(96, 96);
+            using var g = Graphics.FromImage(bmp);
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.DrawImage(src, 0, 0, w, h);
+            return bmp;
+        }
+
+        private static void OffsetScaled(IReadOnlyList<OcrWordResult> src, int ox, int oy, double scale, List<OcrWordResult> dest)
+        {
+            foreach (var r in src)
+            {
+                dest.Add(new OcrWordResult
+                {
+                    Text = r.Text,
+                    X = ox + r.X * scale,
+                    Y = oy + r.Y * scale,
+                    Width = Math.Max(1, r.Width * scale),
+                    Height = Math.Max(1, r.Height * scale),
+                    Confidence = r.Confidence
+                });
+            }
+        }
+
+        private static int CountLetters(IReadOnlyList<OcrWordResult> words)
+        {
+            int n = 0;
+            foreach (var w in words)
+            {
+                if (string.IsNullOrWhiteSpace(w.Text)) continue;
+                foreach (char c in w.Text)
+                    if (char.IsLetterOrDigit(c)) n++;
+            }
+            return n;
+        }
+
+        private static List<OcrWordResult> DedupWords(List<OcrWordResult> words)
+        {
+            var kept = new List<OcrWordResult>();
+            foreach (var word in words.OrderByDescending(w => w.Confidence))
+            {
+                var a = new RectangleF((float)word.X, (float)word.Y, (float)word.Width, (float)word.Height);
+                bool dup = false;
+                foreach (var existing in kept)
+                {
+                    var b = new RectangleF((float)existing.X, (float)existing.Y, (float)existing.Width, (float)existing.Height);
+                    var inter = RectangleF.Intersect(a, b);
+                    if (inter.IsEmpty) continue;
+                    float ratio = (inter.Width * inter.Height) / Math.Max(1f, Math.Min(a.Width * a.Height, b.Width * b.Height));
+                    if (ratio > 0.6f)
+                    {
+                        dup = true;
+                        break;
+                    }
+                }
+                if (!dup)
+                    kept.Add(word);
+            }
+            return kept;
+        }
+
+        private static IReadOnlyList<OcrWordResult> ClusterScreenWords(List<OcrWordResult> words)
+        {
+            var ordered = words
+                .Where(w => !string.IsNullOrWhiteSpace(w.Text) && w.Width >= 2 && w.Height >= 4)
+                .OrderBy(w => w.Y)
+                .ThenBy(w => w.X)
+                .ToList();
+            if (ordered.Count == 0)
+                return Array.Empty<OcrWordResult>();
+
+            var lines = new List<List<OcrWordResult>>();
+            foreach (var word in ordered)
+            {
+                List<OcrWordResult>? line = null;
+                foreach (var candidate in lines)
+                {
+                    var mid = candidate.Average(w => w.Y + w.Height / 2);
+                    double wordMid = word.Y + word.Height / 2;
+                    double tol = Math.Max(8, candidate.Average(w => w.Height) * 0.6);
+                    if (Math.Abs(wordMid - mid) <= tol)
+                    {
+                        line = candidate;
+                        break;
+                    }
+                }
+                if (line == null)
+                {
+                    line = new List<OcrWordResult>();
+                    lines.Add(line);
+                }
+                line.Add(word);
+            }
+
+            var result = new List<OcrWordResult>(lines.Count);
+            foreach (var line in lines)
+            {
+                double x1 = line.Min(w => w.X);
+                double y1 = line.Min(w => w.Y);
+                double x2 = line.Max(w => w.X + w.Width);
+                double y2 = line.Max(w => w.Y + w.Height);
+                var text = string.Join(" ", line.Select(w => w.Text).Where(t => !string.IsNullOrWhiteSpace(t))).Trim();
+                if (text.Length == 0) continue;
+                result.Add(new OcrWordResult
+                {
+                    Text = text,
+                    X = x1,
+                    Y = y1,
+                    Width = Math.Max(1, x2 - x1),
+                    Height = Math.Max(1, y2 - y1),
+                    Confidence = line.Average(w => w.Confidence)
+                });
+            }
+            return result;
+        }
+
+        /// <summary>
         /// High-coverage OCR for smart regions: overlapping tiles, always SparseText + Auto,
         /// confidence filtering, coordinates in full-image space.
         /// </summary>
@@ -288,12 +521,16 @@ namespace SharpShot.Services
                     var tessDataPath = GetTessDataPath();
                     using var engine = new TesseractEngine(tessDataPath, "eng", EngineMode.Default);
                     engine.SetVariable("user_defined_dpi", "96");
+                    engine.SetVariable("tessedit_do_invert", "1");
+                    toProcess.SetResolution(96, 96);
                     using var page = engine.Process(toProcess, segMode);
                     using var iter = page.GetIterator();
                     iter.Begin();
                     do
                     {
                         if (!iter.TryGetBoundingBox(level, out var rect))
+                            continue;
+                        if (rect.X1 < -2 || rect.Y1 < -2 || rect.X2 > w + 2 || rect.Y2 > h + 2)
                             continue;
 
                         var text = iter.GetText(level)?.Trim();

@@ -24,7 +24,7 @@ namespace SharpShot.Utils
     {
         private const int MinWidth = 16;
         private const int MinHeight = 10;
-        private const int MaxRects = 180;
+        private const int MaxRects = 400;
         private const int MaxWalkNodes = 600;
         private const int MaxDepth = 14;
         private const double MaxWindowCoverage = 0.82;
@@ -76,6 +76,18 @@ namespace SharpShot.Utils
 
         [DllImport("user32.dll")]
         private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+
+        private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+        private const int SM_XVIRTUALSCREEN = 76;
+        private const int SM_YVIRTUALSCREEN = 77;
+        private const int SM_CXVIRTUALSCREEN = 78;
+        private const int SM_CYVIRTUALSCREEN = 79;
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetWindowDC(IntPtr hWnd);
@@ -444,26 +456,10 @@ namespace SharpShot.Utils
 
             try
             {
-                var sparseLines = await OcrService.RecognizeTextLinesAsync(bmp).ConfigureAwait(false);
-                var sparseRects = LinesToScreenRects(sparseLines, bmp, originX, originY, denseOcr ? 45f : OcrService.DefaultMinConfidence);
-                if (sparseRects.Count == 0)
-                {
-                    var words = await OcrService.RecognizeWordsAsync(bmp).ConfigureAwait(false);
-                    var clustered = ClusterWordsIntoLines(words);
-                    foreach (var line in clustered)
-                    {
-                        if (IsGhostImageRect(line, bmp.Width, bmp.Height)) continue;
-                        TryAddImageRect(sparseRects, originX, originY, line);
-                    }
-                }
-                onSparse?.Invoke(sparseRects);
-                if (!denseOcr)
-                    return sparseRects;
-
-                var denseLines = await OcrService.RecognizeSmartRegionLinesAsync(bmp).ConfigureAwait(false);
-                if (denseLines.Count == 0)
-                    return sparseRects;
-                return LinesToScreenRects(denseLines, bmp, originX, originY, 45f);
+                var lines = await OcrService.RecognizeScreenTextAsync(bmp).ConfigureAwait(false);
+                var rects = LinesToScreenRects(lines, bmp, originX, originY, 30f);
+                onSparse?.Invoke(rects);
+                return rects;
             }
             finally
             {
@@ -518,21 +514,8 @@ namespace SharpShot.Utils
         {
             if (imageW <= 0 || imageH <= 0) return false;
 
-            if (r.Height <= 10 && r.Width < imageW * 0.35f) return true;
-            if (r.Width <= 10 && r.Height < imageH * 0.35f) return true;
-
-            const int edge = 12;
-            bool nearBottom = r.Y >= imageH - edge - r.Height;
-            bool nearTop = r.Bottom <= edge + r.Height && r.Y <= edge;
-            bool nearLeft = r.Right <= edge + r.Width && r.X <= edge;
-            bool nearRight = r.X >= imageW - edge - r.Width;
-
-            float area = r.Width * r.Height;
-            if (area < 900 && (nearBottom || nearTop || nearLeft || nearRight))
-                return true;
-
-            if ((nearBottom || nearTop) && r.Height <= 14 && r.Width < imageW * 0.5f)
-                return true;
+            if (r.Height <= 6 && r.Width < imageW * 0.35f) return true;
+            if (r.Width <= 6 && r.Height < imageH * 0.35f) return true;
 
             return false;
         }
@@ -604,11 +587,13 @@ namespace SharpShot.Utils
                     Debug.WriteLine($"Freeze crop failed: {ex.Message}");
                 }
             }
-            else if (TryCaptureVisibleClient(originX, originY, w, h, out bitmap))
+            else if (TryGetVisibleFrame(hwnd, out int frameX, out int frameY, out int frameW, out int frameH)
+                     && TryCaptureVisibleClient(frameX, frameY, frameW, frameH, out bitmap))
             {
-                // Live overlay: OCR the pixels actually on screen. PrintWindow on Chromium
-                // often returns a partial composite that is not black, so the old fallback
-                // never ran and most of the page was missed.
+                // Live overlay: OCR the pixels actually on screen, including the full visible
+                // window (not a shrunk client inset, and not Chrome's PrintWindow composite).
+                originX = frameX;
+                originY = frameY;
                 return true;
             }
 
@@ -673,6 +658,31 @@ namespace SharpShot.Utils
                 bitmap = null!;
                 return false;
             }
+        }
+
+        private static bool TryGetVisibleFrame(IntPtr hwnd, out int x, out int y, out int w, out int h)
+        {
+            x = y = w = h = 0;
+            RECT frame;
+            int hr = DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out frame, Marshal.SizeOf<RECT>());
+            if (hr != 0 && !GetWindowRect(hwnd, out frame))
+                return false;
+
+            int vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+            int vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
+            int vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            int vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+            int left = Math.Max(frame.Left, vx);
+            int top = Math.Max(frame.Top, vy);
+            int right = Math.Min(frame.Right, vx + vw);
+            int bottom = Math.Min(frame.Bottom, vy + vh);
+            w = right - left;
+            h = bottom - top;
+            if (w < 80 || h < 60)
+                return false;
+            x = left;
+            y = top;
+            return true;
         }
 
         /// <summary>
@@ -1147,11 +1157,11 @@ namespace SharpShot.Utils
         private static bool IsSkinnyChrome(double width, double height)
         {
             if (width < 1 || height < 1) return true;
-            // Classic vertical/horizontal scrollbars and thin splitter chrome
-            if (width <= 22 && height >= 80) return true;
-            if (height <= 22 && width >= 80) return true;
-            double ratio = width / height;
-            return ratio >= 18 || ratio <= 1.0 / 18.0;
+            // Vertical scrollbars / splitters. A text line is short but not this thin.
+            if (width <= 16 && height >= 48) return true;
+            // Hairlines only. A text line is usually 12–32px tall, so it must not match this.
+            if (height <= 8 && width >= 40) return true;
+            return false;
         }
 
         private static bool IsPlausibleContentRect(Rectangle r)
