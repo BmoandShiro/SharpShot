@@ -197,6 +197,8 @@ namespace SharpShot
         private void ApplyLocalizedChrome()
         {
             LocalizationService.ApplyMainWindow(this);
+            Utils.UiLocalizer.Apply(this);
+            UpdateSmartRegionToggleVisual();
         }
 
         private void SetupEventHandlers()
@@ -351,7 +353,7 @@ namespace SharpShot
                     SmartRegionToggleButton.BorderThickness = new Thickness(1.5);
                     if (SmartRegionToggleLabel != null)
                         SmartRegionToggleLabel.FontWeight = FontWeights.SemiBold;
-                    SmartRegionToggleButton.ToolTip = "Smart Regions ON — click a highlight to copy text. Click again to turn off.";
+                    SmartRegionToggleButton.ToolTip = LocalizationService.Translate("Smart Regions ON — click a highlight to copy text. Click again to turn off.");
                 }
                 else
                 {
@@ -360,7 +362,7 @@ namespace SharpShot
                     SmartRegionToggleButton.BorderThickness = new Thickness(0);
                     if (SmartRegionToggleLabel != null)
                         SmartRegionToggleLabel.FontWeight = FontWeights.Normal;
-                    SmartRegionToggleButton.ToolTip = "Smart Regions OFF — click to highlight content on the active window for quick text copy.";
+                    SmartRegionToggleButton.ToolTip = LocalizationService.Translate("Smart Regions OFF — click to highlight content on the active window for quick text copy.");
                 }
             }
             catch (Exception ex)

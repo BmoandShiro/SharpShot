@@ -1,6 +1,6 @@
 # SharpShot privacy policy
 
-Last updated: September 16, 2026
+Last updated: September 17, 2026
 
 Publisher: BMOandShiro
 
@@ -22,7 +22,7 @@ Whatever is on your screen can appear in a screenshot or recording you choose to
 
 ## Network access
 
-Steam and Microsoft Store copies of SharpShot do not check GitHub for updates. Those stores update the app. Those copies also do not download OBS Studio.
+Steam and Microsoft Store copies of SharpShot do not check GitHub for updates. Those stores update the app. Those copies also do not download other applications for you.
 
 Copies distributed from GitHub may contact GitHub if "Automatically check for updates" is enabled, or if you choose Check Now. That request goes to GitHub's servers (https://api.github.com) so the app can see if a newer public release exists, and may download that release from GitHub. GitHub's privacy policy applies to that connection. SharpShot does not attach an account or a SharpShot user id to that request.
 
@@ -39,7 +39,7 @@ Capturing and recording do not require an internet connection.
 
 FFmpeg is included so recording works on this PC. It runs locally.
 
-OBS Studio is optional. Steam and Microsoft Store builds do not include it. If you link a copy of OBS you already installed, OBS is a separate app with its own terms and privacy policy.
+You can link a program you already installed and open it from SharpShot. That includes a more advanced recorder. OBS Studio is one example. SharpShot does not include those programs, and Steam and Microsoft Store copies do not download them. Each linked program is a separate app with its own terms and privacy policy.
 
 ## Children
 

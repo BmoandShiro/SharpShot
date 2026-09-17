@@ -78,6 +78,12 @@ namespace SharpShot.Services
             return key;
         }
 
+        public static string Translate(string english) => PhraseCatalog.Translate(english);
+
+        public static bool HasPhrase(string english) => PhraseCatalog.Contains(english);
+
+        public static string PrivacyText() => PhraseCatalog.PrivacyText();
+
         public static OcrLanguageChoice[] GetOcrChoices()
         {
             return new[]
@@ -133,7 +139,7 @@ namespace SharpShot.Services
             ["en"] = T(
                 "General", "Capture", "Recording", "Dashboard", "Appearance", "Hotkeys", "Updates",
                 "Settings", "Privacy", "Language", "App language",
-                "Controls SharpShot's menus and tooltips. OCR language is separate.",
+                "Changes SharpShot's menus, settings, tooltips, and the in-app privacy policy. OCR language is separate.",
                 "OCR language",
                 "Auto reads English, Spanish, French, German, Portuguese, and Italian together. Pick Japanese, Chinese, Korean, or Russian when the screen uses that script.",
                 "Storage", "Save Path:", "Browse",
@@ -148,7 +154,7 @@ namespace SharpShot.Services
             ["es"] = T(
                 "General", "Captura", "Grabación", "Panel", "Apariencia", "Atajos", "Actualizaciones",
                 "Ajustes", "Privacidad", "Idioma", "Idioma de la app",
-                "Cambia los menús y la ayuda de SharpShot. El idioma del OCR es aparte.",
+                "Cambia los menús, ajustes, sugerencias y la política de privacidad de SharpShot. El idioma del OCR es aparte.",
                 "Idioma de OCR",
                 "Automático lee inglés, español, francés, alemán, portugués e italiano juntos. Elige japonés, chino, coreano o ruso si la pantalla usa ese alfabeto.",
                 "Almacenamiento", "Carpeta:", "Examinar",
@@ -163,7 +169,7 @@ namespace SharpShot.Services
             ["fr"] = T(
                 "Général", "Capture", "Enregistrement", "Tableau", "Apparence", "Raccourcis", "Mises à jour",
                 "Paramètres", "Confidentialité", "Langue", "Langue de l'application",
-                "Change les menus et infobulles de SharpShot. La langue OCR est séparée.",
+                "Change les menus, réglages, infobulles et la politique de confidentialité de SharpShot. La langue OCR est séparée.",
                 "Langue OCR",
                 "Automatique lit l'anglais, l'espagnol, le français, l'allemand, le portugais et l'italien ensemble. Choisissez japonais, chinois, coréen ou russe si l'écran utilise cet alphabet.",
                 "Stockage", "Dossier :", "Parcourir",
@@ -178,7 +184,7 @@ namespace SharpShot.Services
             ["de"] = T(
                 "Allgemein", "Aufnahme", "Bildschirmvideo", "Übersicht", "Darstellung", "Tasten", "Updates",
                 "Einstellungen", "Datenschutz", "Sprache", "App-Sprache",
-                "Ändert Menüs und Hinweise. Die OCR-Sprache ist getrennt.",
+                "Ändert Menüs, Einstellungen, Hinweise und die Datenschutzrichtlinie. Die OCR-Sprache ist getrennt.",
                 "OCR-Sprache",
                 "Automatisch liest Englisch, Spanisch, Französisch, Deutsch, Portugiesisch und Italienisch zusammen. Japanisch, Chinesisch, Koreanisch oder Russisch wählen, wenn der Bildschirm diese Schrift nutzt.",
                 "Speicher", "Speicherort:", "Durchsuchen",
@@ -193,7 +199,7 @@ namespace SharpShot.Services
             ["pt"] = T(
                 "Geral", "Captura", "Gravação", "Painel", "Aparência", "Atalhos", "Atualizações",
                 "Configurações", "Privacidade", "Idioma", "Idioma do aplicativo",
-                "Altera menus e dicas. O idioma do OCR é separado.",
+                "Altera menus, configurações, dicas e a política de privacidade. O idioma do OCR é separado.",
                 "Idioma do OCR",
                 "Automático lê inglês, espanhol, francês, alemão, português e italiano juntos. Escolha japonês, chinês, coreano ou russo se a tela usar esse alfabeto.",
                 "Armazenamento", "Pasta:", "Procurar",
@@ -208,7 +214,7 @@ namespace SharpShot.Services
             ["it"] = T(
                 "Generale", "Cattura", "Registrazione", "Pannello", "Aspetto", "Tasti", "Aggiornamenti",
                 "Impostazioni", "Privacy", "Lingua", "Lingua dell'app",
-                "Cambia menu e suggerimenti. La lingua OCR è separata.",
+                "Cambia menu, impostazioni, suggerimenti e l'informativa privacy. La lingua OCR è separata.",
                 "Lingua OCR",
                 "Automatico legge inglese, spagnolo, francese, tedesco, portoghese e italiano insieme. Scegli giapponese, cinese, coreano o russo se lo schermo usa quell'alfabeto.",
                 "Archiviazione", "Cartella:", "Sfoglia",
@@ -223,7 +229,7 @@ namespace SharpShot.Services
             ["ru"] = T(
                 "Общие", "Захват", "Запись", "Панель", "Оформление", "Клавиши", "Обновления",
                 "Настройки", "Конфиденциальность", "Язык", "Язык приложения",
-                "Меняет меню и подсказки. Язык OCR задаётся отдельно.",
+                "Меняет меню, настройки, подсказки и политику конфиденциальности. Язык OCR задаётся отдельно.",
                 "Язык OCR",
                 "Авто читает английский, испанский, французский, немецкий, португальский и итальянский вместе. Выберите японский, китайский, корейский или русский, если экран на этой письменности.",
                 "Сохранение", "Папка:", "Обзор",
@@ -238,7 +244,7 @@ namespace SharpShot.Services
             ["ja"] = T(
                 "一般", "キャプチャ", "録画", "ダッシュボード", "外観", "ホットキー", "更新",
                 "設定", "プライバシー", "言語", "アプリの言語",
-                "メニューとヒントの言語です。画面の文字認識は別の設定です。",
+                "メニュー、設定、ヒント、アプリ内のプライバシー方針の言語です。画面の文字認識は別の設定です。",
                 "OCRの言語",
                 "自動は英語・スペイン語・フランス語・ドイツ語・ポルトガル語・イタリア語をまとめて読みます。画面がその文字のときは日本語・中国語・韓国語・ロシア語を選んでください。",
                 "保存", "保存先:", "参照",
@@ -253,7 +259,7 @@ namespace SharpShot.Services
             ["ko"] = T(
                 "일반", "캡처", "녹화", "대시보드", "모양", "단축키", "업데이트",
                 "설정", "개인정보", "언어", "앱 언어",
-                "메뉴와 툴팁 언어입니다. 화면 문자 인식 언어는 별도입니다.",
+                "메뉴, 설정, 툴팁, 앱 안 개인정보 처리방침의 언어입니다. 화면 문자 인식 언어는 별도입니다.",
                 "OCR 언어",
                 "자동은 영어, 스페인어, 프랑스어, 독일어, 포르투갈어, 이탈리아어를 함께 읽습니다. 화면이 그 문자면 일본어, 중국어, 한국어, 러시아어를 선택하세요.",
                 "저장", "저장 경로:", "찾아보기",
@@ -268,7 +274,7 @@ namespace SharpShot.Services
             ["zh-Hans"] = T(
                 "常规", "截图", "录制", "面板", "外观", "热键", "更新",
                 "设置", "隐私", "语言", "应用语言",
-                "更改菜单和提示。屏幕文字识别的语言是单独设置的。",
+                "更改菜单、设置、提示和应用内隐私政策的语言。屏幕文字识别的语言是单独设置的。",
                 "OCR 语言",
                 "自动会一起读取英语、西班牙语、法语、德语、葡萄牙语和意大利语。如果屏幕使用其他文字，请选择日语、中文、韩语或俄语。",
                 "存储", "保存路径：", "浏览",

@@ -2,6 +2,8 @@ using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using SharpShot.Services;
+using SharpShot.Utils;
 
 namespace SharpShot.UI
 {
@@ -12,7 +14,10 @@ namespace SharpShot.UI
         public PrivacyWindow()
         {
             InitializeComponent();
-            PolicyText.Text = LoadPolicyText();
+            var policy = LocalizationService.PrivacyText();
+            PolicyText.Text = string.IsNullOrWhiteSpace(policy) ? LoadPolicyText() : policy;
+            UiLocalizer.SetRaw(PolicyText, PolicyText.Text);
+            UiLocalizer.Apply(this);
         }
 
         public static void Show(Window? owner)

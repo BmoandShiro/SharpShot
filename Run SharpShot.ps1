@@ -26,6 +26,11 @@ if (Test-Path "SharpShot.csproj") {
     Write-Host 'If build fails with MSB3021/MSB3027 (file locked), stop this script (Ctrl+C), close SharpShot, then run again. Watch cannot overwrite SharpShot.exe while it is running.' -ForegroundColor DarkGray
     # Remove leftover WPF temp projects that confuse "dotnet watch" when multiple .csproj exist
     Get-ChildItem -Path . -Filter "*_wpftmp.csproj" -File -ErrorAction SilentlyContinue | Remove-Item -Force
+    # A leftover copy from a previous run (watch cannot kill a WinExe reliably) used to leave a second window up.
+    $repoRoot = $PSScriptRoot
+    Get-CimInstance Win32_Process -Filter "Name = 'SharpShot.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith($repoRoot, [System.StringComparison]::OrdinalIgnoreCase) } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     dotnet watch run --project SharpShot.csproj
     
     if ($LASTEXITCODE -eq 0) {

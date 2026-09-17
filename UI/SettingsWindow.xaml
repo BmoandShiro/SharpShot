@@ -149,7 +149,7 @@
                             <ComboBox x:Name="AppLanguageComboBox" Style="{StaticResource DarkComboBoxStyle}"
                                       Margin="0,0,0,6" SelectionChanged="AppLanguageComboBox_SelectionChanged"/>
                             <TextBlock x:Name="AppLanguageHintText"
-                                       Text="Controls SharpShot's menus and tooltips. OCR language is separate."
+                                       Text="Changes SharpShot's menus, settings, tooltips, and the in-app privacy policy. OCR language is separate."
                                        Foreground="#FF888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
                             <TextBlock x:Name="OcrLanguageLabel" Text="OCR language"
                                        Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,5"/>
@@ -267,16 +267,16 @@
                           Margin="0,0,0,10"
                           ToolTip="Adds an OCR button to the main dashboard. Click it to region-select and extract text directly without opening the screenshot editor."/>
                 <CheckBox x:Name="ShowSmartRegionButtonOnDashboardCheckBox"
-                          Content="Show Smart Regions toggle on dashboard"
+                          Content="Show Smart Regions toggle on dashboard (beta)"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="Adds a Smart toggle to the dashboard. When on, SharpShot highlights content regions on the active window so you can click to copy text."/>
                 <CheckBox x:Name="UseDenseOcrForSmartRegionsCheckBox"
-                          Content="Use dense OCR for Smart Regions (more text, slower)"
+                          Content="Use dense OCR for Smart Regions (more text, slower) (beta)"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,10"
                           ToolTip="Runs overlapping tiled OCR (SparseText + Auto) so Smart Regions find more on-screen text in browsers, games, and Electron apps. Turn off for a faster but thinner pass."/>
-                <TextBlock Text="Group Smart Region text"
+                <TextBlock Text="Group Smart Region text (beta)"
                            Foreground="{StaticResource TextBrush}"
                            FontWeight="SemiBold"
                            Margin="0,4,0,6"/>
@@ -303,7 +303,7 @@
                     <TextBlock Text="Paragraph" HorizontalAlignment="Center" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
                     <TextBlock Text="Multiple paragraphs" HorizontalAlignment="Right" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
                 </Grid>
-                <TextBlock Text="Horizontal gap before split"
+                <TextBlock Text="Horizontal gap before split (beta)"
                            Foreground="{StaticResource TextBrush}"
                            FontWeight="SemiBold"
                            Margin="0,4,0,6"/>
@@ -328,7 +328,7 @@
                 <Grid Margin="0,0,160,10">
                     <TextBlock Text="Off" HorizontalAlignment="Left" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
                     <TextBlock Text="Wide" HorizontalAlignment="Center" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
-                    <TextBlock Text="Close" HorizontalAlignment="Right" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
+                    <TextBlock Text="Close gaps" HorizontalAlignment="Right" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.75"/>
                 </Grid>
                 <CheckBox x:Name="SkipPostCaptureMenuCheckBox"
                           Content="Skip post-capture menu for screenshots and videos"
@@ -609,19 +609,19 @@
                            TextWrapping="Wrap"
                            Margin="0,0,0,12"/>
 
-                <TextBlock Text="OBS Studio" Style="{StaticResource SettingsGroupHeaderStyle}"/>
-                <TextBlock Text="Link OBS to launch it from the recording toolbar. This is separate from linked apps on the Dashboard tab."
+                <TextBlock Text="Your own recorder" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                <TextBlock Text="SharpShot recordings use FFmpeg. You can also link a recorder you already installed and open it from SharpShot without leaving your flow. A more advanced app such as OBS Studio is a common choice. SharpShot does not include that app. It stays separate, with its own terms and privacy policy. Add any program from Dashboard → Linked apps. The shortcut below is only if the recorder you want is OBS Studio."
                            Foreground="#FF888888"
                            FontSize="11"
                            TextWrapping="Wrap"
                            Margin="0,0,0,10"/>
                 <CheckBox x:Name="ShowObsButtonOnRecordingToolbarCheckBox"
-                          Content="Show OBS Studio button on recording toolbar"
+                          Content="Show linked recorder button on the recording toolbar"
                           Style="{StaticResource DarkCheckBoxStyle}"
                           Margin="0,0,0,8"
-                          ToolTip="Adds the OBS button to the recording menu. Click it to launch OBS, or link OBS if it is not linked yet."/>
+                          ToolTip="Adds a button to the recording menu for the recorder linked below. If none is linked yet, the button asks you to link one. OBS Studio is the recorder this shortcut looks for."/>
 
-                <TextBlock Text="Linked OBS:"
+                <TextBlock Text="Linked recorder:"
                            Foreground="{StaticResource TextBrush}"
                            FontWeight="SemiBold"
                            Margin="0,0,0,5"/>
@@ -638,20 +638,20 @@
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="DetectObsButton_Click"
-                            ToolTip="Auto-detect OBS Studio from common install locations"/>
+                            ToolTip="Look for OBS Studio if that is the recorder you want this shortcut to open"/>
                     <Button x:Name="BrowseObsButton"
                             Content="Change…"
                             Style="{StaticResource ModernButtonStyle}"
                             Padding="12,6"
                             Margin="0,0,8,0"
                             Click="BrowseObsButton_Click"
-                            ToolTip="Choose a different obs64.exe / obs32.exe"/>
+                            ToolTip="Choose a different recorder executable. This shortcut accepts obs64.exe or obs32.exe."/>
                     <Button x:Name="UnlinkObsButton"
                             Content="Unlink"
                             Style="{StaticResource ModernButtonStyle}"
                             Padding="12,6"
                             Click="UnlinkObsButton_Click"
-                            ToolTip="Remove the linked OBS path"/>
+                            ToolTip="Remove the linked recorder from this shortcut"/>
                 </StackPanel>
 
                 <!-- Audio Recording Mode -->
@@ -766,19 +766,19 @@
                                Foreground="{StaticResource TextBrush}"/>
                     <TextBox x:Name="DashboardWidthTextBox" Grid.Column="1"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             ToolTip="Dashboard width in logical pixels. Leave empty for default (618). Range: 280ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“2400."/>
+                             ToolTip="Dashboard width in logical pixels. Leave empty for default (618). Range: 280-2400."/>
                     <TextBlock Grid.Column="3" Text="Height" VerticalAlignment="Center" Margin="12,0,8,0"
                                Foreground="{StaticResource TextBrush}"/>
                     <TextBox x:Name="DashboardHeightTextBox" Grid.Column="4"
                              Style="{StaticResource DarkTextBoxStyle}"
-                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“400."/>
+                             ToolTip="Dashboard height in logical pixels. Leave empty for default (80). Range: 50-400."/>
                     <Button x:Name="DashboardSizeResetButton" Grid.Column="6"
                             Style="{StaticResource ModernButtonStyle}"
                             VerticalAlignment="Center"
                             Click="DashboardSizeResetButton_Click"
                             Width="128"
                             Height="32"
-                            ToolTip="Set width and height to the default dashboard size (618 ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 80)">
+                            ToolTip="Set width and height to the default dashboard size (618 x 80)">
                         <TextBlock Text="Reset to default"
                                    Foreground="#FFFF8C00"
                                    FontSize="12"

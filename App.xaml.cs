@@ -1,5 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
 using System.Threading.Tasks;
 using SharpShot.Services;
@@ -11,6 +14,7 @@ namespace SharpShot
 {
     public partial class App : Application
     {
+        private static Mutex? _instanceMutex;
         private SettingsService _settingsService = null!;
         private HotkeyManager _hotkeyManager = null!;
         private UpdateService? _updateService;
@@ -21,6 +25,14 @@ namespace SharpShot
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            if (!TryBecomeOnlyInstance())
+            {
+                ActivateExistingInstance();
+                ShutdownMode = ShutdownMode.OnExplicitShutdown;
+                Shutdown();
+                return;
+            }
+
             // Before any window: group this process with Start Menu / pinned shortcuts.
             PinnedTaskbarIconService.SetProcessAppUserModelId();
             EventManager.RegisterClassHandler(
@@ -39,7 +51,17 @@ namespace SharpShot
             
             // Load settings
             _settingsService.LoadSettings();
+            LocalizationService.LanguageChanged += UiLocalizer.ApplyOpenWindows;
             LocalizationService.ApplySavedLanguage();
+            UiLocalizer.ApplyOpenWindows();
+            EventManager.RegisterClassHandler(
+                typeof(Window),
+                FrameworkElement.LoadedEvent,
+                new RoutedEventHandler((_, args) =>
+                {
+                    if (args.Source is Window window)
+                        UiLocalizer.Apply(window);
+                }));
             CaptureExclusion.SyncOpenWindows(_settingsService.CurrentSettings.HideSharpShotWindowsDuringCapture);
             
             // Ensure default save directory exists
@@ -73,7 +95,61 @@ namespace SharpShot
             // Write themed .ico + refresh Start Menu / pinned taskbar shortcuts (off UI).
             var iconColor = _settingsService.CurrentSettings.IconColor;
             _ = Task.Run(() => PinnedTaskbarIconService.SyncThemedPinnedIcon(iconColor));
+
+            var mainWindow = new MainWindow();
+            MainWindow = mainWindow;
+            mainWindow.Show();
         }
+
+        /// <summary>
+        /// A second launch (Run SharpShot, a leftover watch process, or a double Start Menu click)
+        /// used to open another copy. Keep the one already on screen and bring it forward.
+        /// </summary>
+        private static bool TryBecomeOnlyInstance()
+        {
+            try
+            {
+                _instanceMutex = new Mutex(true, @"Local\BMO.SharpShot.SingleInstance", out var createdNew);
+                return createdNew;
+            }
+            catch (AbandonedMutexException)
+            {
+                return true;
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
+        private static void ActivateExistingInstance()
+        {
+            try
+            {
+                var currentId = Environment.ProcessId;
+                foreach (var process in Process.GetProcessesByName("SharpShot"))
+                {
+                    if (process.Id == currentId)
+                        continue;
+                    var handle = process.MainWindowHandle;
+                    if (handle == IntPtr.Zero)
+                        continue;
+                    ShowWindow(handle, 9);
+                    SetForegroundWindow(handle);
+                    return;
+                }
+            }
+            catch
+            {
+                // The extra process is exiting either way.
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
         private void OnAnyWindowLoaded(object sender, RoutedEventArgs e)
         {

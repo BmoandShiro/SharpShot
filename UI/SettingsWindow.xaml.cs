@@ -356,6 +356,9 @@ namespace SharpShot.UI
             if (SavePathLabel != null) SavePathLabel.Text = LocalizationService.Get("settings.savePath");
             if (BrowseButtonText != null) BrowseButtonText.Text = LocalizationService.Get("settings.browse");
             if (PrivacyLinkText != null) PrivacyLinkText.Text = LocalizationService.Get("settings.privacy");
+            Utils.UiLocalizer.Apply(this);
+            UpdateSmartRegionGroupingLabel();
+            UpdateSmartRegionHorizontalSplitLabel();
         }
 
         private void AppLanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -527,7 +530,7 @@ namespace SharpShot.UI
             foreach (var item in FormatComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.ScreenshotFormat)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.ScreenshotFormat)
                 {
                     FormatComboBox.SelectedItem = item;
                     break;
@@ -538,7 +541,7 @@ namespace SharpShot.UI
             foreach (var item in QualityComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.VideoQuality)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.VideoQuality)
                 {
                     QualityComboBox.SelectedItem = item;
                     break;
@@ -549,7 +552,7 @@ namespace SharpShot.UI
             foreach (var item in ScreenComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.SelectedScreen)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.SelectedScreen)
                 {
                     ScreenComboBox.SelectedItem = item;
                     break;
@@ -560,7 +563,7 @@ namespace SharpShot.UI
             foreach (var item in EditorDisplayMonitorComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.ScreenshotEditorDisplayMonitor)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.ScreenshotEditorDisplayMonitor)
                 {
                     EditorDisplayMonitorComboBox.SelectedItem = item;
                     break;
@@ -572,7 +575,7 @@ namespace SharpShot.UI
                 foreach (var item in DashboardDisplayMonitorComboBox.Items)
                 {
                     if (item is System.Windows.Controls.ComboBoxItem comboItem &&
-                        comboItem.Content?.ToString() == _originalSettings.DashboardDisplayMonitor)
+                        Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.DashboardDisplayMonitor)
                     {
                         DashboardDisplayMonitorComboBox.SelectedItem = item;
                         break;
@@ -590,7 +593,7 @@ namespace SharpShot.UI
             // foreach (var item in AudioRecordingModeComboBox.Items)
             // {
             //     if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-            //         comboItem.Content.ToString() == _originalSettings.AudioRecordingMode)
+            //         Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.AudioRecordingMode)
             //     {
             //         AudioRecordingModeComboBox.SelectedItem = item;
             //         break;
@@ -671,7 +674,7 @@ namespace SharpShot.UI
                 var zoomText = $"{_originalSettings.MagnifierZoomLevel:F1}x";
                 foreach (System.Windows.Controls.ComboBoxItem item in MagnifierZoomComboBox.Items)
                 {
-                    if (item.Content?.ToString() == zoomText)
+                    if (Utils.UiLocalizer.ItemValue(item) == zoomText)
                     {
                         MagnifierZoomComboBox.SelectedItem = item;
                         break;
@@ -756,7 +759,7 @@ namespace SharpShot.UI
                 // Try exact match first
                 foreach (System.Windows.Controls.ComboBoxItem item in MagnifierStationaryMonitorComboBox.Items)
                 {
-                    if (item.Content?.ToString() == monitor)
+                    if (Utils.UiLocalizer.ItemValue(item) == monitor)
                     {
                         MagnifierStationaryMonitorComboBox.SelectedItem = item;
                         found = true;
@@ -771,7 +774,7 @@ namespace SharpShot.UI
                     System.Diagnostics.Debug.WriteLine($"Monitor '{monitor}' not found in dropdown, defaulting to Primary Monitor");
                     foreach (System.Windows.Controls.ComboBoxItem item in MagnifierStationaryMonitorComboBox.Items)
                     {
-                        if (item.Content?.ToString() == "Primary Monitor")
+                        if (Utils.UiLocalizer.ItemValue(item) == "Primary Monitor")
                         {
                             MagnifierStationaryMonitorComboBox.SelectedItem = item;
                             break;
@@ -1004,27 +1007,27 @@ namespace SharpShot.UI
                 
                 if (FormatComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem formatItem)
                 {
-                    _originalSettings.ScreenshotFormat = formatItem.Content?.ToString() ?? "PNG";
+                    _originalSettings.ScreenshotFormat = Utils.UiLocalizer.ItemValue(formatItem) ?? "PNG";
                 }
                 
                 if (QualityComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem qualityItem)
                 {
-                    _originalSettings.VideoQuality = qualityItem.Content?.ToString() ?? "High";
+                    _originalSettings.VideoQuality = Utils.UiLocalizer.ItemValue(qualityItem) ?? "High";
                 }
                 
                 if (ScreenComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem screenItem)
                 {
-                    _originalSettings.SelectedScreen = screenItem.Content?.ToString() ?? "Primary Monitor";
+                    _originalSettings.SelectedScreen = Utils.UiLocalizer.ItemValue(screenItem) ?? "Primary Monitor";
                 }
                 
                 if (EditorDisplayMonitorComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem editorMonitorItem)
                 {
-                    _originalSettings.ScreenshotEditorDisplayMonitor = editorMonitorItem.Content?.ToString() ?? "Primary Monitor";
+                    _originalSettings.ScreenshotEditorDisplayMonitor = Utils.UiLocalizer.ItemValue(editorMonitorItem) ?? "Primary Monitor";
                 }
 
                 if (DashboardDisplayMonitorComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem dashboardMonitorItem)
                 {
-                    _originalSettings.DashboardDisplayMonitor = dashboardMonitorItem.Content?.ToString() ?? "Primary Monitor";
+                    _originalSettings.DashboardDisplayMonitor = Utils.UiLocalizer.ItemValue(dashboardMonitorItem) ?? "Primary Monitor";
                 }
 
                 _originalSettings.DashboardWidth = ParseDashboardDimensionField(DashboardWidthTextBox.Text);
@@ -1044,7 +1047,7 @@ namespace SharpShot.UI
                 // Save selected audio devices
                 if (OutputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem outputAudioItem)
                 {
-                    var outputDevice = outputAudioItem.Content?.ToString() ?? string.Empty;
+                    var outputDevice = Utils.UiLocalizer.ItemValue(outputAudioItem) ?? string.Empty;
                     if (string.Equals(outputDevice, "No system audio", StringComparison.OrdinalIgnoreCase))
                         _originalSettings.SelectedOutputAudioDevice = string.Empty;
                     else
@@ -1058,7 +1061,7 @@ namespace SharpShot.UI
 
                 if (InputAudioDeviceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem inputAudioItem)
                 {
-                    var inputDevice = inputAudioItem.Content?.ToString() ?? string.Empty;
+                    var inputDevice = Utils.UiLocalizer.ItemValue(inputAudioItem) ?? string.Empty;
                     _originalSettings.SelectedInputAudioDevice = inputDevice;
                     LogToFile($"Saving input audio device: '{inputDevice}'");
                 }
@@ -1123,7 +1126,7 @@ namespace SharpShot.UI
                 // Save magnifier zoom level
                 if (MagnifierZoomComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem zoomItem)
                 {
-                    var zoomText = zoomItem.Content?.ToString() ?? "2.0x";
+                    var zoomText = Utils.UiLocalizer.ItemValue(zoomItem) ?? "2.0x";
                     if (double.TryParse(zoomText.Replace("x", ""), out double zoomLevel))
                     {
                         _originalSettings.MagnifierZoomLevel = zoomLevel;
@@ -1159,7 +1162,9 @@ namespace SharpShot.UI
                 }
                 if (MagnifierStationaryMonitorComboBox?.SelectedItem is System.Windows.Controls.ComboBoxItem monitorItem)
                 {
-                    string selectedMonitor = monitorItem.Content?.ToString() ?? "Primary Monitor";
+                    string selectedMonitor = Utils.UiLocalizer.ItemValue(monitorItem);
+                    if (string.IsNullOrEmpty(selectedMonitor))
+                        selectedMonitor = "Primary Monitor";
                     _originalSettings.MagnifierStationaryMonitor = selectedMonitor;
                     System.Diagnostics.Debug.WriteLine($"Saving magnifier stationary monitor: {selectedMonitor}");
                 }
@@ -1462,7 +1467,7 @@ namespace SharpShot.UI
             foreach (var item in ScreenComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.SelectedScreen)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.SelectedScreen)
                 {
                     ScreenComboBox.SelectedItem = item;
                     break;
@@ -1521,6 +1526,7 @@ namespace SharpShot.UI
                 1 => "Paragraph",
                 _ => "Line"
             };
+            Utils.UiLocalizer.SetText(SmartRegionTextGroupingLabel, SmartRegionTextGroupingLabel.Text);
         }
 
         private void SmartRegionHorizontalSplitSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1540,8 +1546,9 @@ namespace SharpShot.UI
                 2 => "Far apart",
                 3 => "Wide",
                 4 => "Medium",
-                _ => "Close"
+                _ => "Close gaps"
             };
+            Utils.UiLocalizer.SetText(SmartRegionHorizontalSplitLabel, SmartRegionHorizontalSplitLabel.Text);
         }
 
         private void UpdateMagnifierSizeText()
@@ -2269,7 +2276,7 @@ namespace SharpShot.UI
             foreach (var item in EditorDisplayMonitorComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem && 
-                    comboItem.Content.ToString() == _originalSettings.ScreenshotEditorDisplayMonitor)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.ScreenshotEditorDisplayMonitor)
                 {
                     EditorDisplayMonitorComboBox.SelectedItem = item;
                     break;
@@ -2307,7 +2314,7 @@ namespace SharpShot.UI
             foreach (var item in DashboardDisplayMonitorComboBox.Items)
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem &&
-                    comboItem.Content.ToString() == _originalSettings.DashboardDisplayMonitor)
+                    Utils.UiLocalizer.ItemValue(comboItem) == _originalSettings.DashboardDisplayMonitor)
                 {
                     DashboardDisplayMonitorComboBox.SelectedItem = item;
                     break;
@@ -3130,7 +3137,7 @@ namespace SharpShot.UI
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem)
                 {
-                    var deviceName = comboItem.Content.ToString();
+                    var deviceName = Utils.UiLocalizer.ItemValue(comboItem);
                     LogToFile($"Checking output device: '{deviceName}'");
                     
                     var matchSaved = !string.IsNullOrEmpty(savedOutput) && deviceName == savedOutput;
@@ -3162,7 +3169,7 @@ namespace SharpShot.UI
             {
                 if (item is System.Windows.Controls.ComboBoxItem comboItem)
                 {
-                    var deviceName = comboItem.Content.ToString();
+                    var deviceName = Utils.UiLocalizer.ItemValue(comboItem);
                     LogToFile($"Checking input device: '{deviceName}'");
                     
                     if (deviceName == _originalSettings.SelectedInputAudioDevice)
@@ -4128,17 +4135,17 @@ namespace SharpShot.UI
             {
                 var obsPath = _originalSettings.LinkedObsPath;
                 if (OBSDetection.IsValidLinkedObsPath(obsPath))
-                    LinkedObsStatusText.Text = obsPath;
+                    Utils.UiLocalizer.SetRaw(LinkedObsStatusText, obsPath);
                 else if (!string.IsNullOrWhiteSpace(obsPath))
-                    LinkedObsStatusText.Text = $"Missing or invalid: {obsPath}";
+                    Utils.UiLocalizer.SetRaw(LinkedObsStatusText, LocalizationService.Translate("Missing or invalid:") + " " + obsPath);
                 else
-                    LinkedObsStatusText.Text = "Not linked — click the OBS toolbar button or Detect/Change here";
+                    Utils.UiLocalizer.SetText(LinkedObsStatusText, "Not linked — use Detect or Change, or add any program from Dashboard → Linked apps");
             }
 
             if (BrowseObsButton != null)
             {
                 bool linked = OBSDetection.IsValidLinkedObsPath(_originalSettings.LinkedObsPath);
-                BrowseObsButton.Content = linked ? "Change…" : "Browse…";
+                Utils.UiLocalizer.SetText(BrowseObsButton, linked ? "Change…" : "Browse…");
             }
 
             PopulateLinkedAppsList();
@@ -4176,7 +4183,7 @@ namespace SharpShot.UI
                 EnableObsToolbarToggle();
                 PersistLinkedAppSettingsToService();
                 UpdateLinkedAppStatusUI();
-                ThemedMessageBox.Show(this, $"Linked OBS at:\n{detected}", "Link OBS",
+                ThemedMessageBox.Show(this, $"Linked recorder at:\n{detected}", "Link recorder",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -4191,8 +4198,8 @@ namespace SharpShot.UI
             else
             {
                 ThemedMessageBox.Show(this,
-                    "OBS Studio was not found in common locations.\n\nInstall OBS from https://obsproject.com/ or use Change…",
-                    "Link OBS", MessageBoxButton.OK, MessageBoxImage.Information);
+                    "OBS Studio was not found in common locations.\n\nThis shortcut looks for OBS Studio. Use Change… if it is installed somewhere else, or add a different recorder from Dashboard → Linked apps.",
+                    "Link recorder", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -4258,6 +4265,7 @@ namespace SharpShot.UI
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 0, 0, 8)
                 });
+                Utils.UiLocalizer.Apply(LinkedAppsListPanel);
                 _rebuildingLinkedAppsList = false;
                 return;
             }
@@ -4271,6 +4279,7 @@ namespace SharpShot.UI
             var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
             var brush = new SolidColorBrush(color);
             ThemeLinkedAppRowButtons(LinkedAppsListPanel, color, brush);
+            Utils.UiLocalizer.Apply(LinkedAppsListPanel);
 
             _rebuildingLinkedAppsList = false;
         }
