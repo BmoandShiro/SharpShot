@@ -306,22 +306,37 @@ namespace SharpShot.Services
                     return anyInstaller.BrowserDownloadUrl;
             }
 
-            // 2. Portable builds: prefer a portable ZIP if present
+            // 2. Portable builds: prefer an explicitly named portable ZIP if present
             var portableZip = assets.FirstOrDefault(a =>
                 a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
-                a.Name.Contains("portable", StringComparison.OrdinalIgnoreCase));
+                a.Name.Contains("portable", StringComparison.OrdinalIgnoreCase) &&
+                !IsLightBuildAsset(a.Name));
             if (portableZip != null)
                 return portableZip.BrowserDownloadUrl;
 
-            // 3. Any ZIP asset as a general fallback
+            // 3. Prefer the full GitHub Release ZIP (never Light / slim builds)
+            var releaseZip = assets.FirstOrDefault(a =>
+                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.Contains("Release", StringComparison.OrdinalIgnoreCase) &&
+                !IsLightBuildAsset(a.Name));
+            if (releaseZip != null)
+                return releaseZip.BrowserDownloadUrl;
+
+            // 4. Any non-Light ZIP as a general fallback
             var anyZip = assets.FirstOrDefault(a =>
-                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
+                a.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) &&
+                !IsLightBuildAsset(a.Name));
             if (anyZip != null)
                 return anyZip.BrowserDownloadUrl;
 
-            // 4. No valid release asset found
+            // 5. No valid release asset found
             throw new InvalidOperationException("No suitable update asset found in the latest release.");
         }
+
+        private static bool IsLightBuildAsset(string assetName) =>
+            assetName.Contains("Light", StringComparison.OrdinalIgnoreCase) ||
+            assetName.Contains("-slim", StringComparison.OrdinalIgnoreCase) ||
+            assetName.Contains("no-obs", StringComparison.OrdinalIgnoreCase);
 
         private async Task DownloadFileAsync(string url, string destinationPath, IProgress<UpdateProgress>? progress)
         {
