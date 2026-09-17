@@ -307,6 +307,85 @@ namespace SharpShot.UI
             UpdateMagnifierStationaryPanelVisibility();
 
             Loaded += SettingsWindow_Loaded;
+            SetupLanguageCombos();
+        }
+
+        private bool _suppressLanguageCombo;
+        private string _appLanguageAtOpen = "en";
+        private string _ocrLanguageAtOpen = "eng";
+
+        private void SetupLanguageCombos()
+        {
+            _suppressLanguageCombo = true;
+            AppLanguageComboBox.ItemsSource = LocalizationService.Languages;
+            AppLanguageComboBox.DisplayMemberPath = nameof(LanguageOption.NativeName);
+            AppLanguageComboBox.SelectedValuePath = nameof(LanguageOption.AppId);
+            AppLanguageComboBox.SelectedValue = _originalSettings.AppLanguage;
+
+            OcrLanguageComboBox.ItemsSource = LocalizationService.GetOcrChoices();
+            OcrLanguageComboBox.DisplayMemberPath = nameof(OcrLanguageChoice.Label);
+            OcrLanguageComboBox.SelectedValuePath = nameof(OcrLanguageChoice.Code);
+            OcrLanguageComboBox.SelectedValue = string.IsNullOrWhiteSpace(_originalSettings.OcrLanguage)
+                ? "auto"
+                : _originalSettings.OcrLanguage;
+
+            _appLanguageAtOpen = _originalSettings.AppLanguage;
+            _ocrLanguageAtOpen = _originalSettings.OcrLanguage;
+            _suppressLanguageCombo = false;
+            ApplyLocalizedSettings();
+        }
+
+        private void ApplyLocalizedSettings()
+        {
+            SettingsHeader.Text = LocalizationService.Get("settings.title");
+            Title = LocalizationService.Get("settings.title");
+            if (NavGeneral != null) NavGeneral.Content = LocalizationService.Get("nav.general");
+            if (NavCapture != null) NavCapture.Content = LocalizationService.Get("nav.capture");
+            if (NavRecording != null) NavRecording.Content = LocalizationService.Get("nav.recording");
+            if (NavDashboard != null) NavDashboard.Content = LocalizationService.Get("nav.dashboard");
+            if (NavAppearance != null) NavAppearance.Content = LocalizationService.Get("nav.appearance");
+            if (NavHotkeys != null) NavHotkeys.Content = LocalizationService.Get("nav.hotkeys");
+            if (UpdatesNavItem != null) UpdatesNavItem.Content = LocalizationService.Get("nav.updates");
+            if (GeneralTitleText != null) GeneralTitleText.Text = LocalizationService.Get("nav.general");
+            if (LanguageGroupText != null) LanguageGroupText.Text = LocalizationService.Get("settings.language");
+            if (AppLanguageLabel != null) AppLanguageLabel.Text = LocalizationService.Get("settings.appLanguage");
+            if (AppLanguageHintText != null) AppLanguageHintText.Text = LocalizationService.Get("settings.appLanguageHint");
+            if (OcrLanguageLabel != null) OcrLanguageLabel.Text = LocalizationService.Get("settings.ocrLanguage");
+            if (OcrLanguageHintText != null) OcrLanguageHintText.Text = LocalizationService.Get("settings.ocrLanguageHint");
+            if (StorageGroupText != null) StorageGroupText.Text = LocalizationService.Get("settings.storage");
+            if (SavePathLabel != null) SavePathLabel.Text = LocalizationService.Get("settings.savePath");
+            if (BrowseButtonText != null) BrowseButtonText.Text = LocalizationService.Get("settings.browse");
+            if (PrivacyLinkText != null) PrivacyLinkText.Text = LocalizationService.Get("settings.privacy");
+        }
+
+        private void AppLanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressLanguageCombo || AppLanguageComboBox.SelectedValue is not string appId)
+                return;
+
+            _originalSettings.AppLanguage = appId;
+            _settingsService.CurrentSettings.AppLanguage = appId;
+            LocalizationService.SetLanguage(appId);
+            ApplyLocalizedSettings();
+            RefreshOcrChoiceLabels();
+        }
+
+        private void RefreshOcrChoiceLabels()
+        {
+            var selected = OcrLanguageComboBox.SelectedValue as string ?? _originalSettings.OcrLanguage;
+            _suppressLanguageCombo = true;
+            OcrLanguageComboBox.ItemsSource = LocalizationService.GetOcrChoices();
+            OcrLanguageComboBox.SelectedValue = selected;
+            _suppressLanguageCombo = false;
+        }
+
+        private void OcrLanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressLanguageCombo || OcrLanguageComboBox.SelectedValue is not string ocrCode)
+                return;
+
+            _originalSettings.OcrLanguage = ocrCode;
+            _settingsService.CurrentSettings.OcrLanguage = ocrCode;
         }
 
         private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
@@ -398,7 +477,15 @@ namespace SharpShot.UI
         private void SettingsWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
             if (!_settingsSaved)
+            {
                 RevertLiveThemePreview();
+                if (!string.Equals(_settingsService.CurrentSettings.AppLanguage, _appLanguageAtOpen, StringComparison.Ordinal))
+                {
+                    _settingsService.CurrentSettings.AppLanguage = _appLanguageAtOpen;
+                    _settingsService.CurrentSettings.OcrLanguage = _ocrLanguageAtOpen;
+                    LocalizationService.SetLanguage(_appLanguageAtOpen);
+                }
+            }
         }
 
         /// <summary>
@@ -1018,6 +1105,7 @@ namespace SharpShot.UI
                 _originalSettings.SmartRegionHorizontalSplit = (int)Math.Round(SmartRegionHorizontalSplitSlider.Value);
                 _originalSettings.SkipPostCaptureMenu = SkipPostCaptureMenuCheckBox.IsChecked ?? false;
                 _originalSettings.HideSharpShotWindowsDuringCapture = HideSharpShotWindowsDuringCaptureCheckBox.IsChecked ?? false;
+                CaptureExclusion.SyncOpenWindows(_originalSettings.HideSharpShotWindowsDuringCapture);
                 _originalSettings.UseDxgiCapture = UseDxgiCaptureCheckBox.IsChecked ?? false;
                 _originalSettings.EnableMagnifier = EnableMagnifierCheckBox.IsChecked ?? false;
                 _originalSettings.DisableAllPopups = DisableAllPopupsCheckBox.IsChecked ?? false;
@@ -1259,6 +1347,8 @@ namespace SharpShot.UI
             target.StartMinimized = source.StartMinimized;
             target.StartWithWindowsMinimized = source.StartWithWindowsMinimized;
             target.EnableAutoUpdateCheck = source.EnableAutoUpdateCheck;
+            target.AppLanguage = source.AppLanguage;
+            target.OcrLanguage = source.OcrLanguage;
             target.IconColor = source.IconColor;
             target.IconColorPresets = source.IconColorPresets != null
                 ? new List<string>(source.IconColorPresets)
@@ -4056,7 +4146,8 @@ namespace SharpShot.UI
 
         private void PersistLinkedAppSettingsToService()
         {
-            _originalSettings.MigrateLegacyLinkedApps();
+            // Do not migrate here. An empty list with a leftover legacy path would
+            // immediately recreate the app the user just unlinked.
             _originalSettings.SyncLegacyLinkedAppFields();
             _settingsService.CurrentSettings.LinkedObsPath = _originalSettings.LinkedObsPath;
             _settingsService.CurrentSettings.LinkedCustomAppPath = _originalSettings.LinkedCustomAppPath;
@@ -4325,7 +4416,8 @@ namespace SharpShot.UI
             };
             unlinkBtn.Click += (_, _) =>
             {
-                _originalSettings.LinkedApps.Remove(app);
+                _originalSettings.LinkedApps?.RemoveAll(a => string.Equals(a.Id, app.Id, StringComparison.Ordinal));
+                _originalSettings.SyncLegacyLinkedAppFields();
                 PersistLinkedAppSettingsToService();
                 UpdateLinkedAppStatusUI();
             };

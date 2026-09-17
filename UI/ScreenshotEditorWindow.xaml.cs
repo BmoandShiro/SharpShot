@@ -1366,7 +1366,7 @@ namespace SharpShot.UI
                     {
                         try
                         {
-                            var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                            var appDir = SharpShot.Services.OcrService.GetInstallDirectory();
                             var tessDataDir = System.IO.Path.Combine(appDir, "tessdata");
                             var dirToOpen = Directory.Exists(tessDataDir) ? tessDataDir : appDir;
                             Process.Start("explorer.exe", dirToOpen);

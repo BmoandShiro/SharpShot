@@ -23,6 +23,10 @@ namespace SharpShot
         {
             // Before any window: group this process with Start Menu / pinned shortcuts.
             PinnedTaskbarIconService.SetProcessAppUserModelId();
+            EventManager.RegisterClassHandler(
+                typeof(Window),
+                FrameworkElement.LoadedEvent,
+                new RoutedEventHandler(OnAnyWindowLoaded));
 
             base.OnStartup(e);
             
@@ -35,6 +39,8 @@ namespace SharpShot
             
             // Load settings
             _settingsService.LoadSettings();
+            LocalizationService.ApplySavedLanguage();
+            CaptureExclusion.SyncOpenWindows(_settingsService.CurrentSettings.HideSharpShotWindowsDuringCapture);
             
             // Ensure default save directory exists
             EnsureDefaultSaveDirectoryExists();
@@ -67,6 +73,16 @@ namespace SharpShot
             // Write themed .ico + refresh Start Menu / pinned taskbar shortcuts (off UI).
             var iconColor = _settingsService.CurrentSettings.IconColor;
             _ = Task.Run(() => PinnedTaskbarIconService.SyncThemedPinnedIcon(iconColor));
+        }
+
+        private void OnAnyWindowLoaded(object sender, RoutedEventArgs e)
+        {
+            if (e.Source is not Window window || _settingsService?.CurrentSettings == null)
+                return;
+            if (!CaptureExclusion.IsSharpShotWindow(window))
+                return;
+            if (_settingsService.CurrentSettings.HideSharpShotWindowsDuringCapture)
+                CaptureExclusion.TrySet(window, true);
         }
 
         private void EnsureDefaultSaveDirectoryExists()

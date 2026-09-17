@@ -125,12 +125,12 @@
             <ListBox x:Name="SettingsNavListBox" Grid.Column="0" Style="{StaticResource SettingsNavListBoxStyle}"
                      ItemContainerStyle="{StaticResource SettingsNavItemStyle}"
                      SelectionChanged="SettingsNavListBox_SelectionChanged">
-                <ListBoxItem Content="General" Tag="General"/>
-                <ListBoxItem Content="Capture" Tag="Capture"/>
-                <ListBoxItem Content="Recording" Tag="Recording"/>
-                <ListBoxItem Content="Dashboard" Tag="Dashboard"/>
-                <ListBoxItem Content="Appearance" Tag="Appearance"/>
-                <ListBoxItem Content="Hotkeys" Tag="Hotkeys"/>
+                <ListBoxItem x:Name="NavGeneral" Content="General" Tag="General"/>
+                <ListBoxItem x:Name="NavCapture" Content="Capture" Tag="Capture"/>
+                <ListBoxItem x:Name="NavRecording" Content="Recording" Tag="Recording"/>
+                <ListBoxItem x:Name="NavDashboard" Content="Dashboard" Tag="Dashboard"/>
+                <ListBoxItem x:Name="NavAppearance" Content="Appearance" Tag="Appearance"/>
+                <ListBoxItem x:Name="NavHotkeys" Content="Hotkeys" Tag="Hotkeys"/>
                 <ListBoxItem x:Name="UpdatesNavItem" Content="Updates" Tag="Updates"/>
             </ListBox>
 
@@ -142,10 +142,25 @@
                     <StackPanel x:Name="SettingsContentPanel">
 
                         <StackPanel x:Name="GeneralSection" Visibility="Visible">
-                            <TextBlock Text="General" Style="{StaticResource SettingsCategoryTitleStyle}"/>
-                            <TextBlock Text="Storage" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                            <TextBlock x:Name="GeneralTitleText" Text="General" Style="{StaticResource SettingsCategoryTitleStyle}"/>
+                            <TextBlock x:Name="LanguageGroupText" Text="Language" Style="{StaticResource SettingsGroupHeaderStyle}"/>
+                            <TextBlock x:Name="AppLanguageLabel" Text="App language"
+                                       Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                            <ComboBox x:Name="AppLanguageComboBox" Style="{StaticResource DarkComboBoxStyle}"
+                                      Margin="0,0,0,6" SelectionChanged="AppLanguageComboBox_SelectionChanged"/>
+                            <TextBlock x:Name="AppLanguageHintText"
+                                       Text="Controls SharpShot's menus and tooltips. OCR language is separate."
+                                       Foreground="#FF888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                            <TextBlock x:Name="OcrLanguageLabel" Text="OCR language"
+                                       Foreground="{StaticResource TextBrush}" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                            <ComboBox x:Name="OcrLanguageComboBox" Style="{StaticResource DarkComboBoxStyle}"
+                                      Margin="0,0,0,6" SelectionChanged="OcrLanguageComboBox_SelectionChanged"/>
+                            <TextBlock x:Name="OcrLanguageHintText"
+                                       Text="Auto reads English, Spanish, French, German, Portuguese, and Italian together. Pick Japanese, Chinese, Korean, or Russian when the screen uses that script."
+                                       Foreground="#FF888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                            <TextBlock x:Name="StorageGroupText" Text="Storage" Style="{StaticResource SettingsGroupHeaderStyle}"/>
                 <!-- Save Path -->
-                <TextBlock Text="Save Path:" 
+                <TextBlock x:Name="SavePathLabel" Text="Save Path:" 
                            Foreground="{StaticResource TextBrush}" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,5"/>
@@ -164,7 +179,7 @@
                             Click="BrowseButton_Click"
                             Width="80"
                             Height="32">
-                        <TextBlock Text="Browse" 
+                        <TextBlock x:Name="BrowseButtonText" Text="Browse" 
                                    Foreground="#FFFF8C00" 
                                    FontSize="12" 
                                    FontWeight="SemiBold"
@@ -1244,7 +1259,7 @@
                 </StackPanel>
             </Grid>
             <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,15,0">
-                <TextBlock Text="Privacy"
+                <TextBlock x:Name="PrivacyLinkText" Text="Privacy"
                            Foreground="{DynamicResource AccentBrush}"
                            FontSize="11"
                            Opacity="0.85"

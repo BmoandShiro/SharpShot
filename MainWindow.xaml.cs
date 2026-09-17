@@ -90,6 +90,8 @@ namespace SharpShot
             
             // Use the shared SettingsService from App.xaml.cs (which has loaded settings)
             _settingsService = App.SettingsService;
+            LocalizationService.LanguageChanged += ApplyLocalizedChrome;
+            ApplyLocalizedChrome();
             _screenshotService = new ScreenshotService(_settingsService);
             _recordingService = new RecordingService(_settingsService);
             _hotkeyManager = new HotkeyManager(_settingsService);
@@ -103,6 +105,8 @@ namespace SharpShot
             ApplyDashboardDimensionsFromSettings();
             // Position window (uses current Width/Height)
             PositionWindow();
+            
+            ApplyLocalizedChrome();
             
             // Start minimized if "Start with Windows (minimized)" or "Start Minimized" is enabled
             bool startMinimized = _settingsService.CurrentSettings.StartWithWindowsMinimized 
@@ -189,6 +193,11 @@ namespace SharpShot
         }
 
 
+
+        private void ApplyLocalizedChrome()
+        {
+            LocalizationService.ApplyMainWindow(this);
+        }
 
         private void SetupEventHandlers()
         {
@@ -1673,7 +1682,7 @@ namespace SharpShot
                     {
                         try
                         {
-                            var appDir = AppDomain.CurrentDomain.BaseDirectory;
+                            var appDir = OcrService.GetInstallDirectory();
                             var tessDataDir = Path.Combine(appDir, "tessdata");
                             var dirToOpen = Directory.Exists(tessDataDir) ? tessDataDir : appDir;
                             System.Diagnostics.Process.Start("explorer.exe", dirToOpen);

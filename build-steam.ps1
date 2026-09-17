@@ -59,6 +59,12 @@ if (Test-Path $depotFolder) { Remove-Item -Recurse -Force $depotFolder }
 New-Item -ItemType Directory -Path $depotFolder | Out-Null
 Copy-Item -Path "$publishDir\*" -Destination $depotFolder -Recurse -Force
 
+if (Test-Path "tessdata") {
+    $tessInPublish = Join-Path $publishDir "tessdata"
+    if (!(Test-Path $tessInPublish)) { New-Item -ItemType Directory -Path $tessInPublish -Force | Out-Null }
+    Copy-Item -Path "tessdata\*" -Destination $tessInPublish -Recurse -Force
+}
+
 $obsInDepot = Join-Path $depotFolder "OBS-Studio"
 if (Test-Path $obsInDepot) {
     Remove-Item -Recurse -Force $obsInDepot

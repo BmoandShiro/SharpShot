@@ -34,7 +34,7 @@ namespace SharpShot.Utils
         private static List<OutputSession>? _sessions;
         private static bool _displayHooked;
 
-        public static Bitmap? TryCaptureVirtualDesktop(out Rectangle bounds, out string mode)
+        public static Bitmap? TryCaptureVirtualDesktop(out Rectangle bounds, out string mode, bool requireFreshFrame = false)
         {
             bounds = GetVirtualDesktopBounds();
             mode = "dxgi-failed";
@@ -74,7 +74,7 @@ namespace SharpShot.Utils
                         bool ok;
                         try
                         {
-                            ok = session.CaptureInto(composedData, virtualBounds, out source);
+                            ok = session.CaptureInto(composedData, virtualBounds, out source, requireFreshFrame);
                         }
                         catch (Exception ex)
                         {
@@ -141,13 +141,13 @@ namespace SharpShot.Utils
             }
         }
 
-        public static Bitmap? TryCaptureRegion(Rectangle region, out string mode)
+        public static Bitmap? TryCaptureRegion(Rectangle region, out string mode, bool requireFreshFrame = false)
         {
             mode = "dxgi-region-failed";
             if (region.Width <= 0 || region.Height <= 0)
                 return null;
 
-            var full = TryCaptureVirtualDesktop(out var bounds, out mode);
+            var full = TryCaptureVirtualDesktop(out var bounds, out mode, requireFreshFrame);
             if (full == null)
                 return null;
 
@@ -554,7 +554,7 @@ namespace SharpShot.Utils
             /// <summary>
             /// Acquire (or reuse staging on WAIT_TIMEOUT) and blit directly into the composite.
             /// </summary>
-            public bool CaptureInto(BitmapData dest, Rectangle virtualBounds, out FrameSource source)
+            public bool CaptureInto(BitmapData dest, Rectangle virtualBounds, out FrameSource source, bool requireFreshFrame = false)
             {
                 source = FrameSource.Failed;
                 lock (_lock)
@@ -564,7 +564,7 @@ namespace SharpShot.Utils
 
                     try
                     {
-                        return CaptureIntoCore(dest, virtualBounds, out source);
+                        return CaptureIntoCore(dest, virtualBounds, out source, requireFreshFrame);
                     }
                     catch (Exception ex) when (
                         ex is SharpGenException sg && sg.ResultCode.Code == DxgiErrorAccessLost
@@ -574,7 +574,7 @@ namespace SharpShot.Utils
                         {
                             RecreateDuplication_NoLock();
                             _hasValidStaging = false;
-                            return CaptureIntoCore(dest, virtualBounds, out source);
+                            return CaptureIntoCore(dest, virtualBounds, out source, requireFreshFrame);
                         }
                         catch (Exception recreateEx)
                         {
@@ -592,11 +592,12 @@ namespace SharpShot.Utils
                 }
             }
 
-            private bool CaptureIntoCore(BitmapData dest, Rectangle virtualBounds, out FrameSource source)
+            private bool CaptureIntoCore(BitmapData dest, Rectangle virtualBounds, out FrameSource source, bool requireFreshFrame)
             {
-                bool haveStaging = _hasValidStaging;
-                int maxAttempts = haveStaging ? 1 : 8;
-                int timeoutMs = haveStaging ? 0 : 50;
+                // A cached desktop frame still contains SharpShot if it was copied before the window was excluded.
+                bool haveStaging = _hasValidStaging && !requireFreshFrame;
+                int maxAttempts = requireFreshFrame ? 8 : (haveStaging ? 1 : 8);
+                int timeoutMs = requireFreshFrame ? 50 : (haveStaging ? 0 : 50);
 
                 IDXGIResource? desktopResource = null;
                 Result acquireHr = Result.Fail;
@@ -618,9 +619,10 @@ namespace SharpShot.Utils
                 }
 
                 // Desktop unchanged: staging still holds the last CopyResource result.
+                // Do not reuse it when the caller just hid or excluded a window — that frame is stale.
                 if (acquireHr.Code == DxgiErrorWaitTimeout || desktopResource == null)
                 {
-                    if (!_hasValidStaging)
+                    if (requireFreshFrame || !_hasValidStaging)
                     {
                         source = FrameSource.Failed;
                         return false;

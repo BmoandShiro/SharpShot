@@ -32,19 +32,78 @@ namespace SharpShot.Services
 
         private static string GetTessDataPath()
         {
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            var tessDataSub = Path.Combine(baseDir, "tessdata");
-            if (Directory.Exists(tessDataSub))
-                return Path.GetFullPath(tessDataSub);
-            if (File.Exists(Path.Combine(tessDataSub, "eng.traineddata")))
-                return Path.GetFullPath(tessDataSub);
-            if (File.Exists(Path.Combine(baseDir, "eng.traineddata")))
-                return Path.GetFullPath(baseDir);
-            var parentTess = Path.Combine(baseDir, "..", "tessdata");
-            var parentTessFull = Path.GetFullPath(parentTess);
-            if (Directory.Exists(parentTessFull) || File.Exists(Path.Combine(parentTessFull, "eng.traineddata")))
-                return parentTessFull;
-            return Path.GetFullPath(tessDataSub);
+            foreach (var root in GetInstallRoots())
+            {
+                var tessDataSub = Path.Combine(root, "tessdata");
+                if (Directory.Exists(tessDataSub) && Directory.EnumerateFiles(tessDataSub, "*.traineddata").Any())
+                    return Path.GetFullPath(tessDataSub);
+                if (Directory.EnumerateFiles(root, "*.traineddata").Any())
+                    return Path.GetFullPath(root);
+            }
+
+            var fallback = GetInstallRoots().FirstOrDefault() ?? AppContext.BaseDirectory;
+            return Path.GetFullPath(Path.Combine(fallback, "tessdata"));
+        }
+
+        /// <summary>Folder that contains SharpShot.exe. Single-file builds extract natives elsewhere, so OCR data lives here.</summary>
+        public static string GetInstallDirectory()
+        {
+            return GetInstallRoots().FirstOrDefault() ?? AppContext.BaseDirectory;
+        }
+
+        private static IEnumerable<string> GetInstallRoots()
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var candidate in new[]
+            {
+                Environment.ProcessPath is { } exe ? Path.GetDirectoryName(exe) : null,
+                AppContext.BaseDirectory,
+                AppDomain.CurrentDomain.BaseDirectory
+            })
+            {
+                if (string.IsNullOrWhiteSpace(candidate))
+                    continue;
+                var full = Path.GetFullPath(candidate.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                if (seen.Add(full))
+                    yield return full;
+            }
+        }
+
+        /// <summary>
+        /// "auto" loads the Latin languages that are installed. A specific code loads only that model.
+        /// CJK and Russian stay opt-in because combining them with Latin hurts speed and accuracy.
+        /// </summary>
+        public static string ResolveTesseractLanguage()
+        {
+            var selected = "auto";
+            try
+            {
+                var setting = App.SettingsService?.CurrentSettings?.OcrLanguage;
+                if (!string.IsNullOrWhiteSpace(setting))
+                    selected = setting;
+            }
+            catch
+            {
+                // settings not ready yet
+            }
+
+            if (selected.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                return JoinInstalled(new[] { "eng", "spa", "fra", "deu", "por", "ita" });
+
+            var folder = GetTessDataPath();
+            if (File.Exists(Path.Combine(folder, selected + ".traineddata")))
+                return selected;
+
+            return JoinInstalled(new[] { "eng" });
+        }
+
+        private static string JoinInstalled(IEnumerable<string> codes)
+        {
+            var folder = GetTessDataPath();
+            var present = codes
+                .Where(code => File.Exists(Path.Combine(folder, code + ".traineddata")))
+                .ToList();
+            return present.Count == 0 ? "eng" : string.Join("+", present);
         }
 
         public static bool IsAvailable()
@@ -52,7 +111,7 @@ namespace SharpShot.Services
             try
             {
                 var tessDataPath = GetTessDataPath();
-                using var engine = new TesseractEngine(tessDataPath, "eng", EngineMode.Default);
+                using var engine = new TesseractEngine(tessDataPath, ResolveTesseractLanguage(), EngineMode.Default);
                 return true;
             }
             catch (Exception ex)
@@ -589,7 +648,7 @@ namespace SharpShot.Services
                     }
 
                     var tessDataPath = GetTessDataPath();
-                    using var engine = new TesseractEngine(tessDataPath, "eng", EngineMode.Default);
+                    using var engine = new TesseractEngine(tessDataPath, ResolveTesseractLanguage(), EngineMode.Default);
                     engine.SetVariable("user_defined_dpi", "96");
                     engine.SetVariable("tessedit_do_invert", "1");
                     toProcess.SetResolution(96, 96);

@@ -302,12 +302,16 @@ namespace SharpShot.UI
                 if (bounds.Width <= 0 || bounds.Height <= 0)
                     return null;
 
-                // Do NOT hide SharpShot windows first — Visibility changes can dismiss menus.
+                // Exclude SharpShot from the freeze frame. Visibility.Hidden is avoided when
+                // WDA_EXCLUDEFROMCAPTURE works, because a visibility change dismisses menus.
+                bool omitSharpShot = App.SettingsService?.CurrentSettings?.HideSharpShotWindowsDuringCapture == true;
+                using (CaptureUiSuppression.BeginIfEnabled(App.SettingsService))
+                {
                 bool useDxgi = App.SettingsService?.CurrentSettings?.UseDxgiCapture == true;
                 if (useDxgi)
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
-                    var dxgiBmp = SharpShot.Utils.DxgiDesktopCapture.TryCaptureVirtualDesktop(out bounds, out string mode);
+                    var dxgiBmp = SharpShot.Utils.DxgiDesktopCapture.TryCaptureVirtualDesktop(out bounds, out string mode, omitSharpShot);
                     sw.Stop();
                     System.Diagnostics.Debug.WriteLine(
                         $"Freeze frame DXGI mode={mode}, size={dxgiBmp?.Width}x{dxgiBmp?.Height}, ms={sw.Elapsed.TotalMilliseconds:F1}");
@@ -321,6 +325,7 @@ namespace SharpShot.UI
                 System.Diagnostics.Debug.WriteLine(
                     $"Freeze frame GDI size={bmp.Width}x{bmp.Height}, ms={gdiSw.Elapsed.TotalMilliseconds:F1}");
                 return bmp;
+                }
             }
             catch (Exception ex)
             {

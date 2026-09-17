@@ -76,6 +76,8 @@ namespace SharpShot.Models
         private bool _enableAutoUpdateCheck = true;
         private string? _updateRepoOwner;
         private string? _updateRepoName;
+        private string _appLanguage = "en";
+        private string _ocrLanguage = "auto";
 
         public Settings()
         {
@@ -137,6 +139,8 @@ namespace SharpShot.Models
             EnableAutoUpdateCheck = true; // Default to true - check for updates automatically
             UpdateRepoOwner = null; // Will use default from UpdateService
             UpdateRepoName = null; // Will use default from UpdateService
+            AppLanguage = "en";
+            OcrLanguage = "auto";
             
             // Start with empty hotkeys - users will set their own
             Hotkeys = new Dictionary<string, string>();
@@ -626,6 +630,20 @@ namespace SharpShot.Models
         {
             get => _updateRepoName;
             set => SetProperty(ref _updateRepoName, value);
+        }
+
+        /// <summary>UI language id: en, es, fr, de, pt, it, ru, ja, ko, zh-Hans.</summary>
+        public string AppLanguage
+        {
+            get => _appLanguage;
+            set => SetProperty(ref _appLanguage, string.IsNullOrWhiteSpace(value) ? "en" : value);
+        }
+
+        /// <summary>Tesseract language code, e.g. eng, spa, jpn.</summary>
+        public string OcrLanguage
+        {
+            get => _ocrLanguage;
+            set => SetProperty(ref _ocrLanguage, string.IsNullOrWhiteSpace(value) ? "auto" : value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

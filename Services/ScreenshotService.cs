@@ -136,7 +136,8 @@ namespace SharpShot.Services
         {
             if (_settingsService.CurrentSettings.UseDxgiCapture)
             {
-                var dxgi = DxgiDesktopCapture.TryCaptureRegion(bounds, out string mode);
+                bool omitSharpShot = _settingsService.CurrentSettings.HideSharpShotWindowsDuringCapture;
+                var dxgi = DxgiDesktopCapture.TryCaptureRegion(bounds, out string mode, omitSharpShot);
                 System.Diagnostics.Debug.WriteLine($"ScreenshotService DXGI mode={mode}");
                 if (dxgi != null)
                     return dxgi;
