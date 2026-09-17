@@ -38,11 +38,12 @@
                     HorizontalAlignment="Center" 
                     Margin="0,20,0,0">
             <Button x:Name="SaveButton" 
-                    Style="{StaticResource IconButtonStyle}"
+                    Style="{StaticResource ModernButtonStyle}"
                     Click="SaveButton_Click"
                     Margin="0,0,10,0"
-                    Width="120"
+                    MinWidth="120"
                     Height="40"
+                    Padding="14,8"
                     ToolTip="Save File">
                 <StackPanel Orientation="Horizontal">
                     <Path Data="M3 17.25V21h18v-3.75M6 9v6m0 0l4-4m-4 4l-4-4m8 4V9" 
@@ -60,11 +61,12 @@
                 </StackPanel>
             </Button>
             <Button x:Name="CopyButton" 
-                    Style="{StaticResource IconButtonStyle}"
+                    Style="{StaticResource ModernButtonStyle}"
                     Click="CopyButton_Click"
                     Margin="10,0,0,0"
-                    Width="120"
+                    MinWidth="120"
                     Height="40"
+                    Padding="14,8"
                     ToolTip="Copy to Clipboard">
                 <StackPanel Orientation="Horizontal">
                     <Path Data="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2z" 

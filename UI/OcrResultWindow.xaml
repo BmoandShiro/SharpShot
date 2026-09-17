@@ -73,8 +73,9 @@
                     Margin="0,12,0,0">
             <Button x:Name="CopyTextButton"
                     Style="{StaticResource OcrPopupButtonStyle}"
-                    Width="110"
+                    MinWidth="110"
                     Height="34"
+                    Padding="14,6"
                     Margin="0,0,10,0"
                     Click="CopyTextButton_Click">
                 <TextBlock Text="Copy Text"
@@ -83,8 +84,9 @@
             </Button>
             <Button x:Name="CloseButton"
                     Style="{StaticResource OcrPopupButtonStyle}"
-                    Width="90"
+                    MinWidth="90"
                     Height="34"
+                    Padding="14,6"
                     Click="CloseButton_Click">
                 <TextBlock Text="Close"
                            Foreground="{DynamicResource AccentBrush}"

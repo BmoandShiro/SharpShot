@@ -19,6 +19,7 @@
             <Setter Property="Width" Value="40"/>
             <Setter Property="Height" Value="40"/>
             <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -26,7 +27,8 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="6">
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" 
                                             VerticalAlignment="Center"/>
                         </Border>
@@ -49,6 +51,49 @@
                                 <Setter Property="Background" Value="#40FF8C00"/>
                                 <Setter Property="BorderThickness" Value="2"/>
                             </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Labelled toolbar actions (Copy/Save/etc.) grow with translated text -->
+        <Style x:Key="EditToolTextButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#15FF8C00"/>
+                                <Setter Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect Color="#FFFF8C00"
+                                                        BlurRadius="12"
+                                                        ShadowDepth="0"
+                                                        Opacity="0.25"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#30FF8C00"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -225,10 +270,9 @@
 
                 <!-- OCR -->
                 <Button x:Name="ExtractTextButton" 
-                        Style="{StaticResource EditToolButtonStyle}"
+                        Style="{StaticResource EditToolTextButtonStyle}"
                         Click="ExtractTextButton_Click"
-                        ToolTip="Extract text from image (OCR). Select an area to get text in the panel."
-                        Width="60">
+                        ToolTip="Extract text from image (OCR). Select an area to get text in the panel.">
                     <StackPanel Orientation="Horizontal">
                         <Path Data="M3 5v14h7v-4h2v4h7V5H3m2 2h2v2H5V7m0 4h2v2H5v-2m8 2h-2v-2h2v2m0-4h-2V7h2v2" 
                               Stroke="{DynamicResource AccentBrush}" 
@@ -236,7 +280,7 @@
                               Fill="Transparent"
                               Stretch="Uniform"
                               Width="16" Height="16"
-                              Margin="0,0,4,0"/>
+                              Margin="0,0,6,0"/>
                         <TextBlock Text="OCR" 
                                    Foreground="{DynamicResource AccentBrush}" 
                                    FontSize="12" 
@@ -252,10 +296,9 @@
 
                 <!-- Copy -->
                 <Button x:Name="CopyFinalButton" 
-                        Style="{StaticResource EditToolButtonStyle}"
+                        Style="{StaticResource EditToolTextButtonStyle}"
                         Click="CopyFinalButton_Click"
-                        ToolTip="Copy to Clipboard"
-                        Width="60">
+                        ToolTip="Copy to Clipboard">
                     <StackPanel Orientation="Horizontal">
                         <Path Data="M8 4v12a2 2 0 002 2h8a2 2 0 002-2V7.242a2 2 0 00-.602-1.43L16.083 2.57A2 2 0 0014.685 2H10a2 2 0 00-2 2z" 
                               Stroke="{DynamicResource AccentBrush}" 
@@ -263,7 +306,7 @@
                               Fill="Transparent"
                               Stretch="Uniform"
                               Width="16" Height="16"
-                              Margin="0,0,4,0"/>
+                              Margin="0,0,6,0"/>
                         <TextBlock Text="Copy" 
                                    Foreground="{DynamicResource AccentBrush}" 
                                    FontSize="12" 
@@ -273,10 +316,9 @@
 
                 <!-- Save -->
                 <Button x:Name="SaveFinalButton" 
-                        Style="{StaticResource EditToolButtonStyle}"
+                        Style="{StaticResource EditToolTextButtonStyle}"
                         Click="SaveFinalButton_Click"
-                        ToolTip="Save File"
-                        Width="60">
+                        ToolTip="Save File">
                     <StackPanel Orientation="Horizontal">
                         <Path Data="M3 17.25V21h18v-3.75M6 9v6m0 0l4-4m-4 4l-4-4m8 4V9" 
                               Stroke="{DynamicResource AccentBrush}" 
@@ -284,7 +326,7 @@
                               Fill="Transparent"
                               Stretch="Uniform"
                               Width="16" Height="16"
-                              Margin="0,0,4,0"/>
+                              Margin="0,0,6,0"/>
                         <TextBlock Text="Save" 
                                    Foreground="{DynamicResource AccentBrush}" 
                                    FontSize="12" 
@@ -674,11 +716,9 @@
                                  CaretBrush="{DynamicResource AccentBrush}"/>
                     </ScrollViewer>
                     <Button x:Name="OcrCopyTextButton"
-                            Style="{StaticResource EditToolButtonStyle}"
+                            Style="{StaticResource EditToolTextButtonStyle}"
                             Click="OcrCopyTextButton_Click"
                             ToolTip="Copy extracted text"
-                            Width="110"
-                            Height="34"
                             HorizontalAlignment="Right"
                             Margin="0,10,0,0">
                         <TextBlock Text="Copy Text"

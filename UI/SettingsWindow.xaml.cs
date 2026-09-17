@@ -2344,6 +2344,8 @@ namespace SharpShot.UI
             double width, double height, bool allowDynamicWidth = false)
         {
             if (button == null) return;
+            if (allowDynamicWidth)
+                button.ClearValue(FrameworkElement.WidthProperty);
             button.Style = CreateModernButtonStyle(color, width, height, allowDynamicWidth);
             button.Foreground = brush;
             if (button.Content is TextBlock text)
@@ -2388,69 +2390,17 @@ namespace SharpShot.UI
                 
                 // TextBox borders use {DynamicResource AccentBrush} via DarkTextBoxStyle (no per-control assignment needed)
 
-                // Update Cancel and Save buttons with dynamic hover effects
-                if (CancelButton != null)
-                {
-                    CancelButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
-                    if (CancelButton.Content is TextBlock cancelText)
-                        cancelText.Foreground = brush;
-                }
-                if (SaveButton != null)
-                {
-                    SaveButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
-                    if (SaveButton.Content is TextBlock saveText)
-                        saveText.Foreground = brush;
-                }
-
-                if (ResetRecommendedDefaultsButton != null)
-                {
-                    ResetRecommendedDefaultsButton.Style = CreateModernButtonStyle(color, 260.0, 36.0, allowDynamicWidth: true);
-                    if (ResetRecommendedDefaultsButton.Content is TextBlock resetDefaultsText)
-                        resetDefaultsText.Foreground = brush;
-                }
-
+                // Footer and common text actions — grow with translated labels
+                ApplyThemedButton(CancelButton, color, brush, 100.0, 36.0, allowDynamicWidth: true);
+                ApplyThemedButton(SaveButton, color, brush, 100.0, 36.0, allowDynamicWidth: true);
+                ApplyThemedButton(ResetRecommendedDefaultsButton, color, brush, 200.0, 36.0, allowDynamicWidth: true);
                 ApplyRecordingSectionTheme(color, brush);
-                
-                // Update Check for Updates button with dynamic hover effects
-                if (CheckForUpdatesButton != null)
-                {
-                    CheckForUpdatesButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
-                    if (CheckForUpdatesButton.Content is TextBlock checkUpdateText)
-                        checkUpdateText.Foreground = brush;
-                }
-                
-                // Update Browse button with dynamic hover effects
-                var browseButton = this.FindName("BrowseButton") as Button;
-                if (browseButton != null)
-                {
-                    browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
-                    if (browseButton.Content is TextBlock browseText)
-                        browseText.Foreground = brush;
-                }
-
-                if (DashboardSizeResetButton != null)
-                {
-                    DashboardSizeResetButton.Style = CreateModernButtonStyle(color, 128.0, 32.0);
-                    if (DashboardSizeResetButton.Content is TextBlock resetSizeText)
-                        resetSizeText.Foreground = brush;
-                }
-
-                if (SaveColorPresetButton != null)
-                {
-                    SaveColorPresetButton.Style = CreateModernButtonStyle(color, 140.0, 32.0, allowDynamicWidth: true);
-                    if (SaveColorPresetButton.Content is TextBlock savePresetText)
-                        savePresetText.Foreground = brush;
-                }
-
+                ApplyThemedButton(CheckForUpdatesButton, color, brush, 100.0, 36.0, allowDynamicWidth: true);
+                ApplyThemedButton(this.FindName("BrowseButton") as Button, color, brush, 80.0, 32.0, allowDynamicWidth: true);
+                ApplyThemedButton(DashboardSizeResetButton, color, brush, 128.0, 32.0, allowDynamicWidth: true);
+                ApplyThemedButton(SaveColorPresetButton, color, brush, 140.0, 32.0, allowDynamicWidth: true);
                 UpdateColorPresetDeleteModeToggleAppearance();
-                
-                // Update Add Boundary Box button with dynamic hover effects
-                if (AddBoundaryBoxButton != null)
-                {
-                    AddBoundaryBoxButton.Style = CreateModernButtonStyle(color, 150.0, 32.0);
-                    if (AddBoundaryBoxButton.Content is TextBlock addBoundaryText)
-                        addBoundaryText.Foreground = brush;
-                }
+                ApplyThemedButton(AddBoundaryBoxButton, color, brush, 150.0, 32.0, allowDynamicWidth: true);
                 
                  // Update slider colors to match theme
                  UpdateSliderColors(color);
@@ -2579,60 +2529,14 @@ namespace SharpShot.UI
                 var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(iconColor);
                 var brush = new System.Windows.Media.SolidColorBrush(color);
                 
-                // Update Cancel and Save buttons
-                if (CancelButton != null)
-                {
-                    CancelButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
-                    if (CancelButton.Content is TextBlock cancelText)
-                        cancelText.Foreground = brush;
-                }
-                if (SaveButton != null)
-                {
-                    SaveButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
-                    if (SaveButton.Content is TextBlock saveText)
-                        saveText.Foreground = brush;
-                }
-
-                if (ResetRecommendedDefaultsButton != null)
-                {
-                    ResetRecommendedDefaultsButton.Style = CreateModernButtonStyle(color, 260.0, 36.0, allowDynamicWidth: true);
-                    if (ResetRecommendedDefaultsButton.Content is TextBlock resetDefaultsText)
-                        resetDefaultsText.Foreground = brush;
-                }
-
+                ApplyThemedButton(CancelButton, color, brush, 100.0, 36.0, allowDynamicWidth: true);
+                ApplyThemedButton(SaveButton, color, brush, 100.0, 36.0, allowDynamicWidth: true);
+                ApplyThemedButton(ResetRecommendedDefaultsButton, color, brush, 200.0, 36.0, allowDynamicWidth: true);
                 ApplyRecordingSectionTheme(color, brush);
-                
-                // Update Check for Updates button
-                if (CheckForUpdatesButton != null)
-                {
-                    CheckForUpdatesButton.Style = CreateModernButtonStyle(color, 100.0, 36.0);
-                    if (CheckForUpdatesButton.Content is TextBlock checkUpdateText)
-                        checkUpdateText.Foreground = brush;
-                }
-                
-                // Update Browse button
-                var browseButton = this.FindName("BrowseButton") as Button;
-                if (browseButton != null)
-                {
-                    browseButton.Style = CreateModernButtonStyle(color, 80.0, 32.0);
-                    if (browseButton.Content is TextBlock browseText)
-                        browseText.Foreground = brush;
-                }
-
-                if (DashboardSizeResetButton != null)
-                {
-                    DashboardSizeResetButton.Style = CreateModernButtonStyle(color, 128.0, 32.0);
-                    if (DashboardSizeResetButton.Content is TextBlock resetSizeText)
-                        resetSizeText.Foreground = brush;
-                }
-
-                if (SaveColorPresetButton != null)
-                {
-                    SaveColorPresetButton.Style = CreateModernButtonStyle(color, 140.0, 32.0, allowDynamicWidth: true);
-                    if (SaveColorPresetButton.Content is TextBlock savePresetText)
-                        savePresetText.Foreground = brush;
-                }
-
+                ApplyThemedButton(CheckForUpdatesButton, color, brush, 100.0, 36.0, allowDynamicWidth: true);
+                ApplyThemedButton(this.FindName("BrowseButton") as Button, color, brush, 80.0, 32.0, allowDynamicWidth: true);
+                ApplyThemedButton(DashboardSizeResetButton, color, brush, 128.0, 32.0, allowDynamicWidth: true);
+                ApplyThemedButton(SaveColorPresetButton, color, brush, 140.0, 32.0, allowDynamicWidth: true);
                 UpdateColorPresetDeleteModeToggleAppearance();
                 
                 // Update Close button
@@ -2642,13 +2546,7 @@ namespace SharpShot.UI
                     CloseSettingsButton.Foreground = brush;
                 }
                 
-                // Update Add Boundary Box button
-                if (AddBoundaryBoxButton != null)
-                {
-                    AddBoundaryBoxButton.Style = CreateModernButtonStyle(color, 150.0, 32.0);
-                    if (AddBoundaryBoxButton.Content is TextBlock addBoundaryText)
-                        addBoundaryText.Foreground = brush;
-                }
+                ApplyThemedButton(AddBoundaryBoxButton, color, brush, 150.0, 32.0, allowDynamicWidth: true);
                 
                 // Update Edit and Delete buttons in boundary box list
                 if (MagnifierBoundaryBoxList != null)

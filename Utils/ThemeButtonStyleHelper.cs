@@ -69,7 +69,7 @@ namespace SharpShot.Utils
             style.Setters.Add(new Setter(Button.BackgroundProperty, Brushes.Transparent));
             style.Setters.Add(new Setter(Button.BorderBrushProperty, new SolidColorBrush(themeColor)));
             style.Setters.Add(new Setter(Button.BorderThicknessProperty, new Thickness(1.5)));
-            style.Setters.Add(new Setter(Button.PaddingProperty, new Thickness(16, 10, 16, 10)));
+            style.Setters.Add(new Setter(Button.PaddingProperty, new Thickness(18, 8, 18, 8)));
             style.Setters.Add(new Setter(Button.MarginProperty, new Thickness(4)));
             style.Setters.Add(new Setter(Button.FontSizeProperty, 14.0));
             style.Setters.Add(new Setter(Button.FontWeightProperty, FontWeights.SemiBold));
@@ -77,8 +77,9 @@ namespace SharpShot.Utils
 
             if (allowDynamicWidth)
             {
-                style.Setters.Add(new Setter(Button.MinWidthProperty, width * 0.8));
-                style.Setters.Add(new Setter(Button.MaxWidthProperty, width * 1.3));
+                // Grow with translated labels (ru/pt/nl/fr/es); do not cap MaxWidth.
+                style.Setters.Add(new Setter(Button.MinWidthProperty, width));
+                style.Setters.Add(new Setter(Button.HorizontalContentAlignmentProperty, HorizontalAlignment.Center));
             }
             else
             {
@@ -93,6 +94,7 @@ namespace SharpShot.Utils
             border.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Button.BorderBrushProperty));
             border.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Button.BorderThicknessProperty));
             border.SetValue(Border.CornerRadiusProperty, new CornerRadius(8));
+            border.SetValue(Border.PaddingProperty, new TemplateBindingExtension(Button.PaddingProperty));
 
             var contentPresenter = new FrameworkElementFactory(typeof(ContentPresenter));
             contentPresenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);

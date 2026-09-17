@@ -343,12 +343,15 @@ namespace SharpShot.UI
                 
                 System.Diagnostics.Debug.WriteLine($"Applying theme-aware button styles with color: {themeColor}");
                 
-                // Apply theme-aware styling to all editor buttons
+                // Icon-only tools keep the fixed 40px style; labelled actions use the text style.
                 UndoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 RedoButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                ExtractTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                CopyFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
-                SaveFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                ExtractTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush, forTextLabel: true);
+                CopyFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush, forTextLabel: true);
+                SaveFinalButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush, forTextLabel: true);
+                CopyFinalButton.ClearValue(WidthProperty);
+                SaveFinalButton.ClearValue(WidthProperty);
+                ExtractTextButton.ClearValue(WidthProperty);
                 RetakeButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 CloseEditorButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 
@@ -366,7 +369,7 @@ namespace SharpShot.UI
                 if (OcrTextPopupCloseButton != null)
                     OcrTextPopupCloseButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
                 if (OcrCopyTextButton != null)
-                    OcrCopyTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush);
+                    OcrCopyTextButton.Style = CreateThemeAwareButtonStyle(themeColor, hoverBrush, forTextLabel: true);
                 
                 System.Diagnostics.Debug.WriteLine("All button styles updated with theme-aware styling");
             }
@@ -1680,10 +1683,11 @@ namespace SharpShot.UI
             Close();
         }
 
-        private Style CreateThemeAwareButtonStyle(System.Windows.Media.Color themeColor, System.Windows.Media.Brush hoverBrush)
+        private Style CreateThemeAwareButtonStyle(System.Windows.Media.Color themeColor, System.Windows.Media.Brush hoverBrush, bool forTextLabel = false)
         {
-            // Get the base EditToolButtonStyle and create a new style based on it
-            var baseStyle = this.Resources["EditToolButtonStyle"] as Style;
+            // Icon tools use the fixed 40px style; labelled Copy/Save/OCR use the growing text style.
+            var baseKey = forTextLabel ? "EditToolTextButtonStyle" : "EditToolButtonStyle";
+            var baseStyle = this.Resources[baseKey] as Style;
             var style = new Style(typeof(Button), baseStyle);
             
             // Override the hover effect to use theme color with exact same opacity values as main toolbar
@@ -1706,6 +1710,13 @@ namespace SharpShot.UI
             
             style.Triggers.Add(hoverTrigger);
             style.Triggers.Add(pressedTrigger);
+
+            if (forTextLabel)
+            {
+                style.Setters.Add(new Setter(MinWidthProperty, 72.0));
+                style.Setters.Add(new Setter(PaddingProperty, new Thickness(12, 6, 12, 6)));
+                style.Setters.Add(new Setter(HeightProperty, 40.0));
+            }
             
             return style;
         }
