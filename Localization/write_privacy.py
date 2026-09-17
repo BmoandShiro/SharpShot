@@ -26,6 +26,8 @@ SharpShot se ejecuta en tu PC. No requiere una cuenta. No hay inicio de sesión 
 
 Todo lo que haya en tu pantalla puede aparecer en una captura o grabación que tú elijas hacer. Esos archivos siguen siendo tuyos, en tu ordenador, hasta que tú mismo los compartas.
 
+Si activas la captura del micrófono o del audio del sistema en una grabación, ese audio se escribe solo en el archivo de la grabación en este PC. SharpShot no sube el audio del micrófono ni el del sistema.
+
 ## Acceso a la red
 
 Las copias de Steam y de Microsoft Store de SharpShot no consultan GitHub en busca de actualizaciones. Esas tiendas actualizan la aplicación. Esas copias tampoco descargan otras aplicaciones por ti.
@@ -79,6 +81,8 @@ SharpShot s'exécute sur votre PC. Aucun compte n'est requis. Il n'y a pas de co
 - Des journaux de débogage facultatifs peuvent être écrits à côté de l'application pendant qu'elle tourne. Ces journaux ne nous sont pas envoyés.
 
 Tout ce qui est à l'écran peut apparaître dans une capture ou un enregistrement que vous choisissez de faire. Ces fichiers restent les vôtres, sur votre ordinateur, jusqu'à ce que vous les partagiez vous-même.
+
+Si vous activez la capture du microphone ou de l'audio système pour un enregistrement, cet audio est écrit uniquement dans le fichier d'enregistrement sur ce PC. SharpShot n'envoie pas l'audio du microphone ni de l'audio système.
 
 ## Accès au réseau
 
@@ -134,6 +138,8 @@ SharpShot läuft auf Ihrem PC. Ein Konto ist nicht nötig. Es gibt kein SharpSho
 
 Alles auf Ihrem Bildschirm kann in einem Screenshot oder einer Aufnahme erscheinen, die Sie selbst erstellen. Diese Dateien bleiben Ihre, auf Ihrem Computer, bis Sie sie selbst weitergeben.
 
+Wenn Sie Mikrofon- oder Systemaudio für eine Aufnahme aktivieren, wird dieses Audio nur in die Aufnahmedatei auf diesem PC geschrieben. SharpShot lädt weder Mikrofon- noch Systemaudio hoch.
+
 ## Netzwerkzugriff
 
 Steam- und Microsoft-Store-Kopien von SharpShot fragen GitHub nicht nach Updates. Diese Stores aktualisieren die App. Diese Kopien laden auch keine anderen Anwendungen für Sie herunter.
@@ -187,6 +193,8 @@ O SharpShot roda no seu PC. Não exige uma conta. Não há login do SharpShot, b
 - Registros de depuração opcionais podem ser escritos ao lado do aplicativo enquanto ele está em execução. Esses registros não são enviados a nós.
 
 O que estiver na tela pode aparecer em uma captura ou gravação que você escolher fazer. Esses arquivos continuam seus, no seu computador, até que você mesmo os compartilhe.
+
+Se você ativar a captura do microfone ou do áudio do sistema em uma gravação, esse áudio é gravado apenas no arquivo da gravação neste PC. O SharpShot não envia o áudio do microfone nem o áudio do sistema.
 
 ## Acesso à rede
 
@@ -242,6 +250,8 @@ SharpShot gira sul tuo PC. Non serve un account. Non c'è un accesso SharpShot, 
 
 Tutto ciò che è sullo schermo può comparire in uno screenshot o in una registrazione che scegli di fare. Quei file restano tuoi, sul tuo computer, finché non li condividi tu.
 
+Se attivi la cattura del microfono o dell'audio di sistema per una registrazione, quell'audio viene scritto solo nel file di registrazione su questo PC. SharpShot non carica l'audio del microfono né l'audio di sistema.
+
 ## Accesso alla rete
 
 Le copie Steam e Microsoft Store di SharpShot non controllano GitHub per gli aggiornamenti. Quei negozi aggiornano l'app. Quelle copie non scaricano altre applicazioni per te.
@@ -295,6 +305,8 @@ SharpShot работает на вашем компьютере. Учётная 
 - Пока приложение работает, рядом с ним могут записываться необязательные журналы отладки. Они нам не отправляются.
 
 Всё, что есть на экране, может попасть в снимок или запись, которые вы сами создаёте. Эти файлы остаются вашими на вашем компьютере, пока вы сами ими не поделитесь.
+
+Если вы включите запись с микрофона или системного звука, этот звук записывается только в файл записи на этом ПК. SharpShot не загружает звук с микрофона и системный звук.
 
 ## Доступ в сеть
 
@@ -350,6 +362,8 @@ SharpShot はお使いの PC 上で動作します。アカウントは不要で
 
 画面にあるものは、あなたが選んで撮ったスクリーンショットや録画に写ることがあります。それらのファイルは、あなたが自分で共有するまで、あなたのコンピューター上のあなたのものです。
 
+マイクまたはシステム音声のキャプチャを録画で有効にした場合、その音声はこの PC 上の録画ファイルにだけ書き込まれます。SharpShot はマイク音声もシステム音声もアップロードしません。
+
 ## ネットワークアクセス
 
 Steam 版と Microsoft Store 版の SharpShot は、更新のために GitHub を確認しません。更新は各ストアが行います。これらの版は、他のアプリケーションを代わりにダウンロードすることもありません。
@@ -404,6 +418,8 @@ SharpShot은 사용자 PC에서 실행됩니다. 계정이 필요하지 않습�
 
 화면에 있는 것은 사용자가 직접 찍기로 한 스크린샷이나 녹화에 나타날 수 있습니다. 그 파일은 사용자가 직접 공유하기 전까지 사용자 컴퓨터에 있는 사용자 것입니다.
 
+녹화에서 마이크 또는 시스템 오디오 캡처를 켜면, 그 오디오는 이 PC의 녹화 파일에만 기록됩니다. SharpShot은 마이크나 시스템 오디오를 업로드하지 않습니다.
+
 ## 네트워크 접근
 
 Steam 및 Microsoft Store 판 SharpShot은 업데이트를 위해 GitHub를 확인하지 않습니다. 해당 스토어가 앱을 업데이트합니다. 이 판은 다른 애플리케이션을 대신 내려받지도 않습니다.
@@ -457,6 +473,8 @@ SharpShot 在你的电脑上运行。不需要账号。没有 SharpShot 登录�
 - 应用运行时，可能会在程序旁边写入可选的调试日志。这些日志不会发送给我们。
 
 屏幕上的内容可能会出现在你选择拍摄的截图或录制中。在你自己分享之前，这些文件仍属于你，并留在你的电脑上。
+
+如果在录制中启用麦克风或系统音频捕获，该音频只会写入本机上的录制文件。SharpShot 不会上传麦克风或系统音频。
 
 ## 网络访问
 

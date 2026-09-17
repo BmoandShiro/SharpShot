@@ -20,6 +20,8 @@ SharpShot runs on your PC. It does not require an account. There is no SharpShot
 
 Whatever is on your screen can appear in a screenshot or recording you choose to take. Those files remain yours, on your computer, until you share them yourself.
 
+If you enable microphone or system-audio capture for a recording, that audio is written into the recording file on this PC only. SharpShot does not upload microphone or system audio.
+
 ## Network access
 
 Steam and Microsoft Store copies of SharpShot do not check GitHub for updates. Those stores update the app. Those copies also do not download other applications for you.
