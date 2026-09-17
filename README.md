@@ -350,7 +350,7 @@ Both are distributed with SharpShot under the same license terms.
 
 ## 🙏 Credits
 
-**Created by: BMOandShiro**
+**Created by: BMOandShiro · ZHU Industries LLC**
 
 ## 🔗 Additional Documentation
 

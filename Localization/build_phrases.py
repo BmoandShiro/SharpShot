@@ -582,7 +582,7 @@ P = {
 "Save": ("Guardar", "Enregistrer", "Speichern", "Salvar", "Salva", "Сохранить", "保存", "저장", "保存"),
 "Privacy": ("Privacidad", "Confidentialité", "Datenschutz", "Privacidade", "Privacy", "Конфиденциальность", "プライバシー", "개인정보", "隐私"),
 "Privacy policy": ("Política de privacidad", "Politique de confidentialité", "Datenschutzrichtlinie", "Política de privacidade", "Informativa privacy", "Политика конфиденциальности", "プライバシー ポリシー", "개인정보 처리방침", "隐私政策"),
-"Created by: BMOandShiro": ("Creado por: BMOandShiro", "Créé par : BMOandShiro", "Erstellt von: BMOandShiro", "Criado por: BMOandShiro", "Creato da: BMOandShiro", "Создано: BMOandShiro", "作成: BMOandShiro", "만든 사람: BMOandShiro", "创建者：BMOandShiro"),
+"Created by: BMOandShiro · ZHU Industries LLC": ("Creado por: BMOandShiro · ZHU Industries LLC", "Créé par : BMOandShiro · ZHU Industries LLC", "Erstellt von: BMOandShiro · ZHU Industries LLC", "Criado por: BMOandShiro · ZHU Industries LLC", "Creato da: BMOandShiro · ZHU Industries LLC", "Создано: BMOandShiro · ZHU Industries LLC", "作成: BMOandShiro · ZHU Industries LLC", "만든 사람: BMOandShiro · ZHU Industries LLC", "创建者：BMOandShiro · ZHU Industries LLC"),
 "Not linked — use Detect or Change, or add any program from Dashboard → Linked apps": (
 "Sin vincular: usa Detectar o Cambiar, o añade cualquier programa en Panel → Aplicaciones vinculadas",
 "Non lié : utilisez Détecter ou Modifier, ou ajoutez un programme dans Tableau de bord → Applications liées",

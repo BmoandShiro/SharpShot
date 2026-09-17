@@ -2,7 +2,8 @@
 
 Last updated: September 17, 2026
 
-Publisher: BMOandShiro
+Publisher: ZHU Industries LLC  
+Developer: BMOandShiro
 
 This is the privacy policy for SharpShot, a Windows screenshot and screen recording app. The current copy lives in this repository so it stays available at:
 

@@ -1272,7 +1272,7 @@
                 <TextBlock Text=" | " Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" Margin="4,0"/>
                 <TextBlock x:Name="VersionTextBlock" Text="" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
                 <TextBlock Text=" | " Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center" Margin="4,0"/>
-                <TextBlock Text="Created by: BMOandShiro" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
+                <TextBlock Text="Created by: BMOandShiro · ZHU Industries LLC" Foreground="{StaticResource TextBrush}" FontSize="11" Opacity="0.6" VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
     </Grid>

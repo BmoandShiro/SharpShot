@@ -8,7 +8,8 @@ texts["es"] = """# Política de privacidad de SharpShot
 
 Última actualización: 17 de septiembre de 2026
 
-Editor: BMOandShiro
+Editor: ZHU Industries LLC
+Desarrollador: BMOandShiro
 
 Esta es la política de privacidad de SharpShot, una aplicación de Windows para capturas de pantalla y grabación de pantalla. La copia vigente está en este repositorio para que siga disponible en:
 
@@ -64,7 +65,8 @@ texts["fr"] = """# Politique de confidentialité de SharpShot
 
 Dernière mise à jour : 17 septembre 2026
 
-Éditeur : BMOandShiro
+Éditeur : ZHU Industries LLC
+Développeur : BMOandShiro
 
 Voici la politique de confidentialité de SharpShot, une application Windows de capture et d'enregistrement d'écran. La copie en vigueur est dans ce dépôt afin de rester disponible ici :
 
@@ -120,7 +122,8 @@ texts["de"] = """# Datenschutzrichtlinie von SharpShot
 
 Zuletzt aktualisiert: 17. September 2026
 
-Herausgeber: BMOandShiro
+Herausgeber: ZHU Industries LLC
+Entwickler: BMOandShiro
 
 Dies ist die Datenschutzrichtlinie für SharpShot, eine Windows-App für Screenshots und Bildschirmaufnahmen. Die aktuelle Fassung liegt in diesem Repository, damit sie hier verfügbar bleibt:
 
@@ -176,7 +179,8 @@ texts["pt"] = """# Política de privacidade do SharpShot
 
 Última atualização: 17 de setembro de 2026
 
-Editor: BMOandShiro
+Editor: ZHU Industries LLC
+Desenvolvedor: BMOandShiro
 
 Esta é a política de privacidade do SharpShot, um aplicativo do Windows para capturas e gravação de tela. A cópia vigente está neste repositório para continuar disponível em:
 
@@ -232,7 +236,8 @@ texts["it"] = """# Informativa privacy di SharpShot
 
 Ultimo aggiornamento: 17 settembre 2026
 
-Editore: BMOandShiro
+Editore: ZHU Industries LLC
+Sviluppatore: BMOandShiro
 
 Questa è l'informativa privacy di SharpShot, un'app Windows per screenshot e registrazione dello schermo. La copia vigente è in questo repository così resta disponibile qui:
 
@@ -288,7 +293,8 @@ texts["ru"] = """# Политика конфиденциальности SharpSh
 
 Последнее обновление: 17 сентября 2026 г.
 
-Издатель: BMOandShiro
+Издатель: ZHU Industries LLC
+Разработчик: BMOandShiro
 
 Это политика конфиденциальности SharpShot — приложения Windows для снимков и записи экрана. Действующая копия хранится в этом репозитории, чтобы оставаться доступной по адресу:
 
@@ -344,7 +350,8 @@ texts["ja"] = """# SharpShot プライバシー ポリシー
 
 最終更新: 2026年9月17日
 
-発行者: BMOandShiro
+発行者: ZHU Industries LLC
+開発者: BMOandShiro
 
 これは、Windows 用のスクリーンショットおよび画面録画アプリである SharpShot のプライバシー ポリシーです。現行版はこのリポジトリにあり、次の場所で参照できます。
 
@@ -400,7 +407,8 @@ texts["ko"] = """# SharpShot 개인정보 처리방침
 
 최종 업데이트: 2026년 9월 17일
 
-발행자: BMOandShiro
+발행자: ZHU Industries LLC
+개발자: BMOandShiro
 
 이것은 Windows용 스크린샷 및 화면 녹화 앱 SharpShot의 개인정보 처리방침입니다. 현재 문서는 이 저장소에 있어 다음 주소에서 볼 수 있습니다.
 
@@ -456,7 +464,8 @@ texts["zh-Hans"] = """# SharpShot 隐私政策
 
 最后更新：2026年9月17日
 
-发布者：BMOandShiro
+发布者：ZHU Industries LLC
+开发者：BMOandShiro
 
 这是 SharpShot 的隐私政策。SharpShot 是一款 Windows 截图和屏幕录制应用。现行文本放在此仓库中，以便在此查阅：
 
