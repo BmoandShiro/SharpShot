@@ -32,11 +32,38 @@ namespace SharpShot.Utils
         private const uint SHCNF_PATHW = 0x0005;
         private const uint SHCNF_FLUSH = 0x1000;
 
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
+
+        private const int AppModelErrorNoPackage = 15700;
+
+        /// <summary>
+        /// True when running inside an MSIX/Store package. Those builds get their
+        /// shell AUMID and taskbar logo from the package — not from .lnk IconLocation.
+        /// </summary>
+        public static bool IsRunningPackaged()
+        {
+            try
+            {
+                int length = 0;
+                int hr = GetCurrentPackageFullName(ref length, null);
+                return hr != AppModelErrorNoPackage;
+            }
+            catch
+            {
+                return BuildInfo.IsStore;
+            }
+        }
+
         /// <summary>
         /// Must run before any window is created so the shell groups this process with our shortcuts.
+        /// Skipped for MSIX: packaged apps already have a package AUMID; overriding it breaks Store identity.
         /// </summary>
         public static void SetProcessAppUserModelId()
         {
+            if (IsRunningPackaged())
+                return;
+
             try
             {
                 SetCurrentProcessExplicitAppUserModelID(AppUserModelId);
@@ -51,6 +78,7 @@ namespace SharpShot.Utils
         /// Writes a themed .ico under %AppData%\SharpShot and points Start Menu /
         /// User Pinned TaskBar shortcuts at it (with matching AUMID).
         /// Intended for startup + Settings Save only — shell icon refresh is slow.
+        /// No-op for MSIX/Store: the taskbar uses Square44x44Logo from the package and ignores .lnk icons.
         /// </summary>
         public static void SyncThemedPinnedIcon(string? colorHex)
         {
@@ -58,6 +86,10 @@ namespace SharpShot.Utils
             {
                 try
                 {
+                    // Packaged shell icons are fixed to Package.appxmanifest assets (by design).
+                    if (IsRunningPackaged())
+                        return;
+
                     var normalized = string.IsNullOrWhiteSpace(colorHex) ? "#FFFF8C00" : colorHex.Trim();
                     if (string.Equals(_lastSyncedColorHex, normalized, StringComparison.OrdinalIgnoreCase)
                         && !string.IsNullOrEmpty(_lastIconPath)

@@ -7,7 +7,7 @@
 
   <Identity Name="BMOsDevOps.SharpShot"
             Publisher="CN=7E8A6D64-EB7B-4C99-95F4-1194CC95BBA8"
-            Version="1.3.24.0"
+            Version="1.3.26.0"
             ProcessorArchitecture="x64" />
 
   <Properties>
@@ -21,7 +21,17 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="en-us"/>
+    <Resource Language="en-US" />
+    <Resource Language="es-ES" />
+    <Resource Language="fr-FR" />
+    <Resource Language="de-DE" />
+    <Resource Language="nl-NL" />
+    <Resource Language="pt-BR" />
+    <Resource Language="it-IT" />
+    <Resource Language="ru-RU" />
+    <Resource Language="ja-JP" />
+    <Resource Language="ko-KR" />
+    <Resource Language="zh-CN" />
   </Resources>
 
   <Applications>

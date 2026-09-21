@@ -3,9 +3,11 @@
 import json
 from pathlib import Path
 
-LANGS = ["es", "fr", "de", "pt", "it", "ru", "ja", "ko", "zh-Hans"]
+LANGS = ["es", "fr", "de", "pt", "it", "ru", "ja", "ko", "zh-Hans", "nl"]
 
-# Each value is es, fr, de, pt, it, ru, ja, ko, zh-Hans.
+# Each value is es, fr, de, pt, it, ru, ja, ko, zh-Hans (nl comes from dutch_phrases.NL).
+from dutch_phrases import NL
+
 P = {
 "SharpShot Settings": ("Ajustes de SharpShot", "Paramètres de SharpShot", "SharpShot-Einstellungen", "Configurações do SharpShot", "Impostazioni di SharpShot", "Параметры SharpShot", "SharpShot の設定", "SharpShot 설정", "SharpShot 设置"),
 "Settings": ("Ajustes", "Paramètres", "Einstellungen", "Configurações", "Impostazioni", "Настройки", "設定", "설정", "设置"),
@@ -712,13 +714,17 @@ def main():
     for lang in LANGS:
         phrases[lang] = {}
     for english, values in P.items():
-        if len(values) != len(LANGS):
-            raise SystemExit(f"Bad translation count for: {english[:60]} ({len(values)})")
-        for lang, text in zip(LANGS, values):
+        base = list(values)
+        if english not in NL:
+            raise SystemExit(f"Missing Dutch for: {english[:80]}")
+        base.append(NL[english])
+        if len(base) != len(LANGS):
+            raise SystemExit(f"Bad translation count for: {english[:60]} ({len(base)})")
+        for lang, text in zip(LANGS, base):
             phrases[lang][english] = text
     out = Path(__file__).with_name("ui-phrases.json")
     out.write_text(json.dumps(phrases, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("phrases", len(P), "->", out)
+    print("phrases", len(P), "langs", len(LANGS), "->", out)
     strings = Path(__file__).resolve().parents[1] / "_strings.txt"
     if strings.exists():
         missing = []

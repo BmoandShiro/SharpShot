@@ -517,6 +517,63 @@ SharpShot 是通用桌面工具。它不面向 13 岁以下儿童，我们也不
 如果本政策变更，更新后的文本会发布在此文件中。上方的“最后更新”日期会一并更改。
 """
 
+texts["nl"] = """# Privacybeleid van SharpShot
+
+Laatst bijgewerkt: 17 september 2026
+
+Uitgever: ZHU Industries LLC
+Ontwikkelaar: BMOandShiro
+
+Dit is het privacybeleid van SharpShot, een Windows-app voor screenshots en schermopnames. De actuele tekst staat in deze repository zodat die beschikbaar blijft op:
+
+https://github.com/BmoandShiro/SharpShot/blob/main/PRIVACY.md
+
+## Wat deze app is
+
+SharpShot draait op je pc. Er is geen account nodig. Er is geen SharpShot-login, cloudbibliotheek, advertentienetwerk of analyseservice.
+
+## Gegevens die op je apparaat blijven
+
+- Screenshots en opnames worden alleen naar de opslagmap geschreven die jij kiest. SharpShot uploadt ze niet.
+- Instellingen, inclusief sneltoetsen en thema, worden lokaal opgeslagen in `%AppData%\\SharpShot\\settings.json`.
+- Optionele foutopsporingslogboeken kunnen naast de app worden geschreven terwijl die draait. Die logboeken worden niet naar ons gestuurd.
+
+Alles wat op je scherm staat, kan in een screenshot of opname terechtkomen die jij maakt. Die bestanden blijven van jou, op je computer, tot je ze zelf deelt.
+
+Als je microfoon- of systeemaudio-opname inschakelt, wordt die audio alleen in het opnamebestand op deze pc geschreven. SharpShot uploadt geen microfoon- of systeemaudio.
+
+## Netwerktoegang
+
+Steam- en Microsoft Store-versies van SharpShot controleren GitHub niet op updates. Die winkels werken de app bij. Die versies downloaden ook geen andere toepassingen voor je.
+
+Versies die via GitHub worden verspreid, kunnen GitHub contacteren als «Automatisch controleren op updates» is ingeschakeld, of als je Nu controleren kiest. Dat verzoek gaat naar de servers van GitHub (https://api.github.com) om te zien of er een nieuwere openbare release is, en kan die release van GitHub downloaden. Het privacybeleid van GitHub geldt voor die verbinding. SharpShot voegt geen account of SharpShot-gebruikers-id toe aan dat verzoek.
+
+Vastleggen en opnemen vereisen geen internetverbinding.
+
+## Wat we niet doen
+
+- We verkopen geen persoonlijke gegevens.
+- We tonen geen advertenties of analyses van derden in SharpShot.
+- We exploiteren geen eigen crashrapportage- of telemetrieservice.
+- We verzamelen je naam, e-mailadres of betalingsgegevens niet. Aankopen in Steam of de Microsoft Store worden door die winkels afgehandeld.
+
+## Andere programma's
+
+FFmpeg is meegeleverd zodat opnemen op deze pc werkt. Het draait lokaal.
+
+Je kunt een programma dat je al hebt geïnstalleerd koppelen en vanuit SharpShot openen. Dat kan een geavanceerdere recorder zijn. OBS Studio is een voorbeeld. SharpShot bevat die programma's niet, en Steam- en Microsoft Store-versies downloaden ze niet. Elk gekoppeld programma is een aparte app met eigen voorwaarden en privacybeleid.
+
+## Kinderen
+
+SharpShot is een algemene desktoputility. Het is niet gericht op kinderen onder de 13, en we verzamelen niet bewust persoonlijke gegevens van kinderen.
+
+## Contact en wijzigingen
+
+Vragen over dit beleid kun je als GitHub-issue sturen op https://github.com/BmoandShiro/SharpShot.
+
+Als dit beleid wijzigt, wordt de bijgewerkte tekst in dit bestand gepubliceerd. De datum «Laatst bijgewerkt» wijzigt mee.
+"""
+
 out = Path(__file__).with_name("privacy.json")
 out.write_text(json.dumps(texts, ensure_ascii=False, indent=2), encoding="utf-8")
 print("privacy", len(texts), "->", out)
