@@ -1035,6 +1035,42 @@
                               VerticalAlignment="Center"/>
                 </Grid>
                 
+                <!-- OCR Region Select Hotkey -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" 
+                               Text="OCR Region Select:" 
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="1" 
+                             x:Name="OcrRegionHotkeyTextBox"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             MinWidth="120" Width="200"
+                             Text=""
+                             IsReadOnly="True"
+                             PreviewKeyDown="HotkeyTextBox_PreviewKeyDown"
+                             GotFocus="HotkeyTextBox_GotFocus"
+                             LostFocus="HotkeyTextBox_LostFocus"/>
+                    <Button Grid.Column="2" x:Name="OcrRegionClearHotkeyButton" Width="28" Height="28" Margin="4,0,0,0"
+                            ToolTip="Remove hotkey" Click="ClearHotkeyButton_Click" Tag="OcrRegion"
+                            Style="{StaticResource ModernButtonStyle}" Padding="0" VerticalAlignment="Center"
+                            BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+                        <Path Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" 
+                              Fill="{DynamicResource AccentBrush}" Stretch="Uniform" Width="16" Height="16"/>
+                    </Button>
+                    <CheckBox Grid.Column="3"
+                              x:Name="OcrRegionTripleClickCheckBox"
+                              Content="Triple Click"
+                              Style="{StaticResource DarkCheckBoxStyle}"
+                              Margin="8,0,0,0"
+                              VerticalAlignment="Center"/>
+                </Grid>
+                
                 <!-- Record Region Select Hotkey -->
                 <Grid Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>

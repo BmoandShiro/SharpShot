@@ -217,6 +217,7 @@ namespace SharpShot
             _hotkeyManager.OnRegionCaptureRequested += OnRegionCaptureRequested;
             _hotkeyManager.OnRegionCaptureCanceled += OnRegionCaptureCanceled;
             _hotkeyManager.OnFullScreenCaptureRequested += OnFullScreenCaptureRequested;
+            _hotkeyManager.OnOcrRegionCaptureRequested += OnOcrRegionCaptureRequested;
             _hotkeyManager.OnToggleRecordingRequested += OnToggleRecordingRequested;
             _hotkeyManager.OnSaveRequested += OnSaveRequested;
             _hotkeyManager.OnCopyRequested += OnCopyRequested;
@@ -1473,6 +1474,11 @@ namespace SharpShot
         private async void OnFullScreenCaptureRequested()
         {
             await CaptureFullScreen();
+        }
+
+        private async void OnOcrRegionCaptureRequested()
+        {
+            await CaptureRegionForOcr();
         }
 
         private async Task CaptureFullScreen()

@@ -123,6 +123,9 @@ namespace SharpShot.Utils
             if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("ScreenshotFullscreen") && 
                 !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["ScreenshotFullscreen"]))
                 RegisterHotkey("ScreenshotFullscreen", _settingsService.CurrentSettings.Hotkeys["ScreenshotFullscreen"]);
+            if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("OcrRegion") &&
+                !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["OcrRegion"]))
+                RegisterHotkey("OcrRegion", _settingsService.CurrentSettings.Hotkeys["OcrRegion"]);
             if (_settingsService.CurrentSettings.Hotkeys.ContainsKey("RecordRegion") && 
                 !string.IsNullOrWhiteSpace(_settingsService.CurrentSettings.Hotkeys["RecordRegion"]))
                 RegisterHotkey("RecordRegion", _settingsService.CurrentSettings.Hotkeys["RecordRegion"]);
@@ -352,6 +355,7 @@ namespace SharpShot.Utils
             {
                 "ScreenshotRegion" => () => OnRegionCaptureRequested?.Invoke(),
                 "ScreenshotFullscreen" => () => OnFullScreenCaptureRequested?.Invoke(),
+                "OcrRegion" => () => OnOcrRegionCaptureRequested?.Invoke(),
                 "RecordRegion" => () => OnToggleRecordingRequested?.Invoke(),
                 "RecordFullscreen" => () => OnToggleRecordingRequested?.Invoke(),
                 "Save" => () => OnSaveRequested?.Invoke(),
@@ -789,6 +793,7 @@ namespace SharpShot.Utils
         public event Action? OnRegionCaptureRequested;
         public event Action? OnRegionCaptureCanceled;
         public event Action? OnFullScreenCaptureRequested;
+        public event Action? OnOcrRegionCaptureRequested;
         public event Action? OnToggleRecordingRequested;
         public event Action? OnSaveRequested;
         public event Action? OnCopyRequested;

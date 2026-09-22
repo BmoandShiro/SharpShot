@@ -798,6 +798,7 @@ namespace SharpShot.UI
             // Load hotkeys - use blank defaults unless user has set them
             ScreenshotRegionHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotRegion", "");
             ScreenshotFullscreenHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotFullscreen", "");
+            OcrRegionHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("OcrRegion", "");
             RecordRegionHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("RecordRegion", "");
             RecordFullscreenHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("RecordFullscreen", "");
             CopyHotkeyTextBox.Text = _originalSettings.Hotkeys.GetValueOrDefault("Copy", "");
@@ -817,6 +818,7 @@ namespace SharpShot.UI
             // Load triple-click settings
             ScreenshotRegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotRegionTripleClick", "false") == "true";
             ScreenshotFullscreenTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("ScreenshotFullscreenTripleClick", "false") == "true";
+            OcrRegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("OcrRegionTripleClick", "false") == "true";
             RecordRegionTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("RecordRegionTripleClick", "false") == "true";
             RecordFullscreenTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("RecordFullscreenTripleClick", "false") == "true";
             CopyTripleClickCheckBox.IsChecked = _originalSettings.Hotkeys.GetValueOrDefault("CopyTripleClick", "false") == "true";
@@ -918,6 +920,8 @@ namespace SharpShot.UI
                 ScreenshotRegionTripleClickCheckBox.IsChecked = true;
             else if (hotkeyTextBox == ScreenshotFullscreenHotkeyTextBox)
                 ScreenshotFullscreenTripleClickCheckBox.IsChecked = true;
+            else if (hotkeyTextBox == OcrRegionHotkeyTextBox)
+                OcrRegionTripleClickCheckBox.IsChecked = true;
             else if (hotkeyTextBox == RecordRegionHotkeyTextBox)
                 RecordRegionTripleClickCheckBox.IsChecked = true;
             else if (hotkeyTextBox == RecordFullscreenHotkeyTextBox)
@@ -967,6 +971,7 @@ namespace SharpShot.UI
                 {
                     "ScreenshotRegion" => ScreenshotRegionHotkeyTextBox,
                     "ScreenshotFullscreen" => ScreenshotFullscreenHotkeyTextBox,
+                    "OcrRegion" => OcrRegionHotkeyTextBox,
                     "RecordRegion" => RecordRegionHotkeyTextBox,
                     "RecordFullscreen" => RecordFullscreenHotkeyTextBox,
                     "Copy" => CopyHotkeyTextBox,
@@ -977,6 +982,7 @@ namespace SharpShot.UI
                 {
                     "ScreenshotRegion" => ScreenshotRegionTripleClickCheckBox,
                     "ScreenshotFullscreen" => ScreenshotFullscreenTripleClickCheckBox,
+                    "OcrRegion" => OcrRegionTripleClickCheckBox,
                     "RecordRegion" => RecordRegionTripleClickCheckBox,
                     "RecordFullscreen" => RecordFullscreenTripleClickCheckBox,
                     "Copy" => CopyTripleClickCheckBox,
@@ -1213,6 +1219,7 @@ namespace SharpShot.UI
                 // Update hotkeys - save current value (empty = unset)
                 _originalSettings.Hotkeys["ScreenshotRegion"] = ScreenshotRegionHotkeyTextBox.Text ?? "";
                 _originalSettings.Hotkeys["ScreenshotFullscreen"] = ScreenshotFullscreenHotkeyTextBox.Text ?? "";
+                _originalSettings.Hotkeys["OcrRegion"] = OcrRegionHotkeyTextBox.Text ?? "";
                 _originalSettings.Hotkeys["RecordRegion"] = RecordRegionHotkeyTextBox.Text ?? "";
                 _originalSettings.Hotkeys["RecordFullscreen"] = RecordFullscreenHotkeyTextBox.Text ?? "";
                 _originalSettings.Hotkeys["Copy"] = CopyHotkeyTextBox.Text ?? "";
@@ -1221,6 +1228,7 @@ namespace SharpShot.UI
                 // Update triple-click settings
                 _originalSettings.Hotkeys["ScreenshotRegionTripleClick"] = ScreenshotRegionTripleClickCheckBox.IsChecked == true ? "true" : "false";
                 _originalSettings.Hotkeys["ScreenshotFullscreenTripleClick"] = ScreenshotFullscreenTripleClickCheckBox.IsChecked == true ? "true" : "false";
+                _originalSettings.Hotkeys["OcrRegionTripleClick"] = OcrRegionTripleClickCheckBox.IsChecked == true ? "true" : "false";
                 _originalSettings.Hotkeys["RecordRegionTripleClick"] = RecordRegionTripleClickCheckBox.IsChecked == true ? "true" : "false";
                 _originalSettings.Hotkeys["RecordFullscreenTripleClick"] = RecordFullscreenTripleClickCheckBox.IsChecked == true ? "true" : "false";
                 _originalSettings.Hotkeys["CopyTripleClick"] = CopyTripleClickCheckBox.IsChecked == true ? "true" : "false";
@@ -1819,6 +1827,8 @@ namespace SharpShot.UI
                     UpdateCheckboxVisualTree(ScreenshotRegionTripleClickCheckBox, themeColor);
                 if (ScreenshotFullscreenTripleClickCheckBox != null && ScreenshotFullscreenTripleClickCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(ScreenshotFullscreenTripleClickCheckBox, themeColor);
+                if (OcrRegionTripleClickCheckBox != null && OcrRegionTripleClickCheckBox.IsLoaded)
+                    UpdateCheckboxVisualTree(OcrRegionTripleClickCheckBox, themeColor);
                 if (RecordRegionTripleClickCheckBox != null && RecordRegionTripleClickCheckBox.IsLoaded)
                     UpdateCheckboxVisualTree(RecordRegionTripleClickCheckBox, themeColor);
                 if (RecordFullscreenTripleClickCheckBox != null && RecordFullscreenTripleClickCheckBox.IsLoaded)
