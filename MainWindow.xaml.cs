@@ -1671,15 +1671,39 @@ namespace SharpShot
             }
         }
 
+        private static string BuildOcrUnavailableMessage()
+        {
+            var hasData = OcrService.HasLanguageData();
+            var hasNatives = OcrService.HasNativeLibraries();
+            var detail = OcrService.LastAvailabilityError;
+
+            if (!hasNatives)
+            {
+                return "Text recognition (OCR) could not load Tesseract native libraries.\n\n" +
+                       "This build is missing x64\\tesseract50.dll next to SharpShot.exe.\n" +
+                       "Rebuild with Build Release.bat / Build MSIX for Store.bat so those DLLs are copied." +
+                       (string.IsNullOrWhiteSpace(detail) ? "" : "\n\nDetails: " + detail);
+            }
+
+            if (!hasData)
+            {
+                return "Text recognition (OCR) needs Tesseract language data.\n\n" +
+                       "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
+                       "2. Place it in the application folder or in a subfolder named 'tessdata'." +
+                       (string.IsNullOrWhiteSpace(detail) ? "" : "\n\nDetails: " + detail);
+            }
+
+            return "Text recognition (OCR) failed to start even though language data was found.\n\n" +
+                   (string.IsNullOrWhiteSpace(detail) ? "Rebuild and try again." : "Details: " + detail);
+        }
+
         private async Task CaptureRegionForOcr()
         {
             try
             {
                 if (!OcrService.IsAvailable())
                 {
-                    var msg = "Text recognition (OCR) needs Tesseract language data.\n\n" +
-                              "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
-                              "2. Place it in the application folder or in a subfolder named 'tessdata'.";
+                    var msg = BuildOcrUnavailableMessage();
                     var result = ThemedMessageBox.Show(
                         msg + "\n\nOpen the application folder now?",
                         "OCR Quick Capture",
@@ -1692,7 +1716,10 @@ namespace SharpShot
                         {
                             var appDir = OcrService.GetInstallDirectory();
                             var tessDataDir = Path.Combine(appDir, "tessdata");
-                            var dirToOpen = Directory.Exists(tessDataDir) ? tessDataDir : appDir;
+                            var x64Dir = Path.Combine(appDir, "x64");
+                            var dirToOpen = !OcrService.HasNativeLibraries() && Directory.Exists(x64Dir) ? x64Dir
+                                : Directory.Exists(tessDataDir) ? tessDataDir
+                                : appDir;
                             System.Diagnostics.Process.Start("explorer.exe", dirToOpen);
                         }
                         catch (Exception openEx)

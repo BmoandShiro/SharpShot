@@ -82,12 +82,40 @@ if (-not (Test-Path "$publishDir\SharpShot.exe")) {
     }
 }
 
+function Copy-TesseractNatives([string]$destRoot) {
+    $candidates = @(
+        "bin\x64\$Configuration\net8.0-windows\win-x64\x64",
+        "bin\$Configuration\net8.0-windows\win-x64\x64",
+        (Join-Path $env:USERPROFILE ".nuget\packages\tesseract\5.2.0\x64")
+    )
+    $srcX64 = $candidates | Where-Object { Test-Path (Join-Path $_ "tesseract50.dll") } | Select-Object -First 1
+    if (-not $srcX64) {
+        Write-Host "ERROR: tesseract50.dll not found (need x64 natives for OCR)." -ForegroundColor Red
+        exit 1
+    }
+
+    $destX64 = Join-Path $destRoot "x64"
+    New-Item -ItemType Directory -Path $destX64 -Force | Out-Null
+    Copy-Item -Path (Join-Path $srcX64 "*") -Destination $destX64 -Force
+
+    $leptonicaSrc = Join-Path $srcX64 "leptonica-1.82.0.dll"
+    if (-not (Test-Path (Join-Path $destX64 "tesseract50.dll"))) {
+        Write-Host "ERROR: Failed to copy x64\tesseract50.dll to $destRoot" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Tesseract natives copied to $destX64" -ForegroundColor Green
+}
+
+# PublishSingleFile omits loose x64\ natives next to the exe; OCR needs them on disk.
+Copy-TesseractNatives $publishDir
+
 # Portable folder
 Write-Host "`nStep 2: Creating portable folder (no OBS)..." -ForegroundColor Yellow
 if (Test-Path $releaseFolder) { Remove-Item -Recurse -Force $releaseFolder }
 New-Item -ItemType Directory -Path $releaseFolder | Out-Null
 
 Copy-Item -Path "$publishDir\*" -Destination $releaseFolder -Recurse -Force
+Copy-TesseractNatives $releaseFolder
 
 # Remove any OBS that might have been left in publish from prior builds
 $obsInRelease = Join-Path $releaseFolder "OBS-Studio"
@@ -98,9 +126,19 @@ if (Test-Path $obsInRelease) {
 
 # tessdata
 if (Test-Path "tessdata") {
+    $eng = Join-Path "tessdata" "eng.traineddata"
+    if (-not (Test-Path $eng) -or ((Get-Item $eng).Length -lt 1000000)) {
+        Write-Host "ERROR: tessdata\eng.traineddata is missing or too small (Git LFS pointer?). OCR will fail." -ForegroundColor Red
+        exit 1
+    }
     $tessDest = Join-Path $releaseFolder "tessdata"
     if (!(Test-Path $tessDest)) { New-Item -ItemType Directory -Path $tessDest -Force | Out-Null }
     Copy-Item -Path "tessdata\*" -Destination $tessDest -Recurse -Force
+    $langCount = @(Get-ChildItem -Path "tessdata" -Filter "*.traineddata" -File).Count
+    Write-Host ("tessdata copied ({0} languages)." -f $langCount) -ForegroundColor Green
+} else {
+    Write-Host "ERROR: No tessdata folder in project." -ForegroundColor Red
+    exit 1
 }
 
 # FFmpeg
@@ -147,6 +185,7 @@ if (-not $SkipMsix) {
         New-Item -ItemType Directory -Path $msixContentDir -Force | Out-Null
 
         Copy-Item -Path "$publishDir\*" -Destination $msixContentDir -Recurse -Force
+        Copy-TesseractNatives $msixContentDir
         $obsInMsix = Join-Path $msixContentDir "OBS-Studio"
         if (Test-Path $obsInMsix) { Remove-Item -Recurse -Force $obsInMsix }
 
@@ -154,6 +193,11 @@ if (-not $SkipMsix) {
             $tessMsix = Join-Path $msixContentDir "tessdata"
             if (!(Test-Path $tessMsix)) { New-Item -ItemType Directory -Path $tessMsix -Force | Out-Null }
             Copy-Item -Path "tessdata\*" -Destination $tessMsix -Recurse -Force
+            $engMsix = Join-Path $tessMsix "eng.traineddata"
+            if (-not (Test-Path $engMsix) -or ((Get-Item $engMsix).Length -lt 1000000)) {
+                Write-Host "ERROR: MSIX content missing real eng.traineddata." -ForegroundColor Red
+                exit 1
+            }
         }
         if (Test-Path "ffmpeg") {
             Copy-Item -Path "ffmpeg" -Destination (Join-Path $msixContentDir "ffmpeg") -Recurse -Force

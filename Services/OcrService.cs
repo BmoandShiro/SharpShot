@@ -24,25 +24,151 @@ namespace SharpShot.Services
     }
 
     /// <summary>
-    /// Uses Tesseract OCR to extract text from images. Requires tessdata (e.g. eng.traineddata) in the application directory or a tessdata subfolder.
+    /// Uses Tesseract OCR to extract text from images. Requires tessdata (e.g. eng.traineddata)
+    /// next to SharpShot.exe (or staged under %LocalAppData%\SharpShot for read-only Store installs).
     /// </summary>
     public static class OcrService
     {
         public const float DefaultMinConfidence = 55f;
+        private static readonly object TessDataSync = new();
+        private static string? _resolvedTessDataFolder;
 
-        private static string GetTessDataPath()
+        /// <summary>
+        /// Folder that contains *.traineddata files.
+        /// </summary>
+        private static string GetTessDataFolder()
+        {
+            if (!string.IsNullOrEmpty(_resolvedTessDataFolder) && Directory.Exists(_resolvedTessDataFolder)
+                && Directory.EnumerateFiles(_resolvedTessDataFolder, "*.traineddata").Any())
+            {
+                return _resolvedTessDataFolder;
+            }
+
+            lock (TessDataSync)
+            {
+                if (!string.IsNullOrEmpty(_resolvedTessDataFolder) && Directory.Exists(_resolvedTessDataFolder)
+                    && Directory.EnumerateFiles(_resolvedTessDataFolder, "*.traineddata").Any())
+                {
+                    return _resolvedTessDataFolder;
+                }
+
+                _resolvedTessDataFolder = ResolveAndStageTessDataFolder();
+                return _resolvedTessDataFolder;
+            }
+        }
+
+        /// <summary>
+        /// Path passed to TesseractEngine. Tesseract 5 / charlesw 5.2 expects the tessdata
+        /// directory itself (the folder that contains *.traineddata), not its parent.
+        /// </summary>
+        private static string GetTessDataEnginePath() => GetTessDataFolder();
+
+        private static string ResolveAndStageTessDataFolder()
+        {
+            var packaged = FindPackagedTessDataFolder();
+            if (string.IsNullOrEmpty(packaged))
+            {
+                var fallbackRoot = GetInstallDirectory();
+                return Path.GetFullPath(Path.Combine(fallbackRoot, "tessdata"));
+            }
+
+            // Store/MSIX package files are read-only; Tesseract may need a writable tessdata tree.
+            // Always prefer a LocalAppData stage when the install copy isn't writable.
+            if (!IsDirectoryWritable(packaged) || IsRunningPackaged())
+            {
+                var staged = StageTessDataToAppData(packaged);
+                if (!string.IsNullOrEmpty(staged))
+                    return staged;
+            }
+
+            return packaged;
+        }
+
+        private static string? FindPackagedTessDataFolder()
         {
             foreach (var root in GetInstallRoots())
             {
                 var tessDataSub = Path.Combine(root, "tessdata");
-                if (Directory.Exists(tessDataSub) && Directory.EnumerateFiles(tessDataSub, "*.traineddata").Any())
+                if (Directory.Exists(tessDataSub) && HasTrainedData(tessDataSub))
                     return Path.GetFullPath(tessDataSub);
-                if (Directory.EnumerateFiles(root, "*.traineddata").Any())
+
+                if (HasTrainedData(root))
                     return Path.GetFullPath(root);
             }
 
-            var fallback = GetInstallRoots().FirstOrDefault() ?? AppContext.BaseDirectory;
-            return Path.GetFullPath(Path.Combine(fallback, "tessdata"));
+            return null;
+        }
+
+        private static bool HasTrainedData(string folder)
+        {
+            try
+            {
+                return Directory.EnumerateFiles(folder, "*.traineddata")
+                    .Any(path => new FileInfo(path).Length > 100_000);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string? StageTessDataToAppData(string sourceTessDataFolder)
+        {
+            try
+            {
+                var destRoot = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "SharpShot");
+                var destTess = Path.Combine(destRoot, "tessdata");
+                Directory.CreateDirectory(destTess);
+
+                foreach (var sourceFile in Directory.EnumerateFiles(sourceTessDataFolder, "*.traineddata"))
+                {
+                    var destFile = Path.Combine(destTess, Path.GetFileName(sourceFile));
+                    var srcInfo = new FileInfo(sourceFile);
+                    if (srcInfo.Length < 100_000)
+                        continue;
+
+                    var needsCopy = !File.Exists(destFile)
+                        || new FileInfo(destFile).Length != srcInfo.Length;
+                    if (needsCopy)
+                        File.Copy(sourceFile, destFile, overwrite: true);
+                }
+
+                return HasTrainedData(destTess) ? Path.GetFullPath(destTess) : null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"StageTessDataToAppData failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static bool IsDirectoryWritable(string folder)
+        {
+            try
+            {
+                var probe = Path.Combine(folder, $".sharpshot_write_{Guid.NewGuid():N}.tmp");
+                File.WriteAllText(probe, "ok");
+                File.Delete(probe);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool IsRunningPackaged()
+        {
+            try
+            {
+                return SharpShot.Utils.PinnedTaskbarIconService.IsRunningPackaged();
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>Folder that contains SharpShot.exe. Single-file builds extract natives elsewhere, so OCR data lives here.</summary>
@@ -88,9 +214,9 @@ namespace SharpShot.Services
             }
 
             if (selected.Equals("auto", StringComparison.OrdinalIgnoreCase))
-                return JoinInstalled(new[] { "eng", "spa", "fra", "deu", "por", "ita" });
+                return JoinInstalled(new[] { "eng", "spa", "fra", "deu", "por", "ita", "nld" });
 
-            var folder = GetTessDataPath();
+            var folder = GetTessDataFolder();
             if (File.Exists(Path.Combine(folder, selected + ".traineddata")))
                 return selected;
 
@@ -99,24 +225,81 @@ namespace SharpShot.Services
 
         private static string JoinInstalled(IEnumerable<string> codes)
         {
-            var folder = GetTessDataPath();
+            var folder = GetTessDataFolder();
             var present = codes
                 .Where(code => File.Exists(Path.Combine(folder, code + ".traineddata")))
                 .ToList();
             return present.Count == 0 ? "eng" : string.Join("+", present);
         }
 
+        private static TesseractEngine CreateEngine()
+        {
+            // Single-file / MSIX: managed code extracts under %TEMP%, but x64\tesseract50.dll lives next to SharpShot.exe.
+            try
+            {
+                TesseractEnviornment.CustomSearchPath = GetInstallDirectory();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CustomSearchPath failed: {ex.Message}");
+            }
+
+            // Tesseract 5 wants TESSDATA_PREFIX / datapath to be the tessdata folder itself.
+            var dataPath = GetTessDataEnginePath();
+            try
+            {
+                Environment.SetEnvironmentVariable("TESSDATA_PREFIX", dataPath);
+            }
+            catch
+            {
+                // ignore
+            }
+
+            return new TesseractEngine(dataPath, ResolveTesseractLanguage(), EngineMode.Default);
+        }
+
         public static bool IsAvailable()
         {
             try
             {
-                var tessDataPath = GetTessDataPath();
-                using var engine = new TesseractEngine(tessDataPath, ResolveTesseractLanguage(), EngineMode.Default);
+                using var engine = CreateEngine();
                 return true;
             }
             catch (Exception ex)
             {
+                LastAvailabilityError = ex.Message;
                 System.Diagnostics.Debug.WriteLine($"OcrService.IsAvailable: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Last CreateEngine failure message (for diagnostics in the unavailable dialog).</summary>
+        public static string? LastAvailabilityError { get; private set; }
+
+        /// <summary>True when real *.traineddata files are next to the app (or staged).</summary>
+        public static bool HasLanguageData()
+        {
+            try
+            {
+                return HasTrainedData(GetTessDataFolder());
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>True when tesseract50.dll is next to SharpShot.exe under x64\ or x86\.</summary>
+        public static bool HasNativeLibraries()
+        {
+            try
+            {
+                var root = GetInstallDirectory();
+                return File.Exists(Path.Combine(root, "x64", "tesseract50.dll"))
+                    || File.Exists(Path.Combine(root, "x86", "tesseract50.dll"));
+            }
+            catch
+            {
                 return false;
             }
         }
@@ -647,8 +830,7 @@ namespace SharpShot.Services
                         scaled = true;
                     }
 
-                    var tessDataPath = GetTessDataPath();
-                    using var engine = new TesseractEngine(tessDataPath, ResolveTesseractLanguage(), EngineMode.Default);
+                    using var engine = CreateEngine();
                     engine.SetVariable("user_defined_dpi", "96");
                     engine.SetVariable("tessedit_do_invert", "1");
                     toProcess.SetResolution(96, 96);

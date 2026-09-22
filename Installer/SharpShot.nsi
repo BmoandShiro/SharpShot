@@ -7,9 +7,9 @@
 
 !define APP_NAME "SharpShot"
 !define APP_PUBLISHER "BmoandShiro"
-!define APP_VERSION "1.3.28.0"
+!define APP_VERSION "1.3.31.0"
 ; Relative to this script (Installer\), so the portable folder in the project root is found.
-!define APP_PORTABLE_DIR "..\SharpShot-Release-v1.3.28.0"
+!define APP_PORTABLE_DIR "..\SharpShot-Release-v1.3.31.0"
 !define APP_ICON "..\output_color.ico"
 
 ; Output next to the project, not inside Installer\

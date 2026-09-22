@@ -65,6 +65,23 @@ if (Test-Path "tessdata") {
     Copy-Item -Path "tessdata\*" -Destination $tessInPublish -Recurse -Force
 }
 
+# PublishSingleFile leaves x64\tesseract natives out of the publish folder.
+$nativeCandidates = @(
+    "bin\x64\$Configuration\net8.0-windows\win-x64\x64",
+    (Join-Path $env:USERPROFILE ".nuget\packages\tesseract\5.2.0\x64")
+)
+$srcX64 = $nativeCandidates | Where-Object { Test-Path (Join-Path $_ "tesseract50.dll") } | Select-Object -First 1
+if ($srcX64) {
+    foreach ($root in @($publishDir, $depotFolder)) {
+        if (-not (Test-Path $root)) { continue }
+        $destX64 = Join-Path $root "x64"
+        New-Item -ItemType Directory -Path $destX64 -Force | Out-Null
+        Copy-Item -Path (Join-Path $srcX64 "*") -Destination $destX64 -Force
+    }
+    Write-Host "Tesseract natives copied for Steam depot." -ForegroundColor Green
+}
+
+
 $obsInDepot = Join-Path $depotFolder "OBS-Studio"
 if (Test-Path $obsInDepot) {
     Remove-Item -Recurse -Force $obsInDepot

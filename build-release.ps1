@@ -60,15 +60,40 @@ New-Item -ItemType Directory -Path $releaseFolder | Out-Null
 Write-Host "Step 3: Copying SharpShot files..." -ForegroundColor Yellow
 Copy-Item -Path "$sourceDir\*" -Destination $releaseFolder -Recurse -Force
 
+# Ensure Tesseract natives exist (OCR will not start without x64\tesseract50.dll)
+$tessNative = Join-Path $releaseFolder "x64\tesseract50.dll"
+if (-not (Test-Path $tessNative)) {
+    $nativeCandidates = @(
+        (Join-Path $sourceDir "x64"),
+        (Join-Path $env:USERPROFILE ".nuget\packages\tesseract\5.2.0\x64")
+    )
+    $src = $nativeCandidates | Where-Object { Test-Path (Join-Path $_ "tesseract50.dll") } | Select-Object -First 1
+    if (-not $src) {
+        Write-Host 'ERROR: x64\tesseract50.dll missing - OCR will fail.' -ForegroundColor Red
+        exit 1
+    }
+    $destX64 = Join-Path $releaseFolder "x64"
+    New-Item -ItemType Directory -Path $destX64 -Force | Out-Null
+    Copy-Item -Path (Join-Path $src "*") -Destination $destX64 -Force
+    Write-Host "Copied Tesseract natives from $src" -ForegroundColor Green
+}
+
 # 4b. Ensure tessdata (OCR language data) is in the release folder (build may not include it in Docker)
 Write-Host "Step 3b: Copying tessdata (OCR languages)..." -ForegroundColor Yellow
 if (Test-Path "tessdata") {
+    $eng = Join-Path "tessdata" "eng.traineddata"
+    if (-not (Test-Path $eng) -or ((Get-Item $eng).Length -lt 1000000)) {
+        Write-Host 'ERROR: tessdata\eng.traineddata is missing or too small (Git LFS pointer?). OCR will fail.' -ForegroundColor Red
+        exit 1
+    }
     $tessDest = Join-Path $releaseFolder "tessdata"
     if (!(Test-Path $tessDest)) { New-Item -ItemType Directory -Path $tessDest -Force | Out-Null }
     Copy-Item -Path "tessdata\*" -Destination $tessDest -Recurse -Force
-    Write-Host "tessdata folder copied successfully!" -ForegroundColor Green
+    $langCount = @(Get-ChildItem -Path "tessdata" -Filter "*.traineddata" -File).Count
+    Write-Host "tessdata folder copied successfully - $langCount languages" -ForegroundColor Green
 } else {
-    Write-Host "No tessdata folder in project (OCR will be unavailable unless added to release later)." -ForegroundColor Gray
+    Write-Host 'ERROR: No tessdata folder in project.' -ForegroundColor Red
+    exit 1
 }
 Get-ChildItem -Path "." -Filter "*.traineddata" -File -ErrorAction SilentlyContinue | ForEach-Object {
     Copy-Item -Path $_.FullName -Destination $releaseFolder -Force

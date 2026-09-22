@@ -1357,9 +1357,18 @@ namespace SharpShot.UI
             {
                 if (!OcrService.IsAvailable())
                 {
-                    var msg = "Text recognition (OCR) needs Tesseract language data.\n\n" +
-                        "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
-                        "2. Place it in the application folder or in a subfolder named 'tessdata'.";
+                    var hasNatives = OcrService.HasNativeLibraries();
+                    var detail = OcrService.LastAvailabilityError;
+                    var msg = !hasNatives
+                        ? "Text recognition (OCR) could not load Tesseract native libraries.\n\n" +
+                          "This build is missing x64\\tesseract50.dll next to SharpShot.exe."
+                        : !OcrService.HasLanguageData()
+                            ? "Text recognition (OCR) needs Tesseract language data.\n\n" +
+                              "1. Download e.g. eng.traineddata from:\n   https://github.com/tesseract-ocr/tessdata\n" +
+                              "2. Place it in the application folder or in a subfolder named 'tessdata'."
+                            : "Text recognition (OCR) failed to start even though language data was found.";
+                    if (!string.IsNullOrWhiteSpace(detail))
+                        msg += "\n\nDetails: " + detail;
                     var result = ThemedMessageBox.Show(this,
                         msg + "\n\nOpen the application folder now?",
                         "Extract Text",
