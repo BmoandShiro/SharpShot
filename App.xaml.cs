@@ -51,6 +51,7 @@ namespace SharpShot
             
             // Load settings
             _settingsService.LoadSettings();
+            SessionEnding += OnSessionEnding;
             LocalizationService.LanguageChanged += UiLocalizer.ApplyOpenWindows;
             LocalizationService.ApplySavedLanguage();
             UiLocalizer.ApplyOpenWindows();
@@ -226,6 +227,18 @@ namespace SharpShot
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error checking for updates: {ex.Message}");
+            }
+        }
+
+        private void OnSessionEnding(object sender, SessionEndingCancelEventArgs e)
+        {
+            try
+            {
+                _settingsService?.SaveSettings();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save settings during session end: {ex.Message}");
             }
         }
 
